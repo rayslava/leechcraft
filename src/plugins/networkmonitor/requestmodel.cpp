@@ -54,13 +54,6 @@ HeaderModel* RequestModel::GetReplyHeadersModel () const
 void LeechCraft::Plugins::NetworkMonitor::RequestModel::handleRequest (QNetworkAccessManager::Operation op,
 		const QNetworkRequest& req, QNetworkReply *rep)
 {
-	if (rep->isFinished ())
-	{
-		qWarning () << Q_FUNC_INFO
-			<< "skipping the finished reply"
-			<< rep;
-		return;
-	}
 	QList<QStandardItem*> items;
 	QString opName;
 	switch (op)
