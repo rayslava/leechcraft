@@ -49,7 +49,6 @@ namespace LeechCraft
 					: Player (url, args, values)
 					{
 						Ui_.Quality_->hide ();
-						Ui_.Related_->hide ();
 
 						// http://'host'/assets/videos/'vtag+vkid'.vk.flv
 						QString host = GetStringFromRX ("host=([0-9a-z\\.]+)", values[2]);
