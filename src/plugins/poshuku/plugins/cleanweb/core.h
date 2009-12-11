@@ -25,8 +25,12 @@
 #include <QDateTime>
 #include <interfaces/iinfo.h>
 #include <interfaces/idownload.h>
+#include <interfaces/pluginbase.h>
+#include "filter.h"
 
 class QNetworkRequest;
+class QWebPage;
+class QWebHitTestResult;
 
 namespace LeechCraft
 {
@@ -40,49 +44,7 @@ namespace LeechCraft
 				{
 					class FlashOnClickPlugin;
 					class FlashOnClickWhitelist;
-
-					struct FilterOption
-					{
-						Qt::CaseSensitivity Case_;
-						enum MatchType
-						{
-							MTWildcard_,
-							MTRegexp_
-						};
-						MatchType MatchType_;
-						QStringList Domains_;
-						QStringList NotDomains_;
-
-						FilterOption ();
-					};
-
-					bool operator== (const FilterOption&, const FilterOption&);
-					bool operator!= (const FilterOption&, const FilterOption&);
-
-					struct SubscriptionData
-					{
-						/// The URL of the subscription.
-						QUrl URL_;
-						/** The name of the subscription as provided by the abp:
-						 * link.
-						 */
-						QString Name_;
-						/// This is the name of the file inside the
-						//~/.leechcraft/cleanweb/.
-						QString Filename_;
-						/// The date/time of last update.
-						QDateTime LastDateTime_;
-					};
-
-					struct Filter
-					{
-						QStringList ExceptionStrings_;
-						QStringList FilterStrings_;
-						QHash<QString, FilterOption> Options_;
-						QHash<QString, QRegExp> RegExps_;
-
-						SubscriptionData SD_;
-					};
+					class UserFiltersModel;
 
 					class Core : public QAbstractItemModel
 					{
@@ -90,6 +52,7 @@ namespace LeechCraft
 
 						FlashOnClickPlugin *FlashOnClickPlugin_;
 						FlashOnClickWhitelist *FlashOnClickWhitelist_;
+						UserFiltersModel *UserFilters_;
 
 						QList<Filter> Filters_;
 						QObjectList Downloaders_;
@@ -126,7 +89,10 @@ namespace LeechCraft
 								QNetworkRequest*,
 								QIODevice**);
 						bool ShouldReject (const QNetworkRequest&) const;
+						void HandleContextMenu (const QWebHitTestResult&,
+								QMenu*, PluginBase::WebViewCtxMenuStage);
 
+						UserFiltersModel* GetUserFiltersModel () const;
 						FlashOnClickPlugin* GetFlashOnClick ();
 						FlashOnClickWhitelist* GetFlashOnClickWhitelist ();
 					private:
@@ -149,6 +115,7 @@ namespace LeechCraft
 						void ReadSettings ();
 						bool AssignSD (const SubscriptionData&);
 					private slots:
+						void blockImage ();
 						void update ();
 						void handleJobFinished (int);
 						void handleJobError (int, IDownload::Error);

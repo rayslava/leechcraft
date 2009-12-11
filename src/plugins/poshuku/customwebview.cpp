@@ -168,6 +168,10 @@ namespace LeechCraft
 				std::auto_ptr<QMenu> menu (new QMenu (this));
 				QWebHitTestResult r = page ()->
 					mainFrame ()->hitTestContent (e->pos ());
+
+				Core::Instance ().GetPluginManager ()->
+					OnWebViewCtxMenu (this, e, r, menu.get (),
+							PluginManager::WVSStart);
 			
 				if (!r.linkUrl ().isEmpty ())
 				{
@@ -194,6 +198,10 @@ namespace LeechCraft
 						menu->addAction (pageAction (QWebPage::InspectElement));
 				}
 			
+				Core::Instance ().GetPluginManager ()->
+					OnWebViewCtxMenu (this, e, r, menu.get (),
+							PluginManager::WVSAfterLink);
+			
 				if (!r.imageUrl ().isEmpty ())
 				{
 					if (!menu->isEmpty ())
@@ -211,6 +219,10 @@ namespace LeechCraft
 							this, SLOT (copyImageLocation ()))->setData (r.imageUrl ());
 				}
 
+				Core::Instance ().GetPluginManager ()->
+					OnWebViewCtxMenu (this, e, r, menu.get (),
+							PluginManager::WVSAfterImage);
+
 				if (!page ()->selectedText ().isEmpty ())
 				{
 					if (!menu->isEmpty ())
@@ -222,6 +234,10 @@ namespace LeechCraft
 					menu->addAction (tr ("Search..."),
 							this, SLOT (searchSelectedText ()));
 				}
+
+				Core::Instance ().GetPluginManager ()->
+					OnWebViewCtxMenu (this, e, r, menu.get (),
+							PluginManager::WVSAfterSelectedText);
 			
 				if (menu->isEmpty ())
 					menu.reset (page ()->createStandardContextMenu ());
@@ -238,6 +254,10 @@ namespace LeechCraft
 				menu->addSeparator ();
 				menu->addAction (Browser_->ReloadPeriodically_);
 				menu->addAction (Browser_->NotifyWhenFinished_);
+
+				Core::Instance ().GetPluginManager ()->
+					OnWebViewCtxMenu (this, e, r, menu.get (),
+							PluginManager::WVSAfterFinish);
 			
 				if (!menu->isEmpty ())
 				{
