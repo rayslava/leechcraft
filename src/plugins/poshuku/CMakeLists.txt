@@ -21,6 +21,7 @@ SET (QT_USE_QTSQL TRUE)
 SET (QT_USE_QTXML TRUE)
 SET (QT_USE_QTWEBKIT TRUE)
 SET (QT_USE_QTNETWORK TRUE)
+SET (QT_USE_QTDBUS TRUE)
 INCLUDE (${QT_USE_FILE})
 INCLUDE_DIRECTORIES (${Boost_INCLUDE_DIRS}
 	${CMAKE_CURRENT_BINARY_DIR}
@@ -172,7 +173,31 @@ TARGET_LINK_LIBRARIES (leechcraft_poshuku
 	${QT_LIBRARIES}
 	${LEECHCRAFT_LIBRARIES}
 	)
+
+SET (WORKER_SRCS
+	worker/workerapplication.cpp
+	worker/connectionmanager.cpp
+	worker/debugmessagehandler.cpp
+	worker/main.cpp
+	)
+SET (WORKER_HEADERS
+	worker/workerapplication.h
+	worker/connectionmanager.h
+	worker/debugmessagehandler.h
+	)
+QT4_WRAP_CPP (MOC_WORKER_SRCS ${WORKER_HEADERS})
+
+ADD_EXECUTABLE (leechcraft_poshuku_worker WIN32
+	${WORKER_SRCS}
+	${MOC_WORKER_SRCS}
+	)
+TARGET_LINK_LIBRARIES (leechcraft_poshuku_worker
+	${QT_LIBRARIES}
+	${LEECHCRAFT_LIBRARIES}
+	)
+
 INSTALL (TARGETS leechcraft_poshuku DESTINATION ${LC_PLUGINS_DEST})
+INSTALL (TARGETS leechcraft_poshuku_worker DESTINATION ${LC_PLUGINS_DEST})
 INSTALL (FILES ${COMPILED_TRANSLATIONS} DESTINATION ${LC_TRANSLATIONS_DEST})
 INSTALL (FILES poshukusettings.xml DESTINATION ${LC_SETTINGS_DEST})
 
