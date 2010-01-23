@@ -178,6 +178,8 @@ namespace LeechCraft
 			
 			void Poshuku::Release ()
 			{
+				delete Ui_.MainView_;
+				Ui_.MainView_ = 0;
 				Core::Instance ().setParent (0);
 				Core::Instance ().Release ();
 				XmlSettingsDialog_.reset ();
@@ -225,7 +227,9 @@ namespace LeechCraft
 			
 			QToolBar* Poshuku::GetToolBar () const
 			{
-				return Ui_.MainView_->GetToolBar ();
+				return Ui_.MainView_ ?
+					Ui_.MainView_->GetToolBar () :
+					0;
 			}
 
 			void Poshuku::Remove ()
