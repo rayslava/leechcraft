@@ -36,10 +36,12 @@ namespace LeechCraft
 					Q_OBJECT
 
 					ConnectionManager *CM_;
+					QWidget *Embedded_;
 				public:
 					Browser (ConnectionManager*);
 					
 					WId GetEmbedWidget () const;
+					void EmbedFinished ();
 				};
 			};
 		};

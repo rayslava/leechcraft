@@ -41,7 +41,6 @@ namespace LeechCraft
 			, Child_ (new QProcess (this))
 			, Container_ (new QX11EmbedContainer)
 			{
-				qDebug () << Q_FUNC_INFO;
 				new RemoteWebViewClientAdaptor (this);
 
 				QDBusConnection::sessionBus ().registerService (GetServiceName ());
@@ -65,7 +64,6 @@ namespace LeechCraft
 
 			RemoteWebViewClient::~RemoteWebViewClient ()
 			{
-				qDebug () << Q_FUNC_INFO;
 				Container_->discardClient ();
 				if (ClientInterface_ &&
 						ClientInterface_->isValid ())
@@ -79,7 +77,8 @@ namespace LeechCraft
 
 			void RemoteWebViewClient::Load (const QUrl& url)
 			{
-				if (ClientInterface_)
+				if (ClientInterface_ &&
+						Container_->clientWinId ())
 					ClientInterface_->call ("LoadURL", url.toEncoded ());
 				else
 					PendingURL_ = url;
@@ -92,7 +91,6 @@ namespace LeechCraft
 
 			void RemoteWebViewClient::HandleReady (const QString& service, const QString& path)
 			{
-				qDebug () << Q_FUNC_INFO << service << path;
 				ClientInterface_.reset (new QDBusInterface (service, path));
 				if (!ClientInterface_->isValid ())
 				{
@@ -103,13 +101,15 @@ namespace LeechCraft
 					return;
 				}
 
-				/*
-				QDBusReply<qlonglong> clReply = ClientInterface_->call ("GetEmbedWidget");
+				InitiateEmbedding ();
+			}
+
+			void RemoteWebViewClient::InitiateEmbedding ()
+			{
+				QDBusReply<qulonglong> clReply = ClientInterface_->call ("GetEmbedWidget");
 				if (!clReply.isValid ())
 				{
 					qWarning () << Q_FUNC_INFO
-						<< service
-						<< path
 						<< "failed to get embed widget"
 						<< clReply.error ().message ();
 					Child_->kill ();
@@ -117,9 +117,10 @@ namespace LeechCraft
 				}
 				Container_->embedClient (clReply.value ());
 
-				if (PendingURL_.isValid ())
-					Load (PendingURL_);
-					*/
+				connect (Container_,
+						SIGNAL (clientIsEmbedded ()),
+						this,
+						SLOT (handleClientIsEmbedded ()));
 			}
 
 			QString RemoteWebViewClient::GetServiceName () const
@@ -163,6 +164,14 @@ namespace LeechCraft
 						<< GetServiceName ()
 						<< GetPath ();
 				ClientInterface_.reset ();
+			}
+
+			void RemoteWebViewClient::handleClientIsEmbedded ()
+			{
+				ClientInterface_->call ("EmbedFinished");
+
+				if (PendingURL_.isValid ())
+					Load (PendingURL_);
 			}
 		};
 	};

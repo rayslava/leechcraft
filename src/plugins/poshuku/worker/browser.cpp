@@ -31,13 +31,19 @@ namespace LeechCraft
 				Browser::Browser (ConnectionManager *cm)
 				: CM_ (cm)
 				{
+					QLabel *label = new QLabel;
+					label->setText ("fuck!");
+					Embedded_ = label;
 				}
 
 				WId Browser::GetEmbedWidget () const
 				{
-					QLabel *label = new QLabel;
-					label->setText ("fuck!");
-					return label->winId ();
+					return Embedded_->winId ();
+				}
+
+				void Browser::EmbedFinished ()
+				{
+					Embedded_->show ();
 				}
 			};
 		};

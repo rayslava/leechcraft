@@ -39,7 +39,6 @@ namespace LeechCraft
 
 				void BrowserAdaptor::LoadURL (const QByteArray& encoded)
 				{
-					qDebug () << "Worker:" << encoded;
 				}
 
 				qulonglong BrowserAdaptor::GetEmbedWidget ()
@@ -52,6 +51,11 @@ namespace LeechCraft
 					QTimer::singleShot (0,
 							qApp,
 							SLOT (quit ()));
+				}
+
+				void BrowserAdaptor::EmbedFinished ()
+				{
+					Browser_->EmbedFinished ();
 				}
 			};
 		};

@@ -54,12 +54,14 @@ namespace LeechCraft
 				qint64 GetID () const;
 				void HandleReady (const QString&, const QString&);
 			private:
+				void InitiateEmbedding ();
 				QString GetServiceName () const;
 				QString GetPath () const;
 			private slots:
 				void handleError (QProcess::ProcessError);
 				void handleStarted ();
 				void handleFinished (int, QProcess::ExitStatus);
+				void handleClientIsEmbedded ();
 			};
 		};
 	};
