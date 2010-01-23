@@ -54,6 +54,7 @@
 #include "browserwidgetsettings.h"
 #include "bookmarkswidget.h"
 #include "historywidget.h"
+#include "remotewebviewclient.h"
 
 namespace LeechCraft
 {
@@ -69,6 +70,7 @@ namespace LeechCraft
 			, HtmlMode_ (false)
 			, Own_ (true)
 			{
+				new RemoteWebViewClient ();
 				Ui_.setupUi (this);
 				Ui_.Sidebar_->AddPage (tr ("Bookmarks"), new BookmarksWidget);
 				Ui_.Sidebar_->AddPage (tr ("History"), new HistoryWidget);

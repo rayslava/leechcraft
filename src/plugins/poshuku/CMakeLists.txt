@@ -73,6 +73,8 @@ SET (SRCS
 	hideabletabwidget.cpp
 	bookmarkswidget.cpp
 	historywidget.cpp
+	remotewebviewclient.cpp
+	remotewebviewclientadaptor.cpp
 	)
 SET (HEADERS
 	poshuku.h
@@ -119,6 +121,8 @@ SET (HEADERS
 	hideabletabwidget.h
 	bookmarkswidget.h
 	historywidget.h
+	remotewebviewclient.h
+	remotewebviewclientadaptor.h
 	interfaces/pluginbase.h
 	interfaces/iwebplugin.h
 	interfaces/iflashoverrider.h
@@ -178,12 +182,16 @@ SET (WORKER_SRCS
 	worker/workerapplication.cpp
 	worker/connectionmanager.cpp
 	worker/debugmessagehandler.cpp
+	worker/browser.cpp
+	worker/browseradaptor.cpp
 	worker/main.cpp
 	)
 SET (WORKER_HEADERS
 	worker/workerapplication.h
 	worker/connectionmanager.h
 	worker/debugmessagehandler.h
+	worker/browser.h
+	worker/browseradaptor.h
 	)
 QT4_WRAP_CPP (MOC_WORKER_SRCS ${WORKER_HEADERS})
 
@@ -197,7 +205,7 @@ TARGET_LINK_LIBRARIES (leechcraft_poshuku_worker
 	)
 
 INSTALL (TARGETS leechcraft_poshuku DESTINATION ${LC_PLUGINS_DEST})
-INSTALL (TARGETS leechcraft_poshuku_worker DESTINATION ${LC_PLUGINS_DEST})
+INSTALL (TARGETS leechcraft_poshuku_worker DESTINATION bin)
 INSTALL (FILES ${COMPILED_TRANSLATIONS} DESTINATION ${LC_TRANSLATIONS_DEST})
 INSTALL (FILES poshukusettings.xml DESTINATION ${LC_SETTINGS_DEST})
 

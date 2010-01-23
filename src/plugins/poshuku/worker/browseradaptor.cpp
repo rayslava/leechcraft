@@ -16,13 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_POSHUKU_WORKER_CONNECTIONMANAGER_H
-#define PLUGINS_POSHUKU_WORKER_CONNECTIONMANAGER_H
-#include <boost/shared_ptr.hpp>
-#include <QObject>
-#include <QDBusConnection>
-
-class QDBusInterface;
+#include "browseradaptor.h"
+#include "browser.h"
+#include <QtDebug>
 
 namespace LeechCraft
 {
@@ -32,31 +28,18 @@ namespace LeechCraft
 		{
 			namespace Worker
 			{
-				class Browser;
-
-				class ConnectionManager : public QObject
+				BrowserAdaptor::BrowserAdaptor (Browser *b)
+				: QDBusAbstractAdaptor (b)
+				, Browser_ (b)
 				{
-					Q_OBJECT
+				}
 
-					QDBusConnection BusConnection_;
-					QString Service_;
-					QString Path_;
-					boost::shared_ptr<QDBusInterface> ServerInterface_;
-					boost::shared_ptr<Browser> Browser_;
-					qint64 ID_;
-				public:
-					ConnectionManager (const QString&, const QString&,
-							QObject* = 0);
-				private:
-					bool Connect ();
-					bool Prepare ();
-				private slots:
-					void delayedInit ();
-				};
+				void BrowserAdaptor::LoadURL (const QByteArray& encoded)
+				{
+					qDebug () << "Worker:" << encoded;
+				}
 			};
 		};
 	};
 };
-
-#endif
 

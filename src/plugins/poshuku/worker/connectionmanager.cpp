@@ -19,10 +19,14 @@
 #include "connectionmanager.h"
 #include <QDBusError>
 #include <QDBusConnectionInterface>
+#include <QDBusInterface>
 #include <QMessageBox>
 #include <QApplication>
 #include <QTimer>
+#include <QUrl>
 #include <QtDebug>
+#include "browser.h"
+#include "browseradaptor.h"
 
 namespace LeechCraft
 {
@@ -38,6 +42,7 @@ namespace LeechCraft
 				, BusConnection_ (QDBusConnection::sessionBus ())
 				, Service_ (service)
 				, Path_ (path)
+				, ID_ (-1)
 				{
 					QTimer::singleShot (0,
 							this,
@@ -46,6 +51,7 @@ namespace LeechCraft
 
 				bool ConnectionManager::Connect ()
 				{
+					qDebug () << Q_FUNC_INFO << Service_ << Path_;
 					if (!BusConnection_.isConnected ())
 					{
 						QDBusError error = BusConnection_.lastError ();
@@ -74,12 +80,52 @@ namespace LeechCraft
 						return false;
 					}
 
+					ServerInterface_.reset (new QDBusInterface (Service_, Path_,
+								"org.LeechCraft.Poshuku.IWorkerServer"));
+					if (!ServerInterface_->isValid ())
+					{
+						qWarning () << Q_FUNC_INFO
+							<< Service_
+							<< Path_
+							<< "failed to connect";
+						return false;
+					}
+
+					return true;
+				}
+
+				bool ConnectionManager::Prepare ()
+				{
+					QDBusReply<qint64> idReply = ServerInterface_->call ("GetID");
+					if (!idReply.isValid ())
+					{
+						qWarning () << Q_FUNC_INFO
+							<< idReply.error ().message ()
+							<< idReply.error ().type ();
+						QMessageBox::critical (0,
+								tr ("Poshuku Worker"),
+								tr ("Could not get ID: %1")
+									.arg (idReply.error ().message ()));
+						return false;
+					}
+
+					ID_ = idReply.value ();
+
+					Browser_.reset (new Browser (this));
+					new BrowserAdaptor (Browser_.get ());
+
+					BusConnection_.registerService ("org.LeechCraft.Poshuku.Workers");
+					BusConnection_.registerObject (QString ("/%1").arg (ID_),
+							Browser_.get ());
+
+					ServerInterface_->call ("Ready");
+
 					return true;
 				}
 
 				void ConnectionManager::delayedInit ()
 				{
-					if (!Connect ())
+					if (!Connect () || !Prepare ())
 						qApp->quit ();
 				}
 			};

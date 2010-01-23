@@ -16,13 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_POSHUKU_WORKER_CONNECTIONMANAGER_H
-#define PLUGINS_POSHUKU_WORKER_CONNECTIONMANAGER_H
-#include <boost/shared_ptr.hpp>
-#include <QObject>
-#include <QDBusConnection>
-
-class QDBusInterface;
+#include "remotewebviewclientadaptor.h"
+#include "remotewebviewclient.h"
 
 namespace LeechCraft
 {
@@ -30,33 +25,17 @@ namespace LeechCraft
 	{
 		namespace Poshuku
 		{
-			namespace Worker
+			RemoteWebViewClientAdaptor::RemoteWebViewClientAdaptor (RemoteWebViewClient *c)
+			: QDBusAbstractAdaptor (c)
+			, Client_ (c)
 			{
-				class Browser;
+			}
 
-				class ConnectionManager : public QObject
-				{
-					Q_OBJECT
-
-					QDBusConnection BusConnection_;
-					QString Service_;
-					QString Path_;
-					boost::shared_ptr<QDBusInterface> ServerInterface_;
-					boost::shared_ptr<Browser> Browser_;
-					qint64 ID_;
-				public:
-					ConnectionManager (const QString&, const QString&,
-							QObject* = 0);
-				private:
-					bool Connect ();
-					bool Prepare ();
-				private slots:
-					void delayedInit ();
-				};
-			};
+			qint64 RemoteWebViewClientAdaptor::GetID ()
+			{
+				return Client_->GetID ();
+			}
 		};
 	};
 };
-
-#endif
 
