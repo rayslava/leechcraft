@@ -70,12 +70,19 @@ namespace LeechCraft
 			, HtmlMode_ (false)
 			, Own_ (true)
 			{
+				Ui_.setupUi (this);
+
 				Client_ = new RemoteWebViewClient (this);
+				QVBoxLayout *lay = new QVBoxLayout (Ui_.WebView_);
+				lay->setContentsMargins (0, 0, 0, 0);
+				Client_->GetWidget ()->show ();
+				lay->addWidget (Client_->GetWidget ());
+				Ui_.WebView_->setLayout (lay);
 				connect (Client_,
 						SIGNAL (viewIsReady ()),
 						this,
 						SLOT (handleViewIsReady ()));
-				Ui_.setupUi (this);
+
 				Ui_.Sidebar_->AddPage (tr ("Bookmarks"), new BookmarksWidget);
 				Ui_.Sidebar_->AddPage (tr ("History"), new HistoryWidget);
 				Ui_.Splitter_->setSizes (QList<int> () << 0 << 1000);
@@ -713,10 +720,6 @@ namespace LeechCraft
 
 			void BrowserWidget::handleViewIsReady ()
 			{
-				QVBoxLayout *lay = new QVBoxLayout (Ui_.WebView_);
-				lay->setContentsMargins (0, 0, 0, 0);
-				lay->addWidget (Client_->GetWidget ());
-				Ui_.WebView_->setLayout (lay);
 			}
 
 			/*

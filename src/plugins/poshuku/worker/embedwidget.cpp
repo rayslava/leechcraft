@@ -41,6 +41,10 @@ namespace LeechCraft
 							SIGNAL (error (QX11EmbedWidget::Error)),
 							this,
 							SLOT (handleError (QX11EmbedWidget::Error)));
+					connect (this,
+							SIGNAL (containerClosed ()),
+							this,
+							SLOT (handleContainerClosed ()));
 
 					QVBoxLayout *lay = new QVBoxLayout (this);
 					lay->addWidget (WebView_);
@@ -62,6 +66,11 @@ namespace LeechCraft
 				void EmbedWidget::handleError (QX11EmbedWidget::Error e)
 				{
 					qWarning () << e;
+				}
+
+				void EmbedWidget::handleContainerClosed ()
+				{
+					qWarning () << Q_FUNC_INFO;
 				}
 			};
 		};

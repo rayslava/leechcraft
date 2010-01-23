@@ -36,14 +36,10 @@ namespace LeechCraft
 					Embedded_ = new EmbedWidget;
 				}
 
-				WId Browser::GetEmbedWidget () const
+				void Browser::SetEmbedContainer (WId wid) const
 				{
-					return Embedded_->winId ();
-				}
-
-				void Browser::EmbedFinished ()
-				{
-//					Embedded_->show ();
+					Embedded_->embedInto (wid);
+					Embedded_->show ();
 				}
 
 				void Browser::LoadURL (const QUrl& url)

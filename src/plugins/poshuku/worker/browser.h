@@ -43,8 +43,7 @@ namespace LeechCraft
 				public:
 					Browser (ConnectionManager*);
 					
-					WId GetEmbedWidget () const;
-					void EmbedFinished ();
+					void SetEmbedContainer (WId) const;
 					void LoadURL (const QUrl&);
 				};
 			};

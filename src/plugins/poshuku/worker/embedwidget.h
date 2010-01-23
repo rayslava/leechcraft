@@ -42,6 +42,7 @@ namespace LeechCraft
 				private slots:
 					void handleEmbedded ();
 					void handleError (QX11EmbedWidget::Error);
+					void handleContainerClosed ();
 				};
 			};
 		};
