@@ -49,6 +49,7 @@ namespace LeechCraft
 				if (ItemModel_)
 					ItemModel_->saveSettings ();
 				delete ItemModel_;
+				Ui_.ItemView_->Release ();
 			}
 
 			ItemModel* ItemBucket::GetItemModel () const

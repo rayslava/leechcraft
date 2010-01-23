@@ -87,6 +87,7 @@ namespace LeechCraft
 				delete JobHolderRepresentation_;
 				delete ChannelsFilterModel_;
 				delete ChannelsModel_;
+				ReprWidget_->Release ();
 				delete ReprWidget_;
 				ItemBucket_.reset ();
 

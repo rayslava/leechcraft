@@ -289,6 +289,7 @@ namespace LeechCraft
 			void Aggregator::Release ()
 			{
 				disconnect (&Core::Instance (), 0, this, 0);
+				Impl_->Ui_.ItemsWidget_->Release ();
 				if (Core::Instance ().GetChannelsModel ())
 					disconnect (Core::Instance ().GetChannelsModel (), 0, this, 0);
 				if (Impl_->TagsLineCompleter_.get ())

@@ -178,6 +178,11 @@ namespace LeechCraft
 				delete Impl_;
 			}
 
+			void ItemsWidget::Release ()
+			{
+				Impl_->Ui_.ItemView_->Release ();
+			}
+
 			void ItemsWidget::SetChannelActions (const ChannelActions& ca)
 			{
 				QAction *first = Impl_->ControlToolBar_->actions ().first ();
@@ -354,7 +359,6 @@ namespace LeechCraft
 			
 			void ItemsWidget::CurrentChannelChanged (const QModelIndex& si)
 			{
-				qDebug () << Q_FUNC_INFO << si;
 				if (Impl_->MergeMode_)
 					return;
 			
@@ -362,8 +366,6 @@ namespace LeechCraft
 				QSortFilterProxyModel *f = Impl_->ChannelsFilter_;
 				if (f)
 					index = f->mapToSource (index);
-
-				qDebug () << f << index;
 
 				try
 				{

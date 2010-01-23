@@ -49,6 +49,7 @@ namespace LeechCraft
 				ItemsWidget (QWidget* = 0);
 				virtual ~ItemsWidget ();
 
+				void Release ();
 				void SetChannelActions (const ChannelActions&);
 				void SetChannelsFilter (QSortFilterProxyModel*);
 
