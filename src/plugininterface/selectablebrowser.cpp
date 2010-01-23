@@ -34,12 +34,13 @@ namespace LeechCraft
 		
 		void SelectableBrowser::Construct (IWebBrowser *browser)
 		{
+			IWebWidget *webWidget;
 			if (browser &&
-					browser->GetWidget ())
+					(webWidget = browser->GetWidget ()))
 			{
 				Internal_ = false;
 				InternalBrowser_.reset ();
-				ExternalBrowser_.reset (browser->GetWidget ());
+				ExternalBrowser_.reset (webWidget);
 				layout ()->addWidget (ExternalBrowser_->Widget ());
 			}
 			else
@@ -50,6 +51,12 @@ namespace LeechCraft
 				ExternalBrowser_.reset ();
 				layout ()->addWidget (InternalBrowser_.get ());
 			}
+		}
+
+		void SelectableBrowser::Release ()
+		{
+			InternalBrowser_.reset ();
+			ExternalBrowser_.reset ();
 		}
 		
 		void SelectableBrowser::SetHtml (const QString& html, const QUrl& base)

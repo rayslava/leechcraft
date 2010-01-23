@@ -38,6 +38,7 @@ namespace LeechCraft
 		public:
 			SelectableBrowser (QWidget* = 0);
 			void Construct (IWebBrowser*);
+			void Release ();
 
 			void SetHtml (const QString&, const QUrl& = QString ());
 		};
