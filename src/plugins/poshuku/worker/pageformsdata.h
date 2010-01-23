@@ -16,12 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#include "browseradaptor.h"
-#include "browser.h"
-#include <QApplication>
-#include <QTimer>
-#include <QUrl>
-#include <QtDebug>
+#ifndef PLUGINS_POSHUKU_WORKER_PAGEFORMSDATA_H
+#define PLUGINS_POSHUKU_WORKER_PAGEFORMSDATA_H
+#include <QMap>
+#include <QString>
+#include <QVariant>
+
+class QDebug;
 
 namespace LeechCraft
 {
@@ -31,36 +32,46 @@ namespace LeechCraft
 		{
 			namespace Worker
 			{
-				BrowserAdaptor::BrowserAdaptor (Browser *b)
-				: QDBusAbstractAdaptor (b)
-				, Browser_ (b)
+				struct ElementData
 				{
-				}
+					int FormIndex_;
+					QString Name_;
+					QString Type_;
+					QVariant Value_;
+				};
 
-				void BrowserAdaptor::LoadURL (const QByteArray& encoded)
-				{
-					qDebug () << Q_FUNC_INFO << encoded;
-					Browser_->LoadURL (QUrl::fromEncoded (encoded));
-				}
+				QDebug& operator<< (QDebug&, const ElementData&);
 
-				qulonglong BrowserAdaptor::GetEmbedWidget ()
-				{
-					return Browser_->GetEmbedWidget ();
-				}
-				
-				void BrowserAdaptor::Shutdown ()
-				{
-					QTimer::singleShot (0,
-							qApp,
-							SLOT (quit ()));
-				}
+				/** Holds information about all the elements on the single form.
+				 */
+				typedef QList<ElementData> ElementsData_t;
 
-				void BrowserAdaptor::EmbedFinished ()
+				/** Holds information about all the forms/pages, identified by their
+				 * URL.
+				 */
+				typedef QMap<QString, ElementsData_t> PageFormsData_t;
+
+				struct ElemFinder
 				{
-					Browser_->EmbedFinished ();
-				}
+					const QString& ElemName_;
+					const QString& ElemType_;
+
+					ElemFinder (const QString& en, const QString& et)
+					: ElemName_ (en)
+					, ElemType_ (et)
+					{
+					}
+
+					inline bool operator() (const ElementData& ed) const
+					{
+						return ed.Name_ == ElemName_ &&
+							ed.Type_ == ElemType_;
+					}
+				};
 			};
 		};
 	};
 };
+
+#endif
 

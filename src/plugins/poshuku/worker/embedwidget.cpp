@@ -16,31 +16,55 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_POSHUKU_EXTERNALPROXY_H
-#define PLUGINS_POSHUKU_EXTERNALPROXY_H
-#include <QObject>
+#include "embedwidget.h"
+#include <QVBoxLayout>
+#include <QPushButton>
+#include "customwebview.h"
 
 namespace LeechCraft
 {
-	struct DownloadEntity;
-
 	namespace Plugins
 	{
 		namespace Poshuku
 		{
-			class ExternalProxy : public QObject
+			namespace Worker
 			{
-				Q_OBJECT
-			public:
-				ExternalProxy (QObject* = 0);
-			public slots:
-				void AddSearchProvider (const QString&);
-			signals:
-				void gotEntity (const LeechCraft::DownloadEntity&);
+				EmbedWidget::EmbedWidget (QWidget *parent)
+				: QX11EmbedWidget (parent)
+				, WebView_ (new CustomWebView ())
+				{
+					connect (this,
+							SIGNAL (embedded ()),
+							this,
+							SLOT (handleEmbedded ()));
+					connect (this,
+							SIGNAL (error (QX11EmbedWidget::Error)),
+							this,
+							SLOT (handleError (QX11EmbedWidget::Error)));
+
+					QVBoxLayout *lay = new QVBoxLayout (this);
+					lay->addWidget (WebView_);
+					lay->addWidget (new QPushButton ("push me!"));
+					lay->setContentsMargins (0, 0, 0, 0);
+					setLayout (lay);
+				}
+
+				CustomWebView* EmbedWidget::GetWebView () const
+				{
+					return WebView_;
+				}
+
+				void EmbedWidget::handleEmbedded ()
+				{
+					qDebug () << Q_FUNC_INFO;
+				}
+
+				void EmbedWidget::handleError (QX11EmbedWidget::Error e)
+				{
+					qWarning () << e;
+				}
 			};
 		};
 	};
 };
-
-#endif
 

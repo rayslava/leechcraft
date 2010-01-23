@@ -123,9 +123,11 @@ namespace LeechCraft
 				void InitShortcuts ();
 
 				void SetUnclosers (const QList<QAction*>&);
+				/*
 				CustomWebView* GetView () const;
 				BrowserWidgetSettings GetWidgetSettings () const;
 				void SetWidgetSettings (const BrowserWidgetSettings&);
+				*/
 				void SetURL (const QUrl&);
 
 				void Load (const QString&);
@@ -141,12 +143,18 @@ namespace LeechCraft
 
 				void SetOnLoadScrollPoint (const QPoint&);
 			private:
+				/*
 				void PrintImpl (bool, QWebFrame*);
+				*/
 				void SetActualReloadInterval (const QTime&);
 			private slots:
+				/*
 				void handleIconChanged ();
 				void handleStatusBarMessage (const QString&);
+				*/
 				void on_URLEdit__returnPressed ();
+				void handleViewIsReady ();
+				/*
 				void handleReloadPeriodically ();
 				void handleAdd2Favorites ();
 				void handleCheckFavorites ();
@@ -170,6 +178,7 @@ namespace LeechCraft
 				void notifyLoadFinished (bool);
 				void handleChangeEncodingAboutToShow ();
 				void handleChangeEncodingTriggered (QAction*);
+				*/
 			signals:
 				void titleChanged (const QString&);
 				void urlChanged (const QString&);

@@ -121,7 +121,7 @@ namespace LeechCraft
 				BrowserWidget* NewURL (const QUrl&, bool = false);
 				BrowserWidget* NewURL (const QString&, bool = false);
 				IWebWidget* GetWidget ();
-				CustomWebView* MakeWebView (bool = false);
+				//CustomWebView* MakeWebView (bool = false);
 				void Unregister (BrowserWidget*);
 				QMenu* GetPluginsMenu () const;
 				/** Sets up the connections between widget's signals
@@ -146,7 +146,7 @@ namespace LeechCraft
 				QString GetUserAgent (const QUrl&, const QWebPage* = 0) const;
 			private:
 				void RestoreSession (bool);
-				void HandleHistory (QWebView*);
+				//void HandleHistory (QWebView*);
 				/** Sets up the connections between widget's signals
 				 * and our signals/slots that are always useful, both in own
 				 * and deown mode.
@@ -156,9 +156,11 @@ namespace LeechCraft
 				void importXbel ();
 				void exportXbel ();
 			private slots:
+				/*
 				void handleUnclose ();
 				void handleTitleChanged (const QString&);
 				void handleURLChanged (const QString&);
+				*/
 				void handleIconChanged (const QIcon&);
 				void handleNeedToClose ();
 				void handleAddToFavorites (const QString&, const QString&);

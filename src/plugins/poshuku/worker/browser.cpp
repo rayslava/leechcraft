@@ -19,6 +19,8 @@
 #include "browser.h"
 #include <QLabel>
 #include "connectionmanager.h"
+#include "embedwidget.h"
+#include "customwebview.h"
 
 namespace LeechCraft
 {
@@ -31,9 +33,7 @@ namespace LeechCraft
 				Browser::Browser (ConnectionManager *cm)
 				: CM_ (cm)
 				{
-					QLabel *label = new QLabel;
-					label->setText ("fuck!");
-					Embedded_ = label;
+					Embedded_ = new EmbedWidget;
 				}
 
 				WId Browser::GetEmbedWidget () const
@@ -43,7 +43,12 @@ namespace LeechCraft
 
 				void Browser::EmbedFinished ()
 				{
-					Embedded_->show ();
+//					Embedded_->show ();
+				}
+
+				void Browser::LoadURL (const QUrl& url)
+				{
+					Embedded_->GetWebView ()->Load (url);
 				}
 			};
 		};

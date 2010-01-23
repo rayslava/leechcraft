@@ -16,51 +16,34 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#include "browseradaptor.h"
-#include "browser.h"
-#include <QApplication>
-#include <QTimer>
-#include <QUrl>
-#include <QtDebug>
+#ifndef PLUGINS_POSHUKU_WORKER_EXTERNALPROXY_H
+#define PLUGINS_POSHUKU_WORKER_EXTERNALPROXY_H
+#include <QObject>
 
 namespace LeechCraft
 {
+	struct DownloadEntity;
+
 	namespace Plugins
 	{
 		namespace Poshuku
 		{
 			namespace Worker
 			{
-				BrowserAdaptor::BrowserAdaptor (Browser *b)
-				: QDBusAbstractAdaptor (b)
-				, Browser_ (b)
+				class ExternalProxy : public QObject
 				{
-				}
-
-				void BrowserAdaptor::LoadURL (const QByteArray& encoded)
-				{
-					qDebug () << Q_FUNC_INFO << encoded;
-					Browser_->LoadURL (QUrl::fromEncoded (encoded));
-				}
-
-				qulonglong BrowserAdaptor::GetEmbedWidget ()
-				{
-					return Browser_->GetEmbedWidget ();
-				}
-				
-				void BrowserAdaptor::Shutdown ()
-				{
-					QTimer::singleShot (0,
-							qApp,
-							SLOT (quit ()));
-				}
-
-				void BrowserAdaptor::EmbedFinished ()
-				{
-					Browser_->EmbedFinished ();
-				}
+					Q_OBJECT
+				public:
+					ExternalProxy (QObject* = 0);
+				public slots:
+					void AddSearchProvider (const QString&);
+				signals:
+					void gotEntity (const LeechCraft::DownloadEntity&);
+				};
 			};
 		};
 	};
 };
+
+#endif
 

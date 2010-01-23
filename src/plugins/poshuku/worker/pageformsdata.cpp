@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#include "externalproxy.h"
-#include <interfaces/structures.h>
+#include "pageformsdata.h"
+#include <QtDebug>
 
 namespace LeechCraft
 {
@@ -25,21 +25,18 @@ namespace LeechCraft
 	{
 		namespace Poshuku
 		{
-			ExternalProxy::ExternalProxy (QObject *parent)
-			: QObject (parent)
+			namespace Worker
 			{
-			}
-
-			void ExternalProxy::AddSearchProvider (const QString& url)
-			{
-				LeechCraft::DownloadEntity e;
-				e.Entity_ = url.toUtf8 ();
-				e.Mime_ = "application/opensearchdescription+xml";
-				e.Location_ = url;
-				e.Parameters_ = LeechCraft::FromUserInitiated;
-				emit gotEntity (e);
-			}
-			
+				QDebug& operator<< (QDebug& dbg, const ElementData& ed)
+				{
+					dbg << "Element: {"
+						<< ed.Name_
+						<< ed.Type_
+						<< ed.Value_
+						<< "}";
+					return dbg;
+				}
+			};
 		};
 	};
 };

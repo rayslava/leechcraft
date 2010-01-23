@@ -50,10 +50,10 @@ namespace LeechCraft
 						  , public IHaveSettings
 						  , public IEntityHandler
 						  , public IHaveShortcuts
-						  , public IWebBrowser
+//						  , public IWebBrowser
 			{
 				Q_OBJECT
-				Q_INTERFACES (IInfo IEmbedTab IMultiTabs IMultiTabsWidget IHaveSettings IEntityHandler IPluginReady IWebBrowser IHaveShortcuts)
+				Q_INTERFACES (IInfo IEmbedTab IMultiTabs IMultiTabsWidget IHaveSettings IEntityHandler IPluginReady /*IWebBrowser*/ IHaveShortcuts)
 
 				Ui::Poshuku Ui_;
 

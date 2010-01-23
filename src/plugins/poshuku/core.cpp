@@ -44,7 +44,7 @@
 #include <plugininterface/util.h>
 #include <interfaces/ihaveshortcuts.h>
 #include "browserwidget.h"
-#include "customwebview.h"
+//#include "customwebview.h"
 #include "addtofavoritesdialog.h"
 #include "xmlsettingsmanager.h"
 #include "restoresessiondialog.h"
@@ -176,7 +176,8 @@ namespace LeechCraft
 			
 			void Core::Release ()
 			{
-				saveSession ();
+				// TODO
+				//saveSession ();
 				IsShuttingDown_ = true;
 				while (Widgets_.begin () != Widgets_.end ())
 					delete *Widgets_.begin ();
@@ -305,6 +306,7 @@ namespace LeechCraft
 				return widget;
 			}
 			
+			/*
 			CustomWebView* Core::MakeWebView (bool invert)
 			{
 				if (!Initialized_)
@@ -319,6 +321,7 @@ namespace LeechCraft
 			
 				return NewURL (QUrl (), raise)->GetView ();
 			}
+			*/
 
 			void Core::ConnectSignals (BrowserWidget *widget)
 			{
@@ -592,6 +595,7 @@ namespace LeechCraft
 			
 			void Core::Unregister (BrowserWidget *widget)
 			{
+				/*
 				widgets_t::iterator pos =
 					std::find (Widgets_.begin (), Widgets_.end (), widget);
 				if (pos == Widgets_.end ())
@@ -636,6 +640,7 @@ namespace LeechCraft
 				Widgets_.erase (pos);
 			
 				saveSession ();
+				*/
 			}
 			
 			QMenu* Core::GetPluginsMenu () const
@@ -667,8 +672,8 @@ namespace LeechCraft
 						RestoredURLs_ = dia->GetSelectedURLs ();
 						QTimer::singleShot (2000, this, SLOT (restorePages ()));
 					}
-					else
-						saveSession ();
+		//			else
+		//				saveSession ();
 				}
 				else
 				{
@@ -683,6 +688,7 @@ namespace LeechCraft
 				}
 			}
 			
+			/*
 			void Core::HandleHistory (QWebView *view)
 			{
 				QString url = view->url ().toString ();
@@ -692,6 +698,7 @@ namespace LeechCraft
 					HistoryModel_->AddItem (view->title (),
 							url, QDateTime::currentDateTime ());
 			}
+			*/
 
 			void Core::SetupConnections (BrowserWidget *widget)
 			{
@@ -791,6 +798,7 @@ namespace LeechCraft
 				file.write (data);
 			}
 			
+			/*
 			void Core::handleUnclose ()
 			{
 				QAction *action = qobject_cast<QAction*> (sender ());
@@ -821,6 +829,7 @@ namespace LeechCraft
 			
 				saveSingleSession ();
 			}
+			*/
 			
 			void Core::handleIconChanged (const QIcon& newIcon)
 			{
@@ -884,10 +893,10 @@ namespace LeechCraft
 						end = Widgets_.end (); i != end; ++i)
 				{
 					settings.setArrayIndex (pos++);
-					settings.setValue ("Title", (*i)->GetView ()->title ());
-					settings.setValue ("URL", (*i)->GetView ()->url ().toString ());
-					settings.setValue ("Settings",
-							QVariant::fromValue<BrowserWidgetSettings> ((*i)->GetWidgetSettings ()));
+//					settings.setValue ("Title", (*i)->GetView ()->title ());
+//					settings.setValue ("URL", (*i)->GetView ()->url ().toString ());
+//					settings.setValue ("Settings",
+//							QVariant::fromValue<BrowserWidgetSettings> ((*i)->GetWidgetSettings ()));
 				}
 				settings.endArray ();
 			}
@@ -910,10 +919,10 @@ namespace LeechCraft
 					if (Widgets_.at (i) == source)
 					{
 						settings.setArrayIndex (i);
-						settings.setValue ("Title", source->GetView ()->title ());
-						settings.setValue ("URL", source->GetView ()->url ().toString ());
-						settings.setValue ("Settings",
-								QVariant::fromValue<BrowserWidgetSettings> (source->GetWidgetSettings ()));
+//						settings.setValue ("Title", source->GetView ()->title ());
+//						settings.setValue ("URL", source->GetView ()->url ().toString ());
+//						settings.setValue ("Settings",
+//								QVariant::fromValue<BrowserWidgetSettings> (source->GetWidgetSettings ()));
 						break;
 					}
 				settings.endArray ();
@@ -925,8 +934,8 @@ namespace LeechCraft
 						end = RestoredURLs_.end (); i != end; ++i)
 				{
 					int idx = *i;
-					NewURL (SavedSessionState_.at (idx).second)->
-						SetWidgetSettings (SavedSessionSettings_.at (idx));
+//					NewURL (SavedSessionState_.at (idx).second)->
+//						SetWidgetSettings (SavedSessionSettings_.at (idx));
 				}
 
 				SavedSessionState_.clear ();

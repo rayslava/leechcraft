@@ -21,6 +21,8 @@
 #include <QObject>
 #include <QWidget>
 
+class QUrl;
+
 namespace LeechCraft
 {
 	namespace Plugins
@@ -30,18 +32,20 @@ namespace LeechCraft
 			namespace Worker
 			{
 				class ConnectionManager;
+				class EmbedWidget;
 
 				class Browser : public QObject
 				{
 					Q_OBJECT
 
 					ConnectionManager *CM_;
-					QWidget *Embedded_;
+					EmbedWidget *Embedded_;
 				public:
 					Browser (ConnectionManager*);
 					
 					WId GetEmbedWidget () const;
 					void EmbedFinished ();
+					void LoadURL (const QUrl&);
 				};
 			};
 		};

@@ -22,9 +22,9 @@
 #include <QObject>
 #include <QProcess>
 #include <QUrl>
+#include <QX11EmbedContainer>
 
 class QWidget;
-class QX11EmbedContainer;
 class QDBusInterface;
 
 namespace LeechCraft
@@ -43,14 +43,17 @@ namespace LeechCraft
 				QX11EmbedContainer *Container_;
 				boost::shared_ptr<QDBusInterface> ClientInterface_;
 				QUrl PendingURL_;
+				QPair<QString, QUrl> PendingHtml_;
 			public:
 				RemoteWebViewClient (QWidget* = 0);
 				virtual ~RemoteWebViewClient ();
 
+				// Methods available from the plugin.
 				QWidget* GetWidget () const;
-
 				void Load (const QUrl&);
+				void SetHtml (const QString&, const QUrl&);
 
+				// Methods available from the D-Bus, wrapped by the adaptor.
 				qint64 GetID () const;
 				void HandleReady (const QString&, const QString&);
 			private:
@@ -62,6 +65,9 @@ namespace LeechCraft
 				void handleStarted ();
 				void handleFinished (int, QProcess::ExitStatus);
 				void handleClientIsEmbedded ();
+				void handleClientError (QX11EmbedContainer::Error);
+			signals:
+				void viewIsReady ();
 			};
 		};
 	};

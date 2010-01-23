@@ -16,12 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#include "browseradaptor.h"
-#include "browser.h"
-#include <QApplication>
-#include <QTimer>
-#include <QUrl>
-#include <QtDebug>
+#ifndef PLUGINS_POSHUKU_WORKER_EMBEDWIDGET_H
+#define PLUGINS_POSHUKU_WORKER_EMBEDWIDGET_H
+#include <QX11EmbedWidget>
 
 namespace LeechCraft
 {
@@ -31,36 +28,25 @@ namespace LeechCraft
 		{
 			namespace Worker
 			{
-				BrowserAdaptor::BrowserAdaptor (Browser *b)
-				: QDBusAbstractAdaptor (b)
-				, Browser_ (b)
-				{
-				}
+				class CustomWebView;
 
-				void BrowserAdaptor::LoadURL (const QByteArray& encoded)
+				class EmbedWidget : public QX11EmbedWidget
 				{
-					qDebug () << Q_FUNC_INFO << encoded;
-					Browser_->LoadURL (QUrl::fromEncoded (encoded));
-				}
+					Q_OBJECT
 
-				qulonglong BrowserAdaptor::GetEmbedWidget ()
-				{
-					return Browser_->GetEmbedWidget ();
-				}
-				
-				void BrowserAdaptor::Shutdown ()
-				{
-					QTimer::singleShot (0,
-							qApp,
-							SLOT (quit ()));
-				}
+					CustomWebView *WebView_;
+				public:
+					EmbedWidget (QWidget* = 0);
 
-				void BrowserAdaptor::EmbedFinished ()
-				{
-					Browser_->EmbedFinished ();
-				}
+					CustomWebView* GetWebView () const;
+				private slots:
+					void handleEmbedded ();
+					void handleError (QX11EmbedWidget::Error);
+				};
 			};
 		};
 	};
 };
+
+#endif
 

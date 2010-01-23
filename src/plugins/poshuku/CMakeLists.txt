@@ -33,14 +33,12 @@ SET (SRCS
 	xmlsettingsmanager.cpp
 	core.cpp
 	browserwidget.cpp
-	customwebview.cpp
 	progresslineedit.cpp
 	favoritesmodel.cpp
 	addtofavoritesdialog.cpp
 	filtermodel.cpp
 	favoritesdelegate.cpp
 	favoritestreeview.cpp
-	customwebpage.cpp
 	restoresessiondialog.cpp
 	historymodel.cpp
 	storagebackend.cpp
@@ -57,11 +55,8 @@ SET (SRCS
 	pluginmanager.cpp
 	historyfiltermodel.cpp
 	proxyobject.cpp
-	jsproxy.cpp
-	externalproxy.cpp
 	notification.cpp
 	passwordremember.cpp
-	pageformsdata.cpp
 	linkhistory.cpp
 	cookiesfilter.cpp
 	searchtext.cpp
@@ -75,20 +70,19 @@ SET (SRCS
 	historywidget.cpp
 	remotewebviewclient.cpp
 	remotewebviewclientadaptor.cpp
+	pageformsdata.cpp
 	)
 SET (HEADERS
 	poshuku.h
 	xmlsettingsmanager.h
 	core.h
 	browserwidget.h
-	customwebview.h
 	progresslineedit.h
 	favoritesmodel.h
 	addtofavoritesdialog.h
 	filtermodel.h
 	favoritesdelegate.h
 	favoritestreeview.h
-	customwebpage.h
 	restoresessiondialog.h
 	historymodel.h
 	storagebackend.h
@@ -105,11 +99,8 @@ SET (HEADERS
 	pluginmanager.h
 	historyfiltermodel.h
 	proxyobject.h
-	jsproxy.h
-	externalproxy.h
 	notification.h
 	passwordremember.h
-	pageformsdata.h
 	linkhistory.h
 	cookiesfilter.h
 	searchtext.h
@@ -123,6 +114,7 @@ SET (HEADERS
 	historywidget.h
 	remotewebviewclient.h
 	remotewebviewclientadaptor.h
+	pageformsdata.h
 	interfaces/pluginbase.h
 	interfaces/iwebplugin.h
 	interfaces/iflashoverrider.h
@@ -179,12 +171,18 @@ TARGET_LINK_LIBRARIES (leechcraft_poshuku
 	)
 
 SET (WORKER_SRCS
+	worker/main.cpp
 	worker/workerapplication.cpp
 	worker/connectionmanager.cpp
 	worker/debugmessagehandler.cpp
 	worker/browser.cpp
 	worker/browseradaptor.cpp
-	worker/main.cpp
+	worker/customwebview.cpp
+	worker/customwebpage.cpp
+	worker/jsproxy.cpp
+	worker/externalproxy.cpp
+	worker/pageformsdata.cpp
+	worker/embedwidget.cpp
 	)
 SET (WORKER_HEADERS
 	worker/workerapplication.h
@@ -192,6 +190,12 @@ SET (WORKER_HEADERS
 	worker/debugmessagehandler.h
 	worker/browser.h
 	worker/browseradaptor.h
+	worker/customwebview.h
+	worker/customwebpage.h
+	worker/jsproxy.h
+	worker/externalproxy.h
+	worker/pageformsdata.h
+	worker/embedwidget.h
 	)
 QT4_WRAP_CPP (MOC_WORKER_SRCS ${WORKER_HEADERS})
 

@@ -32,7 +32,6 @@
 #include <plugininterface/backendselector.h>
 #include "core.h"
 #include "xmlsettingsmanager.h"
-#include "customwebview.h"
 #include "browserwidget.h"
 #include "cookieseditdialog.h"
 
@@ -288,7 +287,9 @@ namespace LeechCraft
 
 			QWebView* Poshuku::CreateWindow ()
 			{
-				return Core::Instance ().MakeWebView ();
+				// TODO
+				//return Core::Instance ().MakeWebView ();
+				return 0;
 			}
 			
 			void Poshuku::SetShortcut (int name, const QKeySequence& sequence)

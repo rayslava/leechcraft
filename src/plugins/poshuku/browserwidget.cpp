@@ -71,13 +71,17 @@ namespace LeechCraft
 			, Own_ (true)
 			{
 				Client_ = new RemoteWebViewClient (this);
+				connect (Client_,
+						SIGNAL (viewIsReady ()),
+						this,
+						SLOT (handleViewIsReady ()));
 				Ui_.setupUi (this);
 				Ui_.Sidebar_->AddPage (tr ("Bookmarks"), new BookmarksWidget);
 				Ui_.Sidebar_->AddPage (tr ("History"), new HistoryWidget);
-				Ui_.Sidebar_->AddPage (tr ("Embedded"), Client_->GetWidget ());
 				Ui_.Splitter_->setSizes (QList<int> () << 0 << 1000);
 				Ui_.Progress_->hide ();
 
+				/*
 				Ui_.WebView_->SetBrowserWidget (this);
 				connect (Ui_.WebView_,
 						SIGNAL (invalidateSettings ()),
@@ -412,6 +416,7 @@ namespace LeechCraft
 						SIGNAL (storeFormData (const PageFormsData_t&)),
 						RememberDialog_,
 						SLOT (add (const PageFormsData_t&)));
+				*/
 			}
 			
 			BrowserWidget::~BrowserWidget ()
@@ -430,6 +435,7 @@ namespace LeechCraft
 				const IShortcutProxy *proxy = Core::Instance ().GetShortcutProxy ();
 				QObject *object = Core::Instance ().parent ();
 			
+				/*
 				Cut_->setShortcut (proxy->GetShortcut (object, EACut_));
 				Copy_->setShortcut (proxy->GetShortcut (object, EACopy_));
 				Paste_->setShortcut (proxy->GetShortcut (object, EAPaste_));
@@ -448,7 +454,9 @@ namespace LeechCraft
 				ZoomReset_->setShortcut (proxy->GetShortcut (object, EAZoomReset_));
 				ImportXbel_->setShortcut (proxy->GetShortcut (object, EAImportXbel_));
 				ExportXbel_->setShortcut (proxy->GetShortcut (object, EAExportXbel_));
-				RecentlyClosedAction_->setShortcut (proxy->GetShortcut (object, EARecentlyClosedAction_));
+				RecentlyClosedAction_->setShortcut (proxy->GetShortcut (object,
+							EARecentlyClosedAction_));
+							*/
 			}
 			
 			void BrowserWidget::SetUnclosers (const QList<QAction*>& unclosers)
@@ -473,6 +481,7 @@ namespace LeechCraft
 				}
 			}
 			
+			/*
 			CustomWebView* BrowserWidget::GetView () const
 			{
 				return Ui_.WebView_;
@@ -517,13 +526,13 @@ namespace LeechCraft
 					str >> *Ui_.WebView_->page ()->history ();
 				}
 			}
+			*/
 			
 			void BrowserWidget::SetURL (const QUrl& url)
 			{
 				if (!url.isEmpty ())
 				{
 					HtmlMode_ = false;
-					Ui_.WebView_->Load (url);
 					Client_->Load (url);
 				}
 			}
@@ -537,7 +546,7 @@ namespace LeechCraft
 			{
 				Ui_.URLEdit_->clear ();
 				HtmlMode_ = true;
-				Ui_.WebView_->setHtml (html, base);
+				Client_->SetHtml (html, base);
 			}
 			
 			QWidget* BrowserWidget::Widget ()
@@ -562,6 +571,7 @@ namespace LeechCraft
 				}
 			void BrowserWidget::SetShortcut (int name, const QKeySequence& shortcut)
 			{
+				/*
 				_LC_EXPANDER ((Add2Favorites_)
 						(Find_)
 						(Print_)
@@ -581,6 +591,7 @@ namespace LeechCraft
 						(Reload_)
 						(Stop_)
 						(RecentlyClosedAction_));
+						*/
 			}
 			
 #define _L(a,b) result [EA##a] = ActionInfo (a->text (), \
@@ -588,6 +599,7 @@ namespace LeechCraft
 			QMap<int, ActionInfo> BrowserWidget::GetActionInfo () const
 			{
 				QMap<int, ActionInfo> result;
+				/*
 				_L (Add2Favorites_, tr ("Ctrl+D"));
 				_L (Find_, tr ("Ctrl+F"));
 				_L (Print_, tr ("Ctrl+P"));
@@ -607,6 +619,7 @@ namespace LeechCraft
 				_L (Reload_, Qt::Key_F5);
 				_L (Stop_, Qt::Key_Escape);
 				_L (RecentlyClosedAction_, tr ("Ctrl+Shift+T"));
+				*/
 				return result;
 			}
 			
@@ -617,6 +630,7 @@ namespace LeechCraft
 			
 			QToolBar* BrowserWidget::GetToolBar () const
 			{
+				return 0;
 				return Own_ ? ToolBar_ : 0;
 			}
 
@@ -630,6 +644,7 @@ namespace LeechCraft
 				OnLoadPos_ = sp;
 			}
 			
+			/*
 			void BrowserWidget::PrintImpl (bool preview, QWebFrame *frame)
 			{
 				std::auto_ptr<QPrinter> printer (new QPrinter ());
@@ -657,6 +672,7 @@ namespace LeechCraft
 			
 				frame->print (printer.get ());
 			}
+			*/
 
 			void BrowserWidget::SetActualReloadInterval (const QTime& value)
 			{
@@ -669,6 +685,7 @@ namespace LeechCraft
 				ReloadTimer_->start (msecs);
 			}
 			
+			/*
 			void BrowserWidget::handleIconChanged ()
 			{
 				QIcon icon = Ui_.WebView_->icon ();
@@ -681,16 +698,28 @@ namespace LeechCraft
 			{
 				emit statusBarChanged (msg);
 			}
+			*/
 			
 			void BrowserWidget::on_URLEdit__returnPressed ()
 			{
+				/*
 				if (Ui_.URLEdit_->IsCompleting () ||
 						Ui_.URLEdit_->text ().isEmpty ())
 					return;
+					*/
 			
 				Load (Ui_.URLEdit_->text ());
 			}
 
+			void BrowserWidget::handleViewIsReady ()
+			{
+				QVBoxLayout *lay = new QVBoxLayout (Ui_.WebView_);
+				lay->setContentsMargins (0, 0, 0, 0);
+				lay->addWidget (Client_->GetWidget ());
+				Ui_.WebView_->setLayout (lay);
+			}
+
+			/*
 			void BrowserWidget::handleReloadPeriodically ()
 			{
 				if (ReloadPeriodically_->isChecked ())
@@ -1137,6 +1166,7 @@ namespace LeechCraft
 				Ui_.WebView_->settings ()->setDefaultTextEncoding (encoding);
 				Reload_->trigger ();
 			}
+			*/
 		};
 	};
 };

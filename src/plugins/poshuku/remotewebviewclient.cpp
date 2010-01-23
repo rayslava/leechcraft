@@ -79,9 +79,24 @@ namespace LeechCraft
 			{
 				if (ClientInterface_ &&
 						Container_->clientWinId ())
-					ClientInterface_->call ("LoadURL", url.toEncoded ());
+				{
+					qDebug () << Q_FUNC_INFO << url;
+					if (ClientInterface_->call ("LoadURL", url.toEncoded ())
+							.type () == QDBusMessage::ErrorMessage)
+						qWarning () << Q_FUNC_INFO
+							<< ClientInterface_->lastError ();
+				}
 				else
 					PendingURL_ = url;
+			}
+
+			void RemoteWebViewClient::SetHtml (const QString& html, const QUrl& base)
+			{
+				if (ClientInterface_ &&
+						Container_->clientWinId ())
+					ClientInterface_->call ("SetHtml", html, base.toEncoded ());
+				else
+					PendingHtml_ = qMakePair (html, base);
 			}
 
 			qint64 RemoteWebViewClient::GetID () const
@@ -168,10 +183,21 @@ namespace LeechCraft
 
 			void RemoteWebViewClient::handleClientIsEmbedded ()
 			{
+				qDebug () << Q_FUNC_INFO;
 				ClientInterface_->call ("EmbedFinished");
+
+				emit viewIsReady ();
 
 				if (PendingURL_.isValid ())
 					Load (PendingURL_);
+				else if (PendingHtml_.first.size ())
+					SetHtml (PendingHtml_.first, PendingHtml_.second);
+			}
+
+			void RemoteWebViewClient::handleClientError (QX11EmbedContainer::Error e)
+			{
+				qWarning () << Q_FUNC_INFO
+					<< e;
 			}
 		};
 	};

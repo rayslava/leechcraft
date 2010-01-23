@@ -16,12 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#include "browseradaptor.h"
-#include "browser.h"
-#include <QApplication>
-#include <QTimer>
-#include <QUrl>
-#include <QtDebug>
+#include "externalproxy.h"
+#include <interfaces/structures.h>
 
 namespace LeechCraft
 {
@@ -31,33 +27,19 @@ namespace LeechCraft
 		{
 			namespace Worker
 			{
-				BrowserAdaptor::BrowserAdaptor (Browser *b)
-				: QDBusAbstractAdaptor (b)
-				, Browser_ (b)
+				ExternalProxy::ExternalProxy (QObject *parent)
+				: QObject (parent)
 				{
 				}
 
-				void BrowserAdaptor::LoadURL (const QByteArray& encoded)
+				void ExternalProxy::AddSearchProvider (const QString& url)
 				{
-					qDebug () << Q_FUNC_INFO << encoded;
-					Browser_->LoadURL (QUrl::fromEncoded (encoded));
-				}
-
-				qulonglong BrowserAdaptor::GetEmbedWidget ()
-				{
-					return Browser_->GetEmbedWidget ();
-				}
-				
-				void BrowserAdaptor::Shutdown ()
-				{
-					QTimer::singleShot (0,
-							qApp,
-							SLOT (quit ()));
-				}
-
-				void BrowserAdaptor::EmbedFinished ()
-				{
-					Browser_->EmbedFinished ();
+					LeechCraft::DownloadEntity e;
+					e.Entity_ = url.toUtf8 ();
+					e.Mime_ = "application/opensearchdescription+xml";
+					e.Location_ = url;
+					e.Parameters_ = LeechCraft::FromUserInitiated;
+					emit gotEntity (e);
 				}
 			};
 		};
