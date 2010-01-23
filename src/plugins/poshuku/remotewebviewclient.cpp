@@ -54,6 +54,11 @@ namespace LeechCraft
 				Child_->start ("leechcraft_poshuku_worker");
 			}
 
+			qint64 RemoteWebViewClient::GetID () const
+			{
+				return ID_;
+			}
+
 			QString RemoteWebViewClient::GetServiceName () const
 			{
 				return "org.LeechCraft.Poshuku.WorkerServers";
@@ -75,7 +80,9 @@ namespace LeechCraft
 
 			void RemoteWebViewClient::handleStarted ()
 			{
-				Child_->write (QString ("%1 %2").arg (GetServiceName ()).arg (GetPath ()).toUtf8 ());
+				Child_->write (QString ("%1 %2")
+						.arg (GetServiceName ())
+						.arg (GetPath ()).toUtf8 ());
 				Child_->closeWriteChannel ();
 			}
 		};
