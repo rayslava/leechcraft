@@ -17,6 +17,7 @@
  **********************************************************************/
 
 #include "browser.h"
+#include <QLabel>
 #include "connectionmanager.h"
 
 namespace LeechCraft
@@ -30,6 +31,13 @@ namespace LeechCraft
 				Browser::Browser (ConnectionManager *cm)
 				: CM_ (cm)
 				{
+				}
+
+				WId Browser::GetEmbedWidget () const
+				{
+					QLabel *label = new QLabel;
+					label->setText ("fuck!");
+					return label->winId ();
 				}
 			};
 		};

@@ -18,10 +18,14 @@
 
 #ifndef PLUGINS_POSHUKU_REMOTEWEBVIEWCLIENT_H
 #define PLUGINS_POSHUKU_REMOTEWEBVIEWCLIENT_H
+#include <boost/shared_ptr.hpp>
 #include <QObject>
 #include <QProcess>
+#include <QUrl>
 
 class QWidget;
+class QX11EmbedContainer;
+class QDBusInterface;
 
 namespace LeechCraft
 {
@@ -36,16 +40,26 @@ namespace LeechCraft
 				static qint64 CurrentID_;
 				qint64 ID_;
 				QProcess *Child_;
+				QX11EmbedContainer *Container_;
+				boost::shared_ptr<QDBusInterface> ClientInterface_;
+				QUrl PendingURL_;
 			public:
 				RemoteWebViewClient (QWidget* = 0);
+				virtual ~RemoteWebViewClient ();
+
+				QWidget* GetWidget () const;
+
+				void Load (const QUrl&);
 
 				qint64 GetID () const;
+				void HandleReady (const QString&, const QString&);
 			private:
 				QString GetServiceName () const;
 				QString GetPath () const;
 			private slots:
 				void handleError (QProcess::ProcessError);
 				void handleStarted ();
+				void handleFinished (int, QProcess::ExitStatus);
 			};
 		};
 	};

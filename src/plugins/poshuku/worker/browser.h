@@ -19,6 +19,7 @@
 #ifndef PLUGINS_POSHUKU_WORKER_BROWSER_H
 #define PLUGINS_POSHUKU_WORKER_BROWSER_H
 #include <QObject>
+#include <QWidget>
 
 namespace LeechCraft
 {
@@ -37,6 +38,8 @@ namespace LeechCraft
 					ConnectionManager *CM_;
 				public:
 					Browser (ConnectionManager*);
+					
+					WId GetEmbedWidget () const;
 				};
 			};
 		};

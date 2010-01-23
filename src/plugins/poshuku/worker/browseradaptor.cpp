@@ -18,6 +18,9 @@
 
 #include "browseradaptor.h"
 #include "browser.h"
+#include <QApplication>
+#include <QTimer>
+#include <QMetaClassInfo>
 #include <QtDebug>
 
 namespace LeechCraft
@@ -37,6 +40,18 @@ namespace LeechCraft
 				void BrowserAdaptor::LoadURL (const QByteArray& encoded)
 				{
 					qDebug () << "Worker:" << encoded;
+				}
+
+				qulonglong BrowserAdaptor::GetEmbedWidget ()
+				{
+					return Browser_->GetEmbedWidget ();
+				}
+				
+				void BrowserAdaptor::Shutdown ()
+				{
+					QTimer::singleShot (0,
+							qApp,
+							SLOT (quit ()));
 				}
 			};
 		};

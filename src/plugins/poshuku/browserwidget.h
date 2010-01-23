@@ -39,6 +39,7 @@ namespace LeechCraft
 			class FindDialog;
 			class PasswordRemember;
 			struct BrowserWidgetSettings;
+			class RemoteWebViewClient;
 
 			class BrowserWidget : public QWidget
 								, public IWebWidget
@@ -86,6 +87,7 @@ namespace LeechCraft
 				QTimer *ReloadTimer_;
 				bool HtmlMode_;
 				bool Own_;
+				RemoteWebViewClient *Client_;
 
 				friend class CustomWebView;
 			public:

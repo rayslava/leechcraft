@@ -19,6 +19,7 @@
 #ifndef PLUGINS_POSHUKU_WORKER_BROWSERADAPTOR_H
 #define PLUGINS_POSHUKU_WORKER_BROWSERADAPTOR_H
 #include <QDBusAbstractAdaptor>
+#include <QWidget>
 
 namespace LeechCraft
 {
@@ -33,13 +34,15 @@ namespace LeechCraft
 				class BrowserAdaptor : public QDBusAbstractAdaptor
 				{
 					Q_OBJECT
-					Q_CLASSINFO ("D-Bus Interface", "org.LeechCraft.Poshuku.IWebView");
+					Q_CLASSINFO ("D-Bus Interface", "org.LeechCraft.Poshuku.IRemoteWebView");
 
 					Browser *Browser_;
 				public:
 					BrowserAdaptor (Browser*);
 				public slots:
-					void LoadURL (const QByteArray& encoded);
+					Q_NOREPLY void LoadURL (const QByteArray& encoded);
+					Q_NOREPLY void Shutdown ();
+					qulonglong GetEmbedWidget ();
 				};
 			};
 		};

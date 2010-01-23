@@ -70,10 +70,11 @@ namespace LeechCraft
 			, HtmlMode_ (false)
 			, Own_ (true)
 			{
-				new RemoteWebViewClient ();
+				Client_ = new RemoteWebViewClient (this);
 				Ui_.setupUi (this);
 				Ui_.Sidebar_->AddPage (tr ("Bookmarks"), new BookmarksWidget);
 				Ui_.Sidebar_->AddPage (tr ("History"), new HistoryWidget);
+				Ui_.Sidebar_->AddPage (tr ("Embedded"), Client_->GetWidget ());
 				Ui_.Splitter_->setSizes (QList<int> () << 0 << 1000);
 				Ui_.Progress_->hide ();
 
@@ -523,6 +524,7 @@ namespace LeechCraft
 				{
 					HtmlMode_ = false;
 					Ui_.WebView_->Load (url);
+					Client_->Load (url);
 				}
 			}
 			

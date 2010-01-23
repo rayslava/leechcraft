@@ -43,8 +43,7 @@ namespace LeechCraft
 						qInstallMsgHandler (DebugHandler::simple);
 
 					std::string service, path;
-					std::cin >> service
-						>> path;
+					std::cin >> service >> path;
 
 					new ConnectionManager (QString::fromStdString (service),
 							QString::fromStdString (path));

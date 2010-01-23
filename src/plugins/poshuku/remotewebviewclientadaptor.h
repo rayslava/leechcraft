@@ -38,6 +38,7 @@ namespace LeechCraft
 				RemoteWebViewClientAdaptor (RemoteWebViewClient* = 0);
 			public slots:
 				qint64 GetID ();
+				void Ready (const QString& service, const QString& path);
 			};
 		};
 	};

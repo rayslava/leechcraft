@@ -17,9 +17,13 @@
  **********************************************************************/
 
 #include "remotewebviewclient.h"
+#include <QUrl>
 #include <QWidget>
+#include <QDBusReply>
 #include <QMessageBox>
+#include <QDBusInterface>
 #include <QDBusConnection>
+#include <QX11EmbedContainer>
 #include "remotewebviewclientadaptor.h"
 #include "core.h"
 
@@ -34,9 +38,10 @@ namespace LeechCraft
 			RemoteWebViewClient::RemoteWebViewClient (QWidget *parent)
 			: QObject (parent)
 			, ID_ (CurrentID_++)
+			, Child_ (new QProcess (this))
+			, Container_ (new QX11EmbedContainer)
 			{
-				Child_ = new QProcess (this);
-
+				qDebug () << Q_FUNC_INFO;
 				new RemoteWebViewClientAdaptor (this);
 
 				QDBusConnection::sessionBus ().registerService (GetServiceName ());
@@ -51,12 +56,70 @@ namespace LeechCraft
 						SIGNAL (started ()),
 						this,
 						SLOT (handleStarted ()));
+				connect (Child_,
+						SIGNAL (finished (int, QProcess::ExitStatus)),
+						this,
+						SLOT (handleFinished (int, QProcess::ExitStatus)));
 				Child_->start ("leechcraft_poshuku_worker");
+			}
+
+			RemoteWebViewClient::~RemoteWebViewClient ()
+			{
+				qDebug () << Q_FUNC_INFO;
+				Container_->discardClient ();
+				if (ClientInterface_ &&
+						ClientInterface_->isValid ())
+					ClientInterface_->call ("Shutdown");
+			}
+			
+			QWidget* RemoteWebViewClient::GetWidget () const
+			{
+				return Container_;
+			}
+
+			void RemoteWebViewClient::Load (const QUrl& url)
+			{
+				if (ClientInterface_)
+					ClientInterface_->call ("LoadURL", url.toEncoded ());
+				else
+					PendingURL_ = url;
 			}
 
 			qint64 RemoteWebViewClient::GetID () const
 			{
 				return ID_;
+			}
+
+			void RemoteWebViewClient::HandleReady (const QString& service, const QString& path)
+			{
+				qDebug () << Q_FUNC_INFO << service << path;
+				ClientInterface_.reset (new QDBusInterface (service, path));
+				if (!ClientInterface_->isValid ())
+				{
+					qWarning () << Q_FUNC_INFO
+						<< service
+						<< path
+						<< "failed to connect";
+					return;
+				}
+
+				/*
+				QDBusReply<qlonglong> clReply = ClientInterface_->call ("GetEmbedWidget");
+				if (!clReply.isValid ())
+				{
+					qWarning () << Q_FUNC_INFO
+						<< service
+						<< path
+						<< "failed to get embed widget"
+						<< clReply.error ().message ();
+					Child_->kill ();
+					return;
+				}
+				Container_->embedClient (clReply.value ());
+
+				if (PendingURL_.isValid ())
+					Load (PendingURL_);
+					*/
 			}
 
 			QString RemoteWebViewClient::GetServiceName () const
@@ -71,11 +134,9 @@ namespace LeechCraft
 
 			void RemoteWebViewClient::handleError (QProcess::ProcessError error)
 			{
-				QMessageBox::critical (0,
-						tr ("LeechCraft"),
-						tr ("Process error: %1 %2")
+				qWarning () << tr ("Process error: %1 %2")
 							.arg (error)
-							.arg (Child_->errorString ()));
+							.arg (Child_->errorString ());
 			}
 
 			void RemoteWebViewClient::handleStarted ()
@@ -84,6 +145,24 @@ namespace LeechCraft
 						.arg (GetServiceName ())
 						.arg (GetPath ()).toUtf8 ());
 				Child_->closeWriteChannel ();
+			}
+
+			void RemoteWebViewClient::handleFinished (int ecode, QProcess::ExitStatus est)
+			{
+				if (!ecode && est == QProcess::NormalExit)
+					qDebug () << Q_FUNC_INFO
+						<< "child successfully finished for"
+						<< GetServiceName ()
+						<< GetPath ();
+				else
+					qWarning () << Q_FUNC_INFO
+						<< "child finished badly"
+						<< ecode
+						<< est
+						<< "for"
+						<< GetServiceName ()
+						<< GetPath ();
+				ClientInterface_.reset ();
 			}
 		};
 	};

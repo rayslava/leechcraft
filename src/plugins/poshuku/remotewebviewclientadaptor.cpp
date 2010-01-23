@@ -35,6 +35,11 @@ namespace LeechCraft
 			{
 				return Client_->GetID ();
 			}
+
+			void RemoteWebViewClientAdaptor::Ready (const QString& s, const QString& p)
+			{
+				Client_->HandleReady (s, p);
+			}
 		};
 	};
 };

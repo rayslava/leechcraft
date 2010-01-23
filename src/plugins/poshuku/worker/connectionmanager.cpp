@@ -114,11 +114,14 @@ namespace LeechCraft
 					Browser_.reset (new Browser (this));
 					new BrowserAdaptor (Browser_.get ());
 
-					BusConnection_.registerService ("org.LeechCraft.Poshuku.Workers");
-					BusConnection_.registerObject (QString ("/%1").arg (ID_),
+					QString service = QString ("org.LeechCraft.Poshuku.Worker-%1").arg (ID_);
+					QString path = QString ("/RemoteWebView");
+					qDebug () << service << path;
+					BusConnection_.registerService (service);
+					BusConnection_.registerObject (path,
 							Browser_.get ());
 
-					ServerInterface_->call ("Ready");
+					ServerInterface_->asyncCall ("Ready", service, path);
 
 					return true;
 				}
