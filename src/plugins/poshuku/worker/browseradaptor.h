@@ -42,7 +42,8 @@ namespace LeechCraft
 				public slots:
 					Q_NOREPLY void LoadURL (const QByteArray& encoded);
 					Q_NOREPLY void Shutdown ();
-					void SetEmbedContainer (qulonglong);
+					qulonglong GetEmbedWidget ();
+					void EmbedFinished ();
 				};
 			};
 		};

@@ -43,9 +43,9 @@ namespace LeechCraft
 					Browser_->LoadURL (QUrl::fromEncoded (encoded));
 				}
 
-				void BrowserAdaptor::SetEmbedContainer (qulonglong wid)
+				qulonglong BrowserAdaptor::GetEmbedWidget ()
 				{
-					Browser_->SetEmbedContainer (wid);
+					return Browser_->GetEmbedWidget ();
 				}
 				
 				void BrowserAdaptor::Shutdown ()
@@ -53,6 +53,11 @@ namespace LeechCraft
 					QTimer::singleShot (0,
 							qApp,
 							SLOT (quit ()));
+				}
+
+				void BrowserAdaptor::EmbedFinished ()
+				{
+					Browser_->EmbedFinished ();
 				}
 			};
 		};

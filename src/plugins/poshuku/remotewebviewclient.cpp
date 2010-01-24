@@ -121,15 +121,16 @@ namespace LeechCraft
 
 			void RemoteWebViewClient::InitiateEmbedding ()
 			{
-				if (ClientInterface_->call ("SetEmbedContainer",
-						static_cast<qulonglong> (Container_->winId ())).type () ==
-						QDBusMessage::ErrorMessage)
+				QDBusReply<qulonglong> clReply = ClientInterface_->call ("GetEmbedWidget");
+				if (!clReply.isValid ())
 				{
 					qWarning () << Q_FUNC_INFO
-						<< "failed"
-						<< ClientInterface_->lastError ();
+						<< "failed to get embed widget"
+						<< clReply.error ().message ();
+					Child_->kill ();
 					return;
 				}
+				Container_->embedClient (clReply.value ());
 
 				connect (Container_,
 						SIGNAL (clientIsEmbedded ()),
@@ -183,6 +184,7 @@ namespace LeechCraft
 			void RemoteWebViewClient::handleClientIsEmbedded ()
 			{
 				qDebug () << Q_FUNC_INFO;
+				ClientInterface_->call ("EmbedFinished");
 
 				emit viewIsReady ();
 
