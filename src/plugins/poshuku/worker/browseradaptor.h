@@ -43,7 +43,6 @@ namespace LeechCraft
 					Q_NOREPLY void LoadURL (const QByteArray& encoded);
 					Q_NOREPLY void Shutdown ();
 					qulonglong GetEmbedWidget ();
-					void EmbedFinished ();
 				};
 			};
 		};

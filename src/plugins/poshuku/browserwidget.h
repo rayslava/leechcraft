@@ -153,6 +153,7 @@ namespace LeechCraft
 				void handleStatusBarMessage (const QString&);
 				*/
 				void on_URLEdit__returnPressed ();
+				void initClient ();
 				void handleViewIsReady ();
 				/*
 				void handleReloadPeriodically ();

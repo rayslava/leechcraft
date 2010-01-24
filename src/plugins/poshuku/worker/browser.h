@@ -44,7 +44,6 @@ namespace LeechCraft
 					Browser (ConnectionManager*);
 					
 					WId GetEmbedWidget () const;
-					void EmbedFinished ();
 					void LoadURL (const QUrl&);
 				};
 			};

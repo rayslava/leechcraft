@@ -41,11 +41,6 @@ namespace LeechCraft
 					return Embedded_->winId ();
 				}
 
-				void Browser::EmbedFinished ()
-				{
-//					Embedded_->show ();
-				}
-
 				void Browser::LoadURL (const QUrl& url)
 				{
 					Embedded_->GetWebView ()->Load (url);

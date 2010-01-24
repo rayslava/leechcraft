@@ -54,11 +54,6 @@ namespace LeechCraft
 							qApp,
 							SLOT (quit ()));
 				}
-
-				void BrowserAdaptor::EmbedFinished ()
-				{
-					Browser_->EmbedFinished ();
-				}
 			};
 		};
 	};

@@ -33,6 +33,7 @@ namespace LeechCraft
 				: QX11EmbedWidget (parent)
 				, WebView_ (new CustomWebView ())
 				{
+					show ();
 					connect (this,
 							SIGNAL (embedded ()),
 							this,
@@ -43,8 +44,9 @@ namespace LeechCraft
 							SLOT (handleError (QX11EmbedWidget::Error)));
 
 					QVBoxLayout *lay = new QVBoxLayout (this);
+					lay->addWidget (new QPushButton ("push me 1!"));
 					lay->addWidget (WebView_);
-					lay->addWidget (new QPushButton ("push me!"));
+					lay->addWidget (new QPushButton ("push me 2!"));
 					lay->setContentsMargins (0, 0, 0, 0);
 					setLayout (lay);
 				}

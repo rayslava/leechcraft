@@ -70,11 +70,9 @@ namespace LeechCraft
 			, HtmlMode_ (false)
 			, Own_ (true)
 			{
-				Client_ = new RemoteWebViewClient (this);
-				connect (Client_,
-						SIGNAL (viewIsReady ()),
+				QTimer::singleShot (0,
 						this,
-						SLOT (handleViewIsReady ()));
+						SLOT (initClient ()));
 				Ui_.setupUi (this);
 				Ui_.Sidebar_->AddPage (tr ("Bookmarks"), new BookmarksWidget);
 				Ui_.Sidebar_->AddPage (tr ("History"), new HistoryWidget);
@@ -711,12 +709,29 @@ namespace LeechCraft
 				Load (Ui_.URLEdit_->text ());
 			}
 
+			void BrowserWidget::initClient ()
+			{
+				Client_ = new RemoteWebViewClient (Ui_.WebView_);
+				connect (Client_,
+						SIGNAL (viewIsReady ()),
+						this,
+						SLOT (handleViewIsReady ()),
+						Qt::QueuedConnection);
+			}
+
 			void BrowserWidget::handleViewIsReady ()
 			{
-				QVBoxLayout *lay = new QVBoxLayout (Ui_.WebView_);
-				lay->setContentsMargins (0, 0, 0, 0);
-				lay->addWidget (Client_->GetWidget ());
+				QWidget *w = Client_->GetWidget ();
+				QVBoxLayout *lay = new QVBoxLayout ();
+				lay->addWidget (new QPushButton ("1"));
+				lay->addWidget (w);
+				lay->addWidget (new QPushButton ("2"));
 				Ui_.WebView_->setLayout (lay);
+				w->show ();
+				QTimer::singleShot (0,
+						w,
+						SLOT (raise ()));
+				qDebug () << w << w->parentWidget () << w->windowFlags ();
 			}
 
 			/*

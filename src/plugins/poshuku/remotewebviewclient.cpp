@@ -39,8 +39,10 @@ namespace LeechCraft
 			: QObject (parent)
 			, ID_ (CurrentID_++)
 			, Child_ (new QProcess (this))
-			, Container_ (new QX11EmbedContainer)
+			, Container_ (new QX11EmbedContainer ())
 			{
+				Container_->setWindowTitle ("Worker view container");
+				Container_->show ();
 				new RemoteWebViewClientAdaptor (this);
 
 				QDBusConnection::sessionBus ().registerService (GetServiceName ());
@@ -184,7 +186,6 @@ namespace LeechCraft
 			void RemoteWebViewClient::handleClientIsEmbedded ()
 			{
 				qDebug () << Q_FUNC_INFO;
-				ClientInterface_->call ("EmbedFinished");
 
 				emit viewIsReady ();
 
