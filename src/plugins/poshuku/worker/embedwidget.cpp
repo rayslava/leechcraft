@@ -33,7 +33,10 @@ namespace LeechCraft
 				: QX11EmbedWidget (parent)
 				, WebView_ (new CustomWebView ())
 				{
-					show ();
+					connect (this,
+							SIGNAL (containerClosed ()),
+							this,
+							SLOT (handleContainerClosed ()));
 					connect (this,
 							SIGNAL (embedded ()),
 							this,
@@ -49,6 +52,13 @@ namespace LeechCraft
 					lay->addWidget (new QPushButton ("push me 2!"));
 					lay->setContentsMargins (0, 0, 0, 0);
 					setLayout (lay);
+
+					qDebug () << "our WId is" << winId ();
+				}
+
+				EmbedWidget::~EmbedWidget ()
+				{
+					qDebug () << "destroying" << winId ();
 				}
 
 				CustomWebView* EmbedWidget::GetWebView () const
@@ -56,9 +66,15 @@ namespace LeechCraft
 					return WebView_;
 				}
 
+				void EmbedWidget::handleContainerClosed ()
+				{
+					qWarning () << Q_FUNC_INFO;
+				}
+
 				void EmbedWidget::handleEmbedded ()
 				{
 					qDebug () << Q_FUNC_INFO;
+					show ();
 				}
 
 				void EmbedWidget::handleError (QX11EmbedWidget::Error e)

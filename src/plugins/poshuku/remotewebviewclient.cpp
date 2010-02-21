@@ -42,7 +42,14 @@ namespace LeechCraft
 			, Container_ (new QX11EmbedContainer ())
 			{
 				Container_->setWindowTitle ("Worker view container");
-				Container_->show ();
+				connect (Container_,
+						SIGNAL (error (QX11EmbedContainer::Error)),
+						this,
+						SLOT (handleClientError (QX11EmbedContainer::Error)));
+				connect (Container_,
+						SIGNAL (clientClosed ()),
+						this,
+						SLOT (handleClientClosed ()));
 				new RemoteWebViewClientAdaptor (this);
 
 				QDBusConnection::sessionBus ().registerService (GetServiceName ());
@@ -132,6 +139,7 @@ namespace LeechCraft
 					Child_->kill ();
 					return;
 				}
+				qDebug () << "trying to embed" << clReply.value ();
 				Container_->embedClient (clReply.value ());
 
 				connect (Container_,
@@ -188,11 +196,17 @@ namespace LeechCraft
 				qDebug () << Q_FUNC_INFO;
 
 				emit viewIsReady ();
+				Container_->show ();
 
 				if (PendingURL_.isValid ())
 					Load (PendingURL_);
 				else if (PendingHtml_.first.size ())
 					SetHtml (PendingHtml_.first, PendingHtml_.second);
+			}
+
+			void RemoteWebViewClient::handleClientClosed ()
+			{
+				qWarning () << Q_FUNC_INFO;
 			}
 
 			void RemoteWebViewClient::handleClientError (QX11EmbedContainer::Error e)

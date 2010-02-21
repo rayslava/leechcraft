@@ -723,15 +723,33 @@ namespace LeechCraft
 			{
 				QWidget *w = Client_->GetWidget ();
 				QVBoxLayout *lay = new QVBoxLayout ();
-				lay->addWidget (new QPushButton ("1"));
-				lay->addWidget (w);
-				lay->addWidget (new QPushButton ("2"));
-				Ui_.WebView_->setLayout (lay);
-				w->show ();
-				QTimer::singleShot (0,
+				QPushButton *p1 = new QPushButton ("Show");
+				connect (p1,
+						SIGNAL (released ()),
+						w,
+						SLOT (show ()));
+				connect (p1,
+						SIGNAL (released ()),
 						w,
 						SLOT (raise ()));
-				qDebug () << w << w->parentWidget () << w->windowFlags ();
+				QPushButton *p2 = new QPushButton ("Hide");
+				connect (p2,
+						SIGNAL (released ()),
+						w,
+						SLOT (hide ()));
+				lay->addWidget (p1);
+				lay->addWidget (w);
+				lay->addWidget (p2);
+				Ui_.WebView_->setLayout (lay);
+				QTimer::singleShot (0,
+						w,
+						SLOT (show ()));
+				qDebug () << w
+					<< w->parentWidget ()
+					<< w->windowFlags ()
+					<< w->windowOpacity ()
+					<< w->winId ()
+					<< w->parentWidget ()->winId ();
 			}
 
 			/*

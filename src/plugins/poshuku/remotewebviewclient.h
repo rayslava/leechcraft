@@ -65,6 +65,7 @@ namespace LeechCraft
 				void handleStarted ();
 				void handleFinished (int, QProcess::ExitStatus);
 				void handleClientIsEmbedded ();
+				void handleClientClosed ();
 				void handleClientError (QX11EmbedContainer::Error);
 			signals:
 				void viewIsReady ();

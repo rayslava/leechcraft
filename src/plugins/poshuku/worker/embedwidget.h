@@ -37,9 +37,11 @@ namespace LeechCraft
 					CustomWebView *WebView_;
 				public:
 					EmbedWidget (QWidget* = 0);
+					virtual ~EmbedWidget ();
 
 					CustomWebView* GetWebView () const;
 				private slots:
+					void handleContainerClosed ();
 					void handleEmbedded ();
 					void handleError (QX11EmbedWidget::Error);
 				};
