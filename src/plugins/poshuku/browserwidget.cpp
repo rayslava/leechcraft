@@ -97,10 +97,12 @@ namespace LeechCraft
 				Copy_->setProperty ("ActionIcon", "poshuku_copy");
 				Paste_ = Ui_.WebView_->pageAction (QWebPage::Paste);
 				Paste_->setProperty ("ActionIcon", "poshuku_paste");
+				*/
 			
 				ToolBar_ = new QToolBar (this);
 				ToolBar_->setWindowTitle (tr ("Poshuku"));
 			
+				/*
 				Back_ = Ui_.WebView_->pageAction (QWebPage::Back);
 				Back_->setParent (this);
 				Back_->setProperty ("ActionIcon", "poshuku_back");
@@ -715,22 +717,9 @@ namespace LeechCraft
 				QWidget *w = Client_->GetWidget ();
 				QVBoxLayout *lay = new QVBoxLayout ();
 				QPushButton *p1 = new QPushButton ("Show");
-				connect (p1,
-						SIGNAL (released ()),
-						w,
-						SLOT (show ()));
-				connect (p1,
-						SIGNAL (released ()),
-						w,
-						SLOT (raise ()));
-				QPushButton *p2 = new QPushButton ("Hide");
-				connect (p2,
-						SIGNAL (released ()),
-						w,
-						SLOT (hide ()));
-				lay->addWidget (p1);
+				lay->addWidget (ToolBar_);
+				lay->setContentsMargins (0, 0, 0, 0);
 				lay->addWidget (w);
-				lay->addWidget (p2);
 				Ui_.WebView_->setLayout (lay);
 				w->show ();
 				qDebug () << w
