@@ -347,6 +347,16 @@ QNetworkReply* Core::Hook (IHookProxy_ptr hook,
 		QNetworkRequest *req,
 		QIODevice**)
 {
+	if (!req->originatingObject ())
+		return 0;
+
+	if (req->url ().scheme () == "data")
+	{
+		qDebug () << Q_FUNC_INFO
+			<< "not checking data: urls";
+		return 0;
+	}
+
 	QString matched;
 	if (ShouldReject (*req, &matched))
 	{

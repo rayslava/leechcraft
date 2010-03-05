@@ -76,6 +76,10 @@ namespace LeechCraft
 						this,
 						SIGNAL (gotEntity (const LeechCraft::DownloadEntity&)));
 				connect (&Core::Instance (),
+						SIGNAL (error (const QString&)),
+						this,
+						SLOT (handleError (const QString&)));
+				connect (&Core::Instance (),
 						SIGNAL (notify (const LeechCraft::Notification&)),
 						this,
 						SIGNAL (notify (const LeechCraft::Notification&)));
@@ -131,7 +135,7 @@ namespace LeechCraft
 			
 			QIcon CSTP::GetIcon () const
 			{
-				return QIcon (":/resources/images/cstp.svg");
+				return QIcon (":/plugins/cstp/resources/images/cstp.svg");
 			}
 			
 			qint64 CSTP::GetDownloadSpeed () const
@@ -262,9 +266,21 @@ namespace LeechCraft
 				else
 					*remove = boost::logic::indeterminate;
 			}
-			
-			Q_EXPORT_PLUGIN2 (leechcraft_cstp, CSTP);
+
+			void CSTP::handleError (const QString& error)
+			{
+				Notification n =
+				{
+					tr ("HTTP error"),
+					error,
+					false,
+					Notification::PCritical_
+				};
+				emit notify (n);
+			}
 		};
 	};
 };
+
+Q_EXPORT_PLUGIN2 (leechcraft_cstp, LeechCraft::Plugins::CSTP::CSTP);
 

@@ -499,7 +499,8 @@ namespace LeechCraft
 					Ui_.WebView_->zoomFactor (),
 					NotifyWhenFinished_->isChecked (),
 					QTime (0, 0, 0).addMSecs (ReloadTimer_->interval ()),
-					ba
+					ba,
+					Ui_.WebView_->page ()->mainFrame ()->scrollPosition ()
 				};
 				return result;
 			}
@@ -513,6 +514,7 @@ namespace LeechCraft
 						<< settings.ZoomFactor_;
 					Ui_.WebView_->setZoomFactor (settings.ZoomFactor_);
 				}
+
 				NotifyWhenFinished_->setChecked (settings.NotifyWhenFinished_);
 				QTime interval = settings.ReloadInterval_;
 				QTime null (0, 0, 0);
@@ -522,11 +524,15 @@ namespace LeechCraft
 					ReloadPeriodically_->setChecked (true);
 					SetActualReloadInterval (interval);
 				}
+
 				if (settings.WebHistorySerialized_.size ())
 				{
 					QDataStream str (settings.WebHistorySerialized_);
 					str >> *Ui_.WebView_->page ()->history ();
 				}
+
+				if (!settings.ScrollPosition_.isNull ())
+					SetOnLoadScrollPoint (settings.ScrollPosition_);
 			}
 			*/
 			
@@ -549,6 +555,11 @@ namespace LeechCraft
 				Ui_.URLEdit_->clear ();
 				HtmlMode_ = true;
 				Client_->SetHtml (html, base);
+			}
+
+			void BrowserWidget::SetNavBarVisible (bool visible)
+			{
+				ToolBar_->setVisible (visible);
 			}
 			
 			QWidget* BrowserWidget::Widget ()
@@ -639,6 +650,18 @@ namespace LeechCraft
 			void BrowserWidget::NewTabRequested ()
 			{
 				Core::Instance ().NewURL ("", true);
+			}
+
+			QList<QAction*> BrowserWidget::GetTabBarContextMenuActions () const
+			{
+				QList<QAction*> result;
+				result << Reload_
+					<< NotifyWhenFinished_
+					<< Add2Favorites_
+					<< RecentlyClosedAction_
+					<< Print_
+					<< Back_;
+				return result;
 			}
 
 			void BrowserWidget::SetOnLoadScrollPoint (const QPoint& sp)
@@ -1123,6 +1146,7 @@ namespace LeechCraft
 			{
 				if (!NotifyWhenFinished_->isChecked () ||
 						!Own_ ||
+						HtmlMode_ ||
 						isVisible ())
 					return;
 

@@ -37,6 +37,7 @@ namespace LeechCraft
 			, FilterTimer_ (new QTimer)
 			, Toolbar_ (new QToolBar)
 			{
+				Toolbar_->setWindowTitle ("Summary");
 				Ui_.setupUi (this);
 
 				Q_FOREACH (QObject *plugin, Core::Instance ().GetProxy ()->
@@ -101,6 +102,11 @@ namespace LeechCraft
 			void SummaryWidget::NewTabRequested ()
 			{
 				emit newTabRequested ();
+			}
+
+			QList<QAction*> SummaryWidget::GetTabBarContextMenuActions () const
+			{
+				return QList<QAction*> ();
 			}
 
 			void SummaryWidget::SetQuery (QStringList query)

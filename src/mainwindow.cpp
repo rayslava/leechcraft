@@ -18,7 +18,8 @@
 
 #include <iostream>
 #include <algorithm>
-#include <QtGui/QtGui>
+#include <QMessageBox>
+#include <QCloseEvent>
 #include <QModelIndex>
 #include <QChildEvent>
 #include <xmlsettingsdialog/xmlsettingsdialog.h>
@@ -57,6 +58,7 @@ LeechCraft::MainWindow::MainWindow (QWidget *parent, Qt::WFlags flags)
 , IsShown_ (true)
 , WasMaximized_ (false)
 , PluginsActionsBar_ (0)
+, Glance_ (0)
 {
 	Guard_ = new ToolbarGuard (this);
 	setUpdatesEnabled (false);
@@ -94,9 +96,9 @@ LeechCraft::MainWindow::MainWindow (QWidget *parent, Qt::WFlags flags)
 			act->setParent (this);
 		if (list.size ())
 		{
-            if (!PluginsActionsBar_)
-            {
-                PluginsActionsBar_ = new QToolBar (tr ("Actions"), this);
+			if (!PluginsActionsBar_)
+			{
+				PluginsActionsBar_ = new QToolBar (tr ("Actions"), this);
 				Qt::ToolBarArea area;
 				QSettings settings ("Deviant", "Leechcraft");
 				settings.beginGroup ("Window");
@@ -105,9 +107,12 @@ LeechCraft::MainWindow::MainWindow (QWidget *parent, Qt::WFlags flags)
 				addToolBar (area, PluginsActionsBar_);
 				PluginsActionsBar_->setVisible (settings
 						.value ("PluginsBarVisible", true).toBool ());
-            }
+			}
 			PluginsActionsBar_->addActions (list);
 			PluginsActionsBar_->addSeparator ();
+
+			Ui_.MenuActions_->addActions (list);
+			Ui_.MenuActions_->addSeparator ();
 		}
 	}
 
@@ -188,6 +193,7 @@ void LeechCraft::MainWindow::InitializeInterface ()
 
 	Ui_.ActionAddTask_->setProperty ("ActionIcon", "addjob");
 	Ui_.ActionNewTab_->setProperty ("ActionIcon", "newtab");
+	Ui_.ActionMenu_->setProperty ("ActionIcon", "menu");
 	Ui_.ActionCloseTab_->setProperty ("ActionIcon", "closetab");
 	Ui_.ActionSettings_->setProperty ("ActionIcon", "settings");
 	Ui_.ActionAboutLeechCraft_->setProperty ("ActionIcon", "about");
@@ -197,11 +203,15 @@ void LeechCraft::MainWindow::InitializeInterface ()
 	Ui_.ActionLogger_->setProperty ("ActionIcon", "logger");
 	Ui_.ActionFullscreenMode_->setProperty ("ActionIcon", "fullscreen");
 	Ui_.ActionFullscreenMode_->setParent (this);
-    Ui_.ActionShowStatusBar_->setProperty ("ActionIcon", "showstatusbar");
+	Ui_.ActionShowStatusBar_->setProperty ("ActionIcon", "showstatusbar");
+	Ui_.ActionGlance_->setProperty ("ActionIcon", "glance");
 
 	Ui_.MainTabWidget_->setTabIcon (0, QIcon (":/resources/images/leechcraft.svg"));
-	Ui_.MainTabWidget_->AddAction2TabBar (Ui_.ActionNewTab_);
 	Ui_.MainTabWidget_->AddAction2TabBar (Ui_.ActionCloseTab_);
+	connect (Ui_.MainTabWidget_,
+			SIGNAL (newTabRequested ()),
+			this,
+			SLOT (on_ActionNewTab__triggered ()));
 
 	QToolBar *bar = new QToolBar ();
 	bar->addAction (Ui_.ActionNewTab_);
@@ -246,7 +256,8 @@ void LeechCraft::MainWindow::InitializeInterface ()
 	XmlSettingsDialog_->SetCustomWidget ("IconSet", ic);
 
 	SettingsSink_ = new SettingsSink (tr ("LeechCraft"),
-			XmlSettingsDialog_);
+			XmlSettingsDialog_,
+			this);
 	ShortcutManager_ = new ShortcutManager (this);
 	XmlSettingsDialog_->SetCustomWidget ("ShortcutManager", ShortcutManager_);
 
@@ -296,10 +307,10 @@ void LeechCraft::MainWindow::ReadSettings ()
 	WasMaximized_ = settings.value ("maximized").toBool ();
 	WasMaximized_ ? showMaximized () : showNormal ();
 	settings.endGroup ();
-    settings.beginGroup ("Window");
-    Ui_.ActionShowStatusBar_->setChecked (settings.value ("StatusBarEnabled", true).toBool ());
-    on_ActionShowStatusBar__triggered ();
-    settings.endGroup ();
+	settings.beginGroup ("Window");
+	Ui_.ActionShowStatusBar_->setChecked (settings.value ("StatusBarEnabled", true).toBool ());
+	on_ActionShowStatusBar__triggered ();
+	settings.endGroup ();
 }
 
 void LeechCraft::MainWindow::WriteSettings ()
@@ -310,14 +321,14 @@ void LeechCraft::MainWindow::WriteSettings ()
 	settings.setValue ("pos",  pos ());
 	settings.setValue ("maximized", isMaximized ());
 	settings.endGroup ();
-    settings.beginGroup ("Window");
-    settings.setValue ("StatusBarEnabled",
+	settings.beginGroup ("Window");
+	settings.setValue ("StatusBarEnabled",
 			Ui_.ActionShowStatusBar_->isChecked ());
 	settings.setValue ("PluginsArea",
 			toolBarArea (PluginsActionsBar_));
 	settings.setValue ("PluginsBarVisible",
 			PluginsActionsBar_->isVisible ());
-    settings.endGroup ();
+	settings.endGroup ();
 }
 
 void LeechCraft::MainWindow::on_ActionAddTask__triggered ()
@@ -343,7 +354,8 @@ void LeechCraft::MainWindow::on_ActionCloseTab__triggered ()
 {
 	QAction *act = qobject_cast<QAction*> (sender ());
 	int pos = -1;
-	if (act && act->data ().canConvert<QPoint> ())
+	if (act &&
+			act->data ().canConvert<QPoint> ())
 	{
 		pos = Ui_.MainTabWidget_->TabAt (act->data ().value<QPoint> ());
 		act->setData (QVariant ());
@@ -387,7 +399,7 @@ void LeechCraft::MainWindow::on_ActionQuit__triggered ()
 
 void LeechCraft::MainWindow::on_ActionShowStatusBar__triggered ()
 {
-    statusBar ()->setVisible (Ui_.ActionShowStatusBar_->isChecked ());
+	statusBar ()->setVisible (Ui_.ActionShowStatusBar_->isChecked ());
 }
 
 void LeechCraft::MainWindow::handleQuit ()
@@ -614,7 +626,6 @@ void LeechCraft::MainWindow::FillToolMenu ()
 {
 	QList<QMenu*> toolMenus;
 	QList<QAction*> toolActions;
-	Core::Instance ().GetPluginManager ()->GetAllCastableRoots<IMenuEmbedder*> ();
 	Q_FOREACH (QObject *tool,
 			Core::Instance ().GetPluginManager ()->
 				GetAllCastableRoots<IMenuEmbedder*> ())
@@ -637,6 +648,13 @@ void LeechCraft::MainWindow::FillToolMenu ()
 			Ui_.MenuTools_->insertMenu (Ui_.ActionLogger_, menu);
 		Ui_.MenuTools_->insertSeparator (Ui_.ActionLogger_);
 	}
+
+	QMenu *ntm = Core::Instance ()
+		.GetTabContainer ()->GetNewTabMenu ();
+	Ui_.ActionNewTab_->setMenu (ntm);
+	int i = 0;
+	Q_FOREACH (QAction *act, ntm->actions ())
+		Ui_.MainTabWidget_->InsertAction2TabBar (i++, act);
 
 	on_MainTabWidget__currentChanged (0);
 }

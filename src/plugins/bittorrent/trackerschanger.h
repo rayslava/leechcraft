@@ -19,6 +19,7 @@
 #ifndef PLUGINS_BITTORRENT_TRACKERSCHANGER_H
 #define PLUGINS_BITTORRENT_TRACKERSCHANGER_H
 #include <QDialog>
+#include <libtorrent/torrent_info.hpp>
 #include "ui_trackerschanger.h"
 
 namespace LeechCraft
@@ -33,9 +34,14 @@ namespace LeechCraft
 
 				Ui::TrackersChanger Ui_;
 			public:
-				TrackersChanger (QWidget *parent = 0);
-				void SetTrackers (const QStringList&);
-				QStringList GetTrackers () const;
+				TrackersChanger (QWidget* = 0);
+				void SetTrackers (const std::vector<libtorrent::announce_entry>&);
+				std::vector<libtorrent::announce_entry> GetTrackers () const;
+			private slots:
+				void currentItemChanged (QTreeWidgetItem*);
+				void on_ButtonAdd__released ();
+				void on_ButtonModify__released ();
+				void on_ButtonRemove__released ();
 			};
 		};
 	};

@@ -23,6 +23,7 @@
 #include <boost/preprocessor/repetition/repeat.hpp>
 #include <boost/preprocessor/repetition/enum_params.hpp>
 #include <boost/preprocessor/punctuation/comma_if.hpp>
+#include <QtDebug>
 #include "proxyobject.h"
 
 namespace LeechCraft
@@ -40,10 +41,13 @@ namespace LeechCraft
 			void PluginManager::AddPlugin (QObject *plugin)
 			{
 				PluginBase_ptr base = qobject_cast<PluginBase_ptr> (plugin);
-				/* TODO
 				if (!base)
+				{
+					qWarning () << Q_FUNC_INFO
+						<< "passed plugin is not a valid Poshuku plugin"
+						<< plugin;
 					return;
-					*/
+				}
 				base->Init (ProxyObject_.get ());
 				Plugins_.push_back (base);
 			}

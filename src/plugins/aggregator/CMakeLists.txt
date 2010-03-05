@@ -7,14 +7,12 @@ IF (NOT QT_USE_FILE)
 	PROJECT (leechcraft_aggregator)
 
 	IF (NOT CMAKE_MODULE_PATH)
-		SET (CMAKE_MODULE_PATH "/usr/local/share/leechcraft/cmake")
+		SET (CMAKE_MODULE_PATH "/usr/local/share/leechcraft/cmake;/usr/share/leechcraft/cmake")
 	ENDIF (NOT CMAKE_MODULE_PATH)
 
 	FIND_PACKAGE (Boost REQUIRED COMPONENTS date_time filesystem system thread signals)
 	FIND_PACKAGE (Qt4 REQUIRED)
 	FIND_PACKAGE (LeechCraft REQUIRED)
-
-	INCLUDE (${LEECHCRAFT_USE_FILE})
 ENDIF (NOT QT_USE_FILE)
 
 SET (QT_USE_QTSQL TRUE)
@@ -130,7 +128,7 @@ SET (FORMS
 	startupthirdpage.ui
 	export2fb2dialog.ui
 	)
-SET (RESOURCES resources.qrc)
+SET (RESOURCES aggregatorresources.qrc)
 SET (TRANSLATIONS
 	leechcraft_aggregator_ru_RU.ts
 	leechcraft_aggregator_de_DE.ts

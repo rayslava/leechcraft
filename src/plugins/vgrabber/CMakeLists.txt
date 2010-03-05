@@ -7,14 +7,12 @@ IF (NOT QT_USE_FILE)
 	PROJECT (leechcraft_vgrabber)
 
 	IF (NOT CMAKE_MODULE_PATH)
-		SET (CMAKE_MODULE_PATH "/usr/local/share/leechcraft/cmake")
+		SET (CMAKE_MODULE_PATH "/usr/local/share/leechcraft/cmake;/usr/share/leechcraft/cmake")
 	ENDIF (NOT CMAKE_MODULE_PATH)
 
 	FIND_PACKAGE (Boost REQUIRED)
 	FIND_PACKAGE (Qt4 REQUIRED)
 	FIND_PACKAGE (LeechCraft REQUIRED)
-
-	INCLUDE (${LEECHCRAFT_USE_FILE})
 ENDIF (NOT QT_USE_FILE)
 
 INCLUDE (${QT_USE_FILE})
@@ -47,10 +45,12 @@ SET (FORMS
 	)
 SET (TRANSLATIONS
 	leechcraft_vgrabber_ru_RU.ts
+	leechcraft_vgrabber_ar.ts
 	)
-SET (RESOURCES resources.qrc)
+SET (RESOURCES vgrabberresources.qrc)
 SET (COMPILED_TRANSLATIONS
 	${CMAKE_CURRENT_SOURCE_DIR}/leechcraft_vgrabber_ru_RU.qm
+	${CMAKE_CURRENT_SOURCE_DIR}/leechcraft_vgrabber_ar.qm
 	)
 QT4_WRAP_CPP (MOC_SRCS ${HEADERS})
 QT4_WRAP_UI (UIS_H ${FORMS})

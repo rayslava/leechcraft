@@ -17,7 +17,6 @@
  **********************************************************************/
 
 #include "livestreammanager.h"
-#include "livestreamplugin.h"
 #include "livestreamdevice.h"
 
 namespace LeechCraft
@@ -35,27 +34,56 @@ namespace LeechCraft
 			{
 				if (!Handle2Device_.contains (handle))
 				{
-					handle.add_extension (&LiveStreamPluginFactory, this);
-
-					const libtorrent::torrent_info& ti = handle.get_torrent_info ();
-					int size = ti.num_pieces ();
-					Handle2Device_ [handle] =
-						new LiveStreamDevice (handle);
+					qDebug () << Q_FUNC_INFO
+						<< "on"
+						<< QString::fromUtf8 (handle.save_path ().string ().c_str ());
+					LiveStreamDevice *lsd = new LiveStreamDevice (handle, this);
+					Handle2Device_ [handle] = lsd;
+					connect (lsd,
+							SIGNAL (ready ()),
+							this,
+							SLOT (handleDeviceReady ()));
+					lsd->CheckReady ();
 				}
+			}
+
+			bool LiveStreamManager::IsEnabledOn (libtorrent::torrent_handle handle)
+			{
+				return Handle2Device_.contains (handle);
 			}
 
 			void LiveStreamManager::PieceRead (const libtorrent::read_piece_alert& a)
 			{
 				libtorrent::torrent_handle handle =
 					a.handle;
+
+				if (!Handle2Device_.contains (handle))
+				{
+					qWarning () << Q_FUNC_INFO
+						<< "Handle2Device_ doesn't contain handle"
+						<< Handle2Device_.size ();
+					return;
+				}
+
 				Handle2Device_ [handle]->PieceRead (a);
 			}
 
-			void LiveStreamManager::handleGotPiece (int index, void *tp)
+			void LiveStreamManager::handleDeviceReady ()
 			{
-				libtorrent::torrent_handle handle =
-					static_cast<libtorrent::torrent*> (tp)->get_handle ();
-				Handle2Device_ [handle]->GotPiece (index);
+				LiveStreamDevice *lsd = qobject_cast<LiveStreamDevice*> (sender ());
+				if (!lsd)
+				{
+					qWarning () << Q_FUNC_INFO
+						<< "sender() is not a LiveStreamDevice"
+						<< sender ();
+					return;
+				}
+
+				DownloadEntity e;
+				e.Entity_ = QVariant::fromValue<QIODevice*> (lsd);
+				e.Parameters_ = FromUserInitiated;
+				e.Mime_ = "x-leechcraft/media-qiodevice";
+				emit gotEntity (e);
 			}
 		};
 	};

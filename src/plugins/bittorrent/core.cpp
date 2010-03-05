@@ -350,6 +350,15 @@ namespace LeechCraft
 					return false;
 			}
 
+			bool Core::CouldHandle (const DownloadEntity& e) const
+			{
+				return false;
+			}
+
+			void Core::Handle (DownloadEntity e)
+			{
+			}
+
 			PiecesModel* Core::GetPiecesModel ()
 			{
 				return PiecesModel_.get ();
@@ -788,7 +797,7 @@ namespace LeechCraft
 					atp.ti = new libtorrent::torrent_info (GetTorrentInfo (filename));
 					atp.auto_managed = true;
 					atp.storage_mode = libtorrent::storage_mode_sparse;
-					atp.paused = (params & NoAutostart);
+					atp.paused = tryLive || (params & NoAutostart);
 					atp.save_path = boost::filesystem::path (std::string (path.toUtf8 ().constData ()));
 					atp.duplicate_is_error = true;
 					handle = Session_->add_torrent (atp);
@@ -845,8 +854,8 @@ namespace LeechCraft
 
 				if (tryLive)
 				{
-					handle.set_sequential_download (true);
 					LiveStreamManager_->EnableOn (handle);
+					handle.resume ();
 				}
 			
 				ScheduleSave ();
@@ -1112,40 +1121,33 @@ namespace LeechCraft
 				ResetFiles ();
 			}
 			
-			QStringList Core::GetTrackers () const
+			std::vector<libtorrent::announce_entry> Core::GetTrackers () const
 			{
 				if (!CheckValidity (CurrentTorrent_))
-					return QStringList ();
+					return std::vector<libtorrent::announce_entry> ();
 			
-				std::vector<libtorrent::announce_entry> an = Handles_.at (CurrentTorrent_).Handle_.trackers ();
-				QStringList result;
-				for (size_t i = 0; i < an.size (); ++i)
-					result.append (QString::fromStdString (an [i].url));
-				return result;
+				return Handles_.at (CurrentTorrent_).Handle_.trackers ();
 			}
 			
-			QStringList Core::GetTrackers (int row) const
+			std::vector<libtorrent::announce_entry> Core::GetTrackers (int row) const
 			{
 				int old = CurrentTorrent_;
 				CurrentTorrent_ = row;
-				QStringList trackers = GetTrackers ();
+				std::vector<libtorrent::announce_entry> trackers = GetTrackers ();
 				CurrentTorrent_ = old;
 				return trackers;
 			}
 
-			void Core::SetTrackers (const QStringList& trackers)
+			void Core::SetTrackers (const std::vector<libtorrent::announce_entry>& trackers)
 			{
 				if (!CheckValidity (CurrentTorrent_))
 					return;
 			
-				std::vector<libtorrent::announce_entry> announces;
-				for (int i = 0; i < trackers.size (); ++i)
-					announces.push_back (libtorrent::announce_entry (trackers.at (i).toStdString ()));
-				Handles_ [CurrentTorrent_].Handle_.replace_trackers (announces);
+				Handles_ [CurrentTorrent_].Handle_.replace_trackers (trackers);
 				Handles_ [CurrentTorrent_].Handle_.force_reannounce ();
 			}
 			
-			void Core::SetTrackers (int row, const QStringList& trackers)
+			void Core::SetTrackers (int row, const std::vector<libtorrent::announce_entry>& trackers)
 			{
 				int old = CurrentTorrent_;
 				CurrentTorrent_ = row;
@@ -1349,6 +1351,7 @@ namespace LeechCraft
 								QString::number (i->Handle_.download_limit ()));
 			
 						writer.writeStartElement ("trackers");
+						/*
 							QStringList trackers =
 								GetTrackers (std::distance (Handles_.begin (), i));
 							for (QStringList::const_iterator tracker = trackers.begin (),
@@ -1359,6 +1362,7 @@ namespace LeechCraft
 								writer.writeCharacters (*tracker);
 								writer.writeEndElement ();
 							}
+							*/
 						writer.writeEndElement ();
 			
 						writer.writeStartElement ("tags");
@@ -1868,14 +1872,6 @@ namespace LeechCraft
 					}
 			
 					handle.prioritize_files (priorities);
-					QStringList trackers = settings.value ("TrackersOverride").toStringList ();
-					if (!trackers.isEmpty ())
-					{
-						std::vector<libtorrent::announce_entry> announces;
-						for (int i = 0; i < trackers.size (); ++i)
-							announces.push_back (libtorrent::announce_entry (trackers.at (i).toStdString ()));
-						handle.replace_trackers (announces);
-					}
 			
 					TorrentStruct tmp =
 					{
@@ -1954,6 +1950,11 @@ namespace LeechCraft
 				TorrentStruct torrent = Handles_.at (i);
 				libtorrent::torrent_info info = torrent.Handle_
 					.get_torrent_info ();
+
+				if (LiveStreamManager_->IsEnabledOn (torrent.Handle_) &&
+						torrent.Handle_.status ().num_pieces !=
+							torrent.Handle_.get_torrent_info ().num_pieces ())
+					return;
 			
 				QString name = QString::fromUtf8 (info.name ().c_str ());
 				Notification n =
@@ -2172,7 +2173,6 @@ namespace LeechCraft
 						QCoreApplication::applicationName () + "_Torrent");
 				settings.beginGroup ("Core");
 				settings.beginWriteArray ("AddedTorrents");
-				settings.remove ("");
 				for (int i = 0; i < Handles_.size (); ++i)
 				{
 					settings.setArrayIndex (i);
@@ -2190,7 +2190,6 @@ namespace LeechCraft
 							<< i;
 						continue;
 					}
-					settings.remove ("");
 					int oldCurrent = CurrentTorrent_;
 					CurrentTorrent_ = i;
 					try
@@ -2210,13 +2209,18 @@ namespace LeechCraft
 							Handles_.at (i).Handle_.save_resume_data ();
 				
 							settings.setValue ("SavePath",
-									QString::fromStdString (Handles_.at (i).Handle_.save_path ().string ()));
-							settings.setValue ("Filename", Handles_.at (i).TorrentFileName_);
-							settings.setValue ("TrackersOverride", GetTrackers ());
-							settings.setValue ("Tags", Handles_.at (i).Tags_);
-							settings.setValue ("ID", Handles_.at (i).ID_);
-							settings.setValue ("Parameters", static_cast<int> (Handles_.at (i).Parameters_));
-							settings.setValue ("AutoManaged", Handles_.at (i).AutoManaged_);
+									QString::fromStdString (Handles_.at (i)
+										.Handle_.save_path ().string ()));
+							settings.setValue ("Filename",
+									Handles_.at (i).TorrentFileName_);
+							settings.setValue ("Tags",
+									Handles_.at (i).Tags_);
+							settings.setValue ("ID",
+									Handles_.at (i).ID_);
+							settings.setValue ("Parameters",
+									static_cast<int> (Handles_.at (i).Parameters_));
+							settings.setValue ("AutoManaged",
+									Handles_.at (i).AutoManaged_);
 				
 							QByteArray prioritiesLine;
 							std::copy (Handles_.at (i).FilePriorities_.begin (),
@@ -2775,12 +2779,20 @@ namespace LeechCraft
 				if (XmlSettingsManager::Instance ()->property ("NotificationStorage").toBool ())
 					mask |= libtorrent::alert::storage_notification;
 				else
-					QMessageBox::warning (0,
-							tr ("LeechCraft BitTorrent"),
-							tr ("Storage notifications are disabled. Live streaming "
-								"definitely won't work without them, so if you are "
-								"experiencing troubles, reenable storage notifications "
-								"in \"Notifications\" section of BitTorrent settings."));
+				{
+					if (QMessageBox::question (0,
+								tr ("LeechCraft BitTorrent"),
+								tr ("Storage notifications are disabled. Live streaming "
+									"definitely won't work without them, so if you are "
+									"experiencing troubles, reenable storage notifications "
+									"in \"Notifications\" section of BitTorrent settings. "
+									"Do you want to enable them now?"),
+								QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes)
+					{
+						XmlSettingsManager::Instance ()->setProperty ("NotificationStorage", true);
+						mask |= libtorrent::alert::storage_notification;
+					}
+				}
 
 				if (XmlSettingsManager::Instance ()->property ("NotificationTracker").toBool ())
 					mask |= libtorrent::alert::tracker_notification;

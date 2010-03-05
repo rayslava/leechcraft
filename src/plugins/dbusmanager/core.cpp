@@ -24,6 +24,9 @@
 #include <QDBusConnectionInterface>
 #include <QApplication>
 #include <QTimer>
+#ifdef Q_WS_WIN32
+#include <QProcess>
+#endif
 #include "generaladaptor.h"
 #include "tasksadaptor.h"
 
@@ -35,6 +38,10 @@ Core::Core ()
 	QTimer::singleShot (1500,
 			this,
 			SLOT (doDelayedInit ()));
+#ifdef Q_WS_WIN32
+	QProcess *daemon = new QProcess (this);
+	daemon->start ("dbus/bin/dbus-daemon --session");
+#endif
 }
 
 Core& Core::Instance ()

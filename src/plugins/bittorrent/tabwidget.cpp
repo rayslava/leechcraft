@@ -40,7 +40,7 @@ namespace LeechCraft
 		{
 			using namespace Util;
 
-			TabWidget::TabWidget (QWidget *parent)
+			TabWidget::TabWidget (QAction *editTrackers, QWidget *parent)
 			: QTabWidget (parent)
 			, TorrentSelectionChanged_ (false)
 			{
@@ -61,6 +61,10 @@ namespace LeechCraft
 			
 				Ui_.FilesView_->setModel (Core::Instance ()->GetTorrentFilesModel ());
 				Ui_.FilesView_->setItemDelegate (new FilesViewDelegate (Ui_.FilesView_));
+
+				QToolBar *ttb = new QToolBar ();
+				ttb->addAction (editTrackers);
+				Ui_.TrackerLayout_->addWidget (ttb);
 			
 				QSortFilterProxyModel *peersSorter = new QSortFilterProxyModel (this);
 				peersSorter->setDynamicSortFilter (true);
@@ -477,7 +481,8 @@ namespace LeechCraft
 				Ui_.LabelTracker_->
 					setText (QString::fromStdString (i->Status_.current_tracker));
 				Ui_.LabelDestination_->
-					setText (i->Destination_);
+					setText (tr ("<a href='%1'>%1</a>")
+							.arg (i->Destination_));
 				Ui_.LabelName_->
 					setText (QString::fromUtf8 (i->Info_->name ().c_str ()));
 				Ui_.LabelCreator_->

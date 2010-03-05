@@ -261,6 +261,16 @@ namespace LeechCraft
 				return result;
 			}
 
+			bool TorrentPlugin::CouldHandle (const LeechCraft::DownloadEntity& e) const
+			{
+				return Core::Instance ()->CouldHandle (e);
+			}
+
+			void TorrentPlugin::Handle (LeechCraft::DownloadEntity e)
+			{
+				Core::Instance ()->Handle (e);
+			}
+
 			void TorrentPlugin::KillTask (int id)
 			{
 				Core::Instance ()->KillTask (id);
@@ -700,9 +710,9 @@ namespace LeechCraft
 			
 			void TorrentPlugin::on_ChangeTrackers__triggered ()
 			{
-				QStringList trackers = Core::Instance ()->GetTrackers ();
-				TrackersChanger changer;
-				changer.SetTrackers (trackers);
+				TrackersChanger changer (Core::Instance ()->
+						GetProxy ()->GetMainWindow ());
+				changer.SetTrackers (Core::Instance ()->GetTrackers ());
 				if (changer.exec () == QDialog::Accepted)
 					Core::Instance ()->SetTrackers (changer.GetTrackers ());
 			}
@@ -795,8 +805,8 @@ namespace LeechCraft
 
 				Core::Instance ()->DoDelayedInit ();
 
-				TabWidget_.reset (new TabWidget ());
 				SetupActions ();
+				TabWidget_.reset (new TabWidget (ChangeTrackers_.get ()));
 				TorrentSelectionChanged_ = true;
 				LastPeersUpdate_.reset (new QTime);
 				LastPeersUpdate_->start ();

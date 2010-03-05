@@ -151,7 +151,7 @@ namespace LeechCraft
 						"aggregatorsettings.xml");
 				Impl_->XmlSettingsDialog_->SetCustomWidget ("BackendSelector",
 						new LeechCraft::Util::BackendSelector (XmlSettingsManager::Instance ()));
-			
+
 				bool initFailed = false;
 				if (!Core::Instance ().DoDelayedInit ())
 				{
@@ -197,14 +197,19 @@ namespace LeechCraft
 			
 				Impl_->FlatToFolders_.reset (new Util::FlatToFoldersProxyModel);
 				Impl_->FlatToFolders_->SetTagsManager (Core::Instance ().GetProxy ()->GetTagsManager ());
-				Impl_->FlatToFolders_->SetSourceModel (Core::Instance ().GetChannelsModel ());
-				Impl_->Ui_.Feeds_->setModel (Impl_->FlatToFolders_.get ());
-				Impl_->Ui_.Feeds_->expandAll ();
+				handleGroupChannels ();
 				connect (Impl_->FlatToFolders_.get (),
 						SIGNAL (rowsInserted (const QModelIndex&,
 								int, int)),
 						Impl_->Ui_.Feeds_,
 						SLOT (expandAll ()));
+				connect (Impl_->FlatToFolders_.get (),
+						SIGNAL (rowsRemoved (const QModelIndex&,
+								int, int)),
+						Impl_->Ui_.Feeds_,
+						SLOT (expandAll ()));
+				XmlSettingsManager::Instance ()->RegisterObject ("GroupChannelsByTags",
+						this, "handleGroupChannels");
 
 				Impl_->Ui_.Feeds_->addAction (Impl_->
 						ChannelActions_.ActionMarkChannelAsRead_);
@@ -250,10 +255,6 @@ namespace LeechCraft
 						SIGNAL (textChanged (const QString&)),
 						Core::Instance ().GetChannelsModel (),
 						SLOT (setFilterFixedString (const QString&)));
-				connect (Impl_->Ui_.Feeds_->selectionModel (),
-						SIGNAL (currentChanged (const QModelIndex&, const QModelIndex&)),
-						this,
-						SLOT (currentChannelChanged ()));
 				connect (Impl_->AppWideActions_.ActionUpdateFeeds_,
 						SIGNAL (triggered ()),
 						&Core::Instance (),
@@ -358,9 +359,9 @@ namespace LeechCraft
 				QModelIndex si = Core::Instance ().GetProxy ()->MapToSource (index);
 				if (si.model () != GetRepresentation ())
 					si = QModelIndex ();
+				si = Core::Instance ().GetJobHolderRepresentation ()->SelectionChanged (si);
 				Impl_->SelectedRepr_ = si;
-				Core::Instance ().GetJobHolderRepresentation ()->SelectionChanged (si);
-				Core::Instance ().GetReprWidget ()->CurrentChannelChanged (Impl_->SelectedRepr_);
+				Core::Instance ().GetReprWidget ()->CurrentChannelChanged (si);
 			}
 			
 			bool Aggregator::CouldHandle (const LeechCraft::DownloadEntity& e) const
@@ -682,7 +683,8 @@ namespace LeechCraft
 			void Aggregator::currentChannelChanged ()
 			{
 				QModelIndex index = Impl_->Ui_.Feeds_->selectionModel ()->currentIndex ();
-				index = Impl_->FlatToFolders_->MapToSource (index);
+				if (Impl_->FlatToFolders_->GetSourceModel ())
+					index = Impl_->FlatToFolders_->MapToSource (index);
 				Impl_->Ui_.ItemsWidget_->CurrentChannelChanged (index);
 			}
 			
@@ -710,6 +712,26 @@ namespace LeechCraft
 				if (unread.isValid ())
 					Impl_->Ui_.Feeds_->setCurrentIndex (Impl_->FlatToFolders_->
 							MapFromSource (unread).at (0));
+			}
+
+			void Aggregator::handleGroupChannels ()
+			{
+				if (XmlSettingsManager::Instance ()->
+						property ("GroupChannelsByTags").toBool ())
+				{
+					Impl_->FlatToFolders_->SetSourceModel (Core::Instance ().GetChannelsModel ());
+					Impl_->Ui_.Feeds_->setModel (Impl_->FlatToFolders_.get ());
+				}
+				else
+				{
+					Impl_->FlatToFolders_->SetSourceModel (0);
+					Impl_->Ui_.Feeds_->setModel (Core::Instance ().GetChannelsModel ());
+				}
+				connect (Impl_->Ui_.Feeds_->selectionModel (),
+						SIGNAL (currentChanged (const QModelIndex&, const QModelIndex&)),
+						this,
+						SLOT (currentChannelChanged ()));
+				Impl_->Ui_.Feeds_->expandAll ();
 			}
 		};
 	};

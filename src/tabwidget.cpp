@@ -24,6 +24,8 @@
 #include <QtDebug>
 #include "core.h"
 #include "xmlsettingsmanager.h"
+#include "tabbar.h"
+#include "interfaces/imultitabs.h"
 #include "3dparty/qxttooltip.h"
 
 /**
@@ -38,8 +40,10 @@ TabWidget::TabWidget (QWidget *parent)
 : QTabWidget (parent)
 , AsResult_ (false)
 {
+	setTabBar (new TabBar (this));
 	tabBar ()->setExpanding (false);
 	tabBar ()->setContextMenuPolicy (Qt::CustomContextMenu);
+
 	connect (tabBar (),
 			SIGNAL (customContextMenuRequested (const QPoint&)),
 			this,
@@ -47,7 +51,12 @@ TabWidget::TabWidget (QWidget *parent)
 	connect (tabBar (),
 			SIGNAL (tabMoved (int, int)),
 			this,
+			SLOT (handleMoveHappened (int, int)));
+	connect (tabBar (),
+			SIGNAL (tabMoved (int, int)),
+			this,
 			SIGNAL (moveHappened (int, int)));
+
 	XmlSettingsManager::Instance ()->RegisterObject ("TabBarLocation",
 			this, "handleTabBarLocationChanged");
 
@@ -70,6 +79,11 @@ void TabWidget::AddAction2TabBar (QAction *act)
 	TabBarActions_ << act;
 }
 
+void TabWidget::InsertAction2TabBar (int index, QAction *act)
+{
+	TabBarActions_.insert(index, act);
+}
+
 bool TabWidget::event (QEvent *e)
 {
 	if (e->type () == QEvent::ToolTip)
@@ -87,6 +101,14 @@ bool TabWidget::event (QEvent *e)
 	}
 	else
 		return QTabWidget::event (e);
+}
+
+void TabWidget::mouseDoubleClickEvent (QMouseEvent *e)
+{
+	if (tabBar ()->tabAt (e->pos ()) == -1)
+		emit newTabRequested ();
+
+	QTabWidget::mouseDoubleClickEvent (e);
 }
 
 void TabWidget::tabRemoved (int index)
@@ -121,20 +143,47 @@ void TabWidget::handleTabBarLocationChanged ()
 
 void TabWidget::handleTabBarContextMenu (const QPoint& pos)
 {
-	QMenu menu ("", tabBar ());
-	Q_FOREACH (QAction *act, TabBarActions_)
+	QMenu *menu = new QMenu ("", tabBar ());
+
+	int tabIndex = tabBar ()->tabAt (pos);
+	if (tabIndex != -1 &&
+			XmlSettingsManager::Instance ()->
+				property ("ShowPluginMenuInTabs").toBool ())
 	{
-		menu.addAction (act);
-		act->blockSignals (true);
+		bool asSub = XmlSettingsManager::Instance ()->
+			property ("ShowPluginMenuInTabsAsSubmenu").toBool ();
+		IMultiTabsWidget *imtw =
+			qobject_cast<IMultiTabsWidget*> (widget (tabIndex));
+		if (imtw)
+		{
+			QList<QAction*> tabActions = imtw->GetTabBarContextMenuActions ();
+
+			QMenu *subMenu = new QMenu (tabText (tabIndex), menu);
+			Q_FOREACH (QAction *act, tabActions)
+				(asSub ? subMenu : menu)->addAction (act);
+			if (asSub)
+				menu->addMenu (subMenu);
+			if (tabActions.size ())
+				menu->addSeparator ();
+		}
 	}
 
-	QAction *picked = menu.exec (tabBar ()->mapToGlobal (pos));
 	Q_FOREACH (QAction *act, TabBarActions_)
-		act->blockSignals (false);
-	if (!picked)
-		return;
+	{
+		act->setData (tabBar ()->mapToGlobal (pos));
+		menu->addAction (act);
+	}
 
-	picked->setData (tabBar ()->mapToGlobal (pos));
-	picked->trigger ();
+	menu->exec (tabBar ()->mapToGlobal (pos));
+
+	Q_FOREACH (QAction *act, TabBarActions_)
+		act->setData (QVariant ());
+
+	delete menu;
+}
+
+void TabWidget::handleMoveHappened (int from, int to)
+{
+	std::swap (Widgets_ [from], Widgets_ [to]);
 }
 

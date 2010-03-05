@@ -7,14 +7,12 @@ IF (NOT QT_USE_FILE)
 	PROJECT (leechcraft_cstp)
 
 	IF (NOT CMAKE_MODULE_PATH)
-		SET (CMAKE_MODULE_PATH "/usr/local/share/leechcraft/cmake")
+		SET (CMAKE_MODULE_PATH "/usr/local/share/leechcraft/cmake;/usr/share/leechcraft/cmake")
 	ENDIF (NOT CMAKE_MODULE_PATH)
 
 	FIND_PACKAGE (Boost REQUIRED)
 	FIND_PACKAGE (Qt4 REQUIRED)
 	FIND_PACKAGE (LeechCraft REQUIRED)
-
-	INCLUDE (${LEECHCRAFT_USE_FILE})
 ENDIF (NOT QT_USE_FILE)
 
 SET (QT_USE_QTNETWORK TRUE)
@@ -32,7 +30,6 @@ SET (SRCS
 	addtask.cpp
 	xmlsettingsmanager.cpp
 	mainviewdelegate.cpp
-	representationmodel.cpp
 	morphfile.cpp
 	)
 SET (HEADERS
@@ -43,14 +40,13 @@ SET (HEADERS
 	addtask.h
 	xmlsettingsmanager.h
 	mainviewdelegate.h
-	representationmodel.h
 	morphfile.h
 	)
 SET (FORMS
 	addtask.ui
 	)
 SET (RESOURCES
-	resources.qrc
+	cstpresources.qrc
 	)
 SET (TRANSLATIONS
 	leechcraft_cstp_ru_RU.ts

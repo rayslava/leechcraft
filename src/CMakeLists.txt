@@ -96,6 +96,8 @@ OPTION (ENABLE_ANHERO "Build AnHero, the crash handler" ON)
 OPTION (ENABLE_VGRABBER "Build vGrabber, the vkontakte.ru music/video getter" ON)
 OPTION (ENABLE_PYLC "Build PyLC, Python support for LeechCraft" ON)
 OPTION (ENABLE_POC "Build PoC, text editor" ON)
+OPTION (ENABLE_KINOTIFY "Build Kinotify, fancy kinetic notifications" ON)
+OPTION (ENABLE_AUSCRIE "Build Auscrie, the auto screenshooter" ON)
 
 if (ENABLE_SUMMARY)
 	ADD_SUBDIRECTORY (plugins/summary)
@@ -185,6 +187,14 @@ IF (ENABLE_PYLC)
 	ADD_SUBDIRECTORY (plugins/pylc)
 ENDIF (ENABLE_PYLC)
 
+IF (ENABLE_KINOTIFY)
+	ADD_SUBDIRECTORY (plugins/kinotify)
+ENDIF (ENABLE_KINOTIFY)
+
+IF (ENABLE_AUSCRIE)
+	ADD_SUBDIRECTORY (plugins/auscrie)
+ENDIF (ENABLE_AUSCRIE)
+
 SET (QT_USE_QTNETWORK TRUE)
 SET (QT_USE_QTXML TRUE)
 SET (QT_USE_QTSQL TRUE)
@@ -236,6 +246,7 @@ SET (SRCS
 	clipboardwatcher.cpp
 	glanceshower.cpp
 	glanceitem.cpp
+	tabbar.cpp
 	3dparty/qxttooltip.cpp
 	)
 SET (HEADERS
@@ -277,6 +288,7 @@ SET (HEADERS
 	clipboardwatcher.h
 	glanceshower.h
 	glanceitem.h
+	tabbar.h
 	3dparty/qxttooltip.h
 	3dparty/qxttooltip_p.h
 	interfaces/iinfo.h
@@ -355,7 +367,7 @@ IF (NOT DEFINED LEECHCRAFT_VERSION)
 ENDIF (NOT DEFINED LEECHCRAFT_VERSION)
 
 CONFIGURE_FILE (config.h.in config.h)
-CONFIGURE_FILE (UseLeechCraft.cmake.in UseLeechCraft.cmake)
+CONFIGURE_FILE (FindLeechCraft.cmake.in FindLeechCraft.cmake @ONLY)
 
 IF (UNIX)
 	ADD_CUSTOM_COMMAND (OUTPUT
@@ -401,8 +413,7 @@ INSTALL (FILES xmlsettingsdialog/basesettingsmanager.h DESTINATION include/leech
 INSTALL (FILES xmlsettingsdialog/xsdconfig.h DESTINATION include/leechcraft/xmlsettingsdialog/)
 INSTALL (FILES ${CMAKE_CURRENT_BINARY_DIR}/config.h DESTINATION include/leechcraft/)
 
-INSTALL (FILES ${CMAKE_CURRENT_BINARY_DIR}/UseLeechCraft.cmake DESTINATION share/leechcraft/cmake/)
-INSTALL (FILES FindLeechCraft.cmake DESTINATION share/leechcraft/cmake/)
+INSTALL (FILES ${CMAKE_CURRENT_BINARY_DIR}/FindLeechCraft.cmake DESTINATION share/leechcraft/cmake/)
 
 INSTALL (DIRECTORY freedesktop/icons/ DESTINATION share/icons/hicolor
 	PATTERN ".svn" EXCLUDE)

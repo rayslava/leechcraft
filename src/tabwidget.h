@@ -35,14 +35,18 @@ namespace LeechCraft
 		void SetTooltip (int, QWidget*);
 		int TabAt (const QPoint&) const;
 		void AddAction2TabBar (QAction*);
+		void InsertAction2TabBar (int, QAction*);
 	protected:
 		virtual bool event (QEvent*);
+		virtual void mouseDoubleClickEvent (QMouseEvent*);
 		virtual void tabRemoved (int);
 	private slots:
 		void handleTabBarLocationChanged ();
 		void handleTabBarContextMenu (const QPoint&);
+		void handleMoveHappened (int, int);
 	signals:
 		void moveHappened (int, int);
+		void newTabRequested ();
 	};
 };
 

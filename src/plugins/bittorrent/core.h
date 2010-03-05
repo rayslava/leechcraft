@@ -165,6 +165,8 @@ namespace LeechCraft
 				ICoreProxy_ptr GetProxy () const;
 
 				bool CouldDownload (const LeechCraft::DownloadEntity&) const;
+				bool CouldHandle (const LeechCraft::DownloadEntity&) const;
+				void Handle (LeechCraft::DownloadEntity);
 				PiecesModel* GetPiecesModel ();
 				void ClearPieces ();
 				void UpdatePieces ();
@@ -261,10 +263,10 @@ namespace LeechCraft
 				void RemoveWebSeed (const QString&, bool);
 				void SetFilePriority (int, int);
 				void SetFilename (int, const QString&);
-				QStringList GetTrackers () const;
-				QStringList GetTrackers (int) const;
-				void SetTrackers (const QStringList&);
-				void SetTrackers (int, const QStringList&);
+				std::vector<libtorrent::announce_entry> GetTrackers () const;
+				std::vector<libtorrent::announce_entry> GetTrackers (int) const;
+				void SetTrackers (const std::vector<libtorrent::announce_entry>&);
+				void SetTrackers (int, const std::vector<libtorrent::announce_entry>&);
 				QString GetMagnetLink () const;
 				QString GetTorrentDirectory () const;
 				bool MoveTorrentFiles (const QString&);
@@ -334,9 +336,9 @@ namespace LeechCraft
 			private slots:
 				void writeSettings ();
 				void checkFinished ();
-				void queryLibtorrentForWarnings ();
 				void scrape ();
 			public slots:
+				void queryLibtorrentForWarnings ();
 				void tcpPortRangeChanged ();
 				void dhtStateChanged ();
 				void autosaveIntervalChanged ();

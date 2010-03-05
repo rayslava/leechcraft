@@ -88,6 +88,7 @@ namespace LeechCraft
 				void makeCurrentItemVisible ();
 				void updateItemsFilter ();
 				void selectorVisiblityChanged ();
+				void navBarVisibilityChanged ();
 			signals:
 				void currentChannelChanged (const QModelIndex&);
 			};

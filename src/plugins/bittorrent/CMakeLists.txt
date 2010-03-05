@@ -7,14 +7,12 @@ IF (NOT QT_USE_FILE)
 	PROJECT (leechcraft_bittorrent)
 
 	IF (NOT CMAKE_MODULE_PATH)
-		SET (CMAKE_MODULE_PATH "/usr/local/share/leechcraft/cmake")
+		SET (CMAKE_MODULE_PATH "/usr/local/share/leechcraft/cmake;/usr/share/leechcraft/cmake")
 	ENDIF (NOT CMAKE_MODULE_PATH)
 
 	FIND_PACKAGE (Boost REQUIRED COMPONENTS date_time filesystem system thread signals)
 	FIND_PACKAGE (Qt4 REQUIRED)
 	FIND_PACKAGE (LeechCraft REQUIRED)
-
-	INCLUDE (${LEECHCRAFT_USE_FILE})
 ENDIF (NOT QT_USE_FILE)
 
 SET (CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
@@ -68,10 +66,10 @@ SET (SRCS
 	banpeersdialog.cpp
 	ipfilterdialog.cpp
 	livestreammanager.cpp
-	livestreamplugin.cpp
 	livestreamdevice.cpp
 	speedselectoraction.cpp
 	torrentmaker.cpp
+	singletrackerchanger.cpp
 	)
 SET (HEADERS
 	torrentplugin.h
@@ -104,10 +102,10 @@ SET (HEADERS
 	banpeersdialog.h
 	ipfilterdialog.h
 	livestreammanager.h
-	livestreamplugin.h
 	livestreamdevice.h
 	speedselectoraction.h
 	torrentmaker.h
+	singletrackerchanger.h
 	newtorrentparams.h
 	torrentinfo.h
 	fileinfo.h
@@ -129,8 +127,9 @@ SET (FORMS
 	fastspeedcontrolwidget.ui
 	banpeersdialog.ui
 	ipfilterdialog.ui
+	singletrackerchanger.ui
 	)
-SET (RESOURCES resources.qrc)
+SET (RESOURCES bittorrentresources.qrc)
 SET (TRANSLATIONS
 	leechcraft_bittorrent_ru_RU.ts
 	leechcraft_bittorrent_uk_UA.ts

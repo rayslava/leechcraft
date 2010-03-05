@@ -7,14 +7,12 @@ IF (NOT QT_USE_FILE)
 	PROJECT (leechcraft_lcftp)
 
 	IF (NOT CMAKE_MODULE_PATH)
-		SET (CMAKE_MODULE_PATH "/usr/local/share/leechcraft/cmake")
+		SET (CMAKE_MODULE_PATH "/usr/local/share/leechcraft/cmake;/usr/share/leechcraft/cmake")
 	ENDIF (NOT CMAKE_MODULE_PATH)
 
 	FIND_PACKAGE (Boost REQUIRED)
 	FIND_PACKAGE (Qt4 REQUIRED)
 	FIND_PACKAGE (LeechCraft REQUIRED)
-
-	INCLUDE (${LEECHCRAFT_USE_FILE})
 ENDIF (NOT QT_USE_FILE)
 
 FIND_PACKAGE (CURL)
@@ -63,7 +61,7 @@ SET (FORMS
 	tabwidget.ui
 	summarytab.ui
 	)
-SET (RESOURCES resources.qrc)
+SET (RESOURCES lcftpresources.qrc)
 SET (TRANSLATIONS
 	leechcraft_lcftp_ru_RU.ts
 	leechcraft_lcftp_uk_UA.ts

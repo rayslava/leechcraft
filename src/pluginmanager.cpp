@@ -144,7 +144,16 @@ namespace LeechCraft
 				}
 			case 1:
 				if (role == Qt::DisplayRole)
-					return AvailablePlugins_.at (index.row ())->fileName ();
+				{
+					QSettings settings (QCoreApplication::organizationName (),
+							QCoreApplication::applicationName () + "-pg");
+					settings.beginGroup ("Plugins");
+					settings.beginGroup (AvailablePlugins_.at (index.row ())->fileName ());
+					QVariant result = settings.value ("Info");
+					settings.endGroup ();
+					settings.endGroup ();
+					return result;
+				}
 				else if (role == Qt::ForegroundRole)
 					return QApplication::palette ()
 						.brush (AvailablePlugins_.at (index.row ())->isLoaded () ?
@@ -273,6 +282,9 @@ namespace LeechCraft
 					(*this) (child);
 			}
 		} rc;
+		for (PluginsContainer_t::const_iterator i = Plugins_.begin ();
+				i != Plugins_.end (); ++i)
+			rc.Result_ << (*i)->instance ();
 		Q_FOREACH (DepTreeItem_ptr item, Roots_)
 			rc (item);
 		return rc.Result_;
@@ -396,10 +408,12 @@ namespace LeechCraft
 			}
 
 			QString name;
+			QString pinfo;
 			QIcon icon;
 			try
 			{
 				name = info->GetName ();
+				pinfo = info->GetInfo ();
 				icon = info->GetIcon ();
 			}
 			catch (const std::exception& e)
@@ -422,6 +436,7 @@ namespace LeechCraft
 			}
 			settings.beginGroup (file);
 			settings.setValue ("Name", name);
+			settings.setValue ("Info", pinfo);
 			settings.setValue ("Icon", icon.pixmap (48, 48));
 			settings.endGroup ();
 		}
@@ -463,7 +478,7 @@ namespace LeechCraft
 	}
 
 	QList<PluginManager::PluginsContainer_t::iterator>
-		PluginManager::FindProviders (const QByteArray& expected)
+		PluginManager::FindProviders (const QSet<QByteArray>& expecteds)
 	{
 		QList<PluginsContainer_t::iterator> result;
 		for (PluginsContainer_t::iterator i = Plugins_.begin ();
@@ -472,9 +487,12 @@ namespace LeechCraft
 			IPlugin2 *ip2 = qobject_cast<IPlugin2*> ((*i)->instance ());
 			try
 			{
-				if (ip2 &&
-						ip2->GetPluginClass () == expected)
-					result << i;
+				if (ip2)
+				{
+					QSet<QByteArray> pcs = ip2->GetPluginClasses ();
+					if (!pcs.intersect (expecteds).isEmpty ())
+						result << i;
+				}
 			}
 			catch (const std::exception& e)
 			{
@@ -668,7 +686,7 @@ namespace LeechCraft
 		if (ipr)
 		{
 			QList<PluginsContainer_t::iterator> providers =
-				FindProviders (ipr->GetExpectedPluginClass ());
+				FindProviders (ipr->GetExpectedPluginClasses ());
 			Q_FOREACH (PluginsContainer_t::iterator p,
 					providers)
 			{

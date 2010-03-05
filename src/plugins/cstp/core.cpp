@@ -29,7 +29,6 @@
 #include <plugininterface/util.h>
 #include "task.h"
 #include "xmlsettingsmanager.h"
-#include "representationmodel.h"
 #include "morphfile.h"
 #include "addtask.h"
 
@@ -40,8 +39,7 @@ namespace LeechCraft
 		namespace CSTP
 		{
 			Core::Core ()
-			: RepresentationModel_ (new RepresentationModel ())
-			, SaveScheduled_ (false)
+			: SaveScheduled_ (false)
 			, Toolbar_ (0)
 			{
 				setObjectName ("CSTP Core");
@@ -50,12 +48,7 @@ namespace LeechCraft
 			
 				Headers_ << tr ("URL")
 					<< tr ("State")
-					<< tr ("Progress")
-					<< tr ("Speed")
-					<< tr ("ETA")
-					<< tr ("DTA");
-			
-				RepresentationModel_->setSourceModel (this);
+					<< tr ("Progress");
 			
 				ReadSettings ();
 			}
@@ -73,8 +66,6 @@ namespace LeechCraft
 			void Core::Release ()
 			{
 				writeSettings ();
-				delete RepresentationModel_;
-				RepresentationModel_ = 0;
 			}
 
 			void Core::SetCoreProxy (ICoreProxy_ptr proxy)
@@ -102,6 +93,19 @@ namespace LeechCraft
 			{
 				Selected_ = i;
 			}
+
+			namespace
+			{
+				QString MakeFilename (const QUrl& entity)
+				{
+					QString file = QFileInfo (entity.toString (QUrl::RemoveFragment)).fileName ();
+					file.replace ('?', '_');
+					if (file.isEmpty ())
+						file = QString ("index_%1")
+							.arg (QDateTime::currentDateTime ().toString (Qt::ISODate));
+					return file;
+				}
+			}
 			
 			int Core::AddTask (LeechCraft::DownloadEntity& e)
 			{
@@ -113,12 +117,10 @@ namespace LeechCraft
 					QFileInfo fi (e.Location_);
 					QString dir = fi.dir ().path ();
 					QUrl source = e.Additional_ ["SourceURL"].toUrl ();
-					QString file = QFileInfo (source.toString (QUrl::RemoveFragment)).fileName ();
+					QString file = MakeFilename (source);
 			
 					if (fi.isDir ())
 						dir = e.Location_;
-					if (file.isEmpty ())
-						file = "index";
 			
 					return AddTask (rep,
 							dir,
@@ -156,9 +158,7 @@ namespace LeechCraft
 							if (fi.isDir ())
 							{
 								dir = e.Location_;
-								file = QFileInfo (entity.toString (QUrl::RemoveFragment)).fileName ();
-								if (file.isEmpty ())
-									file = "index";
+								file = MakeFilename (entity);
 							}
 							else if (fi.isFile ());
 							else
@@ -252,6 +252,9 @@ namespace LeechCraft
 						return -1;
 					}
 				}
+
+				if (tp & Internal)
+					td.Task_->ForbidNameChanges ();
 			
 				connect (td.Task_.get (),
 						SIGNAL (done (bool)),
@@ -315,7 +318,7 @@ namespace LeechCraft
 			
 			QAbstractItemModel* Core::GetRepresentationModel ()
 			{
-				return RepresentationModel_;
+				return this;
 			}
 			
 			QNetworkAccessManager* Core::GetNetworkAccessManager () const
@@ -352,33 +355,10 @@ namespace LeechCraft
 						case HURL:
 							return task->GetURL ();
 						case HState:
-							return td.ErrorFlag_ ?
-								task->GetErrorString () : task->GetState ();
-						case HProgress:
 							{
-								qint64 done = task->GetDone (),
-									   total = task->GetTotal ();
-								int progress = total ? done * 100 / total : 0;
-								if (done > -1)
-								{
-									if (total > -1)
-										return QString (tr ("%1% (%2 of %3)"))
-											.arg (progress)
-											.arg (Util::MakePrettySize (done))
-											.arg (Util::MakePrettySize (total));
-									else
-										return QString (tr ("%1"))
-											.arg (Util::MakePrettySize (done));
-								}
-								else
-									return QString ("");
-							}
-						case HSpeed:
-							return task->IsRunning () ?
-								Util::MakePrettySize (task->GetSpeed ()) + tr ("/s") :
-								QVariant ();
-						case HRemaining:
-							{
+								if (td.ErrorFlag_)
+									return task->GetErrorString ();
+
 								if (!task->IsRunning ())
 									return QVariant ();
 			
@@ -388,12 +368,30 @@ namespace LeechCraft
 			
 								qint64 rem = (total - done) / speed;
 			
-								return Util::MakeTimeFromLong (rem);
+								return tr ("%1 (ETA: %2)")
+									.arg (task->GetState ())
+									.arg (Util::MakeTimeFromLong (rem));
 							}
-						case HDownloading:
-							return task->IsRunning () ?
-								Util::MakeTimeFromLong (task->GetTimeFromStart () / 1000)
-								: QVariant ();;
+						case HProgress:
+							{
+								qint64 done = task->GetDone (),
+									   total = task->GetTotal ();
+								int progress = total ? done * 100 / total : 0;
+								if (done > -1)
+								{
+									if (total > -1)
+										return QString (tr ("%1% (%2 of %3 at %44)"))
+											.arg (progress)
+											.arg (Util::MakePrettySize (done))
+											.arg (Util::MakePrettySize (total))
+											.arg (Util::MakePrettySize (task->GetSpeed ()) + tr ("/s"));
+									else
+										return QString (tr ("%1"))
+											.arg (Util::MakePrettySize (done));
+								}
+								else
+									return QString ("");
+							}
 						default:
 							return QVariant ();
 					}
@@ -474,9 +472,11 @@ namespace LeechCraft
 					return;
 				if (!selected.File_->open (QIODevice::ReadWrite))
 				{
-					QString msg = tr ("Could not open file ") +
-						selected.File_->error ();
-					qWarning () << Q_FUNC_INFO << msg;
+					QString msg = tr ("Could not open file %1: %2")
+						.arg (selected.File_->fileName ())
+						.arg (selected.File_->error ());
+					qWarning () << Q_FUNC_INFO
+						<< msg;
 					emit error (msg);
 					return;
 				}

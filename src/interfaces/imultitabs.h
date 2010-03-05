@@ -50,10 +50,17 @@ public:
 	/** Notifies this plugin that a new tab was requested.
 	 */
 	virtual void NewTabRequested () = 0;
+
+	/** Returns the list of QActions for the context menu of the tab bar.
+	 */
+	virtual QList<QAction*> GetTabBarContextMenuActions () const = 0;
 };
 
 /** @brief Interface for plugins having (and opening/closing) multiple
  * tabs.
+ *
+ * Plugin is expected to have a slot 'newTabRequested()' which is
+ * similar to IMultiTabsWidget::NewTabRequested() in functionality.
  *
  * When a plugin wants to add a new tab into LeechCraft, it emits the
  * addNewTab(const QString&, QWidget*) signal, where the first parameter

@@ -17,6 +17,10 @@
 				<label lang="en" value="Show menu bar as button" />
 				<label lang="ru" value="Показывать панель меню в виде кнопки" />
 			</item>
+			<item type="checkbox" property="TrySmarterTabsWidth" state="on">
+				<label lang="en" value="Try smarter tabs width calculation" />
+				<label lang="ru" value="Пытаться использовать более умный алгоритм расчета ширины вкладок" />
+			</item>
 			<item type="combobox" property="ToolButtonStyle">
 				<label lang="en" value="Tool button style:" />
 				<label lang="ru" value="Стиль панелей инструментов:" />
@@ -149,6 +153,14 @@
 					<label lang="uk" value="Слідкувати за каталогом:" />
 				</item>
 			</groupbox>
+			<item type="groupbox" property="ShowPluginMenuInTabs" state="on" checkable="true">
+				<label lang="en" value="Show plugin-dependent actions in tab bar context menu" />
+				<label lang="ru" value="Показывать зависимые от плагина действия в контекстном меню таббара" />
+				<item type="checkbox" property="ShowPluginMenuInTabsAsSubmenu" default="off">
+					<label lang="en" value="Show as a submenu" />
+					<label lang="ru" value="Показывать как подменю" />
+				</item>
+			</item>
 			<item type="groupbox" property="ShowFinishedDownloadMessages" state="on" checkable="true">
 				<label lang="en" value="Show messages in tray" />
 				<label lang="ru" value="Показывать сообщения в трее" />

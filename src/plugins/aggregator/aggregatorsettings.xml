@@ -34,6 +34,10 @@
 			<groupbox>
 				<label lang="en" value="Appearance" />
 				<label lang="ru" value="Внешний вид" />
+				<item type="checkbox" property="GroupChannelsByTags" state="on">
+					<label lang="en" value="Group channels by tags" />
+					<label lang="ru" value="Группировать каналы по тегам" />
+				</item>
 				<item type="checkbox" property="ShowInDashboard" state="on">
 					<label lang="en" value="Show unread channels in summary" />
 					<label lang="ru" value="Показывать непрочитанные каналы в сводке" />
@@ -46,6 +50,10 @@
 				<item type="checkbox" property="ShowCategorySelector" state="on">
 					<label lang="en" value="Show items category selector" />
 					<label lang="ru" value="Показывать список категорий новостей" />
+				</item>
+				<item type="checkbox" property="ShowNavBarInItemsView" state="off">
+					<label lang="en" value="Show navigation bar when showing the news item" />
+					<label lang="ru" value="Показывать навигационную панель при отображении новости" />
 				</item>
 			</groupbox>
 			<groupbox>

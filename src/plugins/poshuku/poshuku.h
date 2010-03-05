@@ -76,8 +76,9 @@ namespace LeechCraft
 
 				void Remove ();
 				void NewTabRequested ();
+				QList<QAction*> GetTabBarContextMenuActions () const;
 
-				QByteArray GetExpectedPluginClass () const;
+				QSet<QByteArray> GetExpectedPluginClasses () const;
 				void AddPlugin (QObject*);
 
 				boost::shared_ptr<LeechCraft::Util::XmlSettingsDialog> GetSettingsDialog () const;
@@ -91,9 +92,13 @@ namespace LeechCraft
 
 				void SetShortcut (int, const QKeySequence&);
 				QMap<int, LeechCraft::ActionInfo> GetActionInfo () const;
+			public slots:
+				void newTabRequested ();
 			private:
+				void InitConnections ();
 				void RegisterSettings ();
 			private slots:
+				void setHtml ();
 				void viewerSettingsChanged ();
 				void developerExtrasChanged ();
 				void cacheSettingsChanged ();

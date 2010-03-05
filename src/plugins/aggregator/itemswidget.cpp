@@ -159,6 +159,10 @@ namespace LeechCraft
 
 				XmlSettingsManager::Instance ()->RegisterObject ("ShowCategorySelector",
 						this, "selectorVisiblityChanged");
+				XmlSettingsManager::Instance ()->RegisterObject ("ShowNavBarInItemsView",
+						this, "navBarVisibilityChanged");
+				selectorVisiblityChanged ();
+				navBarVisibilityChanged ();
 
 				on_ActionHideReadItems__triggered ();
 			}
@@ -469,12 +473,6 @@ namespace LeechCraft
 						"padding-left: 2em; "
 						"padding-right: 2em;'>");
 			
-				// Title
-				result += startBox.arg (headerBg);
-				result += (QString ("<strong>") +
-						item->Title_ +
-						"</strong></div>");
-			
 				// Link
 				result += (startBox.arg (headerBg) +
 						"<a href='" +
@@ -482,8 +480,10 @@ namespace LeechCraft
 						"'");
 				if (linw)
 					result += " target='_blank'";
-				result += (QString (">") +
-						item->Link_ +
+				result += QString (">");
+				result += (QString ("<strong>") +
+						item->Title_ +
+						"</strong>" + 
 						"</a></div>");
 			
 				// Publication date and author
@@ -996,6 +996,8 @@ namespace LeechCraft
 					{
 						Impl_->Ui_.ItemView_->SetHtml ("");
 						Impl_->ActionItemCommentsSubscribe_->setEnabled (false);
+						Impl_->ActionAddToItemBucket_->setEnabled (false);
+						Impl_->ActionMarkItemAsUnread_->setEnabled (false);
 						return;
 					}
 			
@@ -1007,6 +1009,8 @@ namespace LeechCraft
 			
 					QString commentsRSS = item->CommentsLink_;
 					Impl_->ActionItemCommentsSubscribe_->setEnabled (!commentsRSS.isEmpty ());
+					Impl_->ActionAddToItemBucket_->setEnabled (true);
+					Impl_->ActionMarkItemAsUnread_->setEnabled (true);
 				}
 			}
 			
@@ -1045,6 +1049,13 @@ namespace LeechCraft
 				}
 				else if (Impl_->ItemCategorySelector_->GetSelections ().size ())
 					Impl_->ItemCategorySelector_->show ();
+			}
+
+			void ItemsWidget::navBarVisibilityChanged ()
+			{
+				Impl_->Ui_.ItemView_->
+					SetNavBarVisible (XmlSettingsManager::Instance ()->
+							property ("ShowNavBarInItemsView").toBool ());
 			}
 		};
 	};

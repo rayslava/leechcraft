@@ -88,7 +88,7 @@ namespace LeechCraft
 
 			QIcon Summary::GetIcon () const
 			{
-				return QIcon (":/resources/images/summary.svg");
+				return QIcon (":/plugins/summary/resources/images/summary.svg");
 			}
 
 			QStringList Summary::Provides () const
@@ -143,6 +143,11 @@ namespace LeechCraft
 			QTreeView* Summary::GetCurrentView () const
 			{
 				return Core::Instance ().GetCurrentView ();
+			}
+
+			void Summary::newTabRequested ()
+			{
+				return Core::Instance ().handleNewTabRequested ();
 			}
 		};
 	};
