@@ -712,15 +712,6 @@ namespace LeechCraft
 			void BrowserWidget::initClient ()
 			{
 				Client_ = new RemoteWebViewClient (Ui_.WebView_);
-				connect (Client_,
-						SIGNAL (viewIsReady ()),
-						this,
-						SLOT (handleViewIsReady ()),
-						Qt::QueuedConnection);
-			}
-
-			void BrowserWidget::handleViewIsReady ()
-			{
 				QWidget *w = Client_->GetWidget ();
 				QVBoxLayout *lay = new QVBoxLayout ();
 				QPushButton *p1 = new QPushButton ("Show");
@@ -741,15 +732,17 @@ namespace LeechCraft
 				lay->addWidget (w);
 				lay->addWidget (p2);
 				Ui_.WebView_->setLayout (lay);
-				QTimer::singleShot (0,
-						w,
-						SLOT (show ()));
+				w->show ();
 				qDebug () << w
 					<< w->parentWidget ()
 					<< w->windowFlags ()
 					<< w->windowOpacity ()
 					<< w->winId ()
 					<< w->parentWidget ()->winId ();
+			}
+
+			void BrowserWidget::handleViewIsReady ()
+			{
 			}
 
 			/*
