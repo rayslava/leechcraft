@@ -158,7 +158,9 @@ namespace LeechCraft
 			private slots:
 				/*
 				void handleUnclose ();
+				*/
 				void handleTitleChanged (const QString&);
+				/*
 				void handleURLChanged (const QString&);
 				*/
 				void handleIconChanged (const QIcon&);

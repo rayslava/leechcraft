@@ -308,7 +308,9 @@ namespace LeechCraft
 						SIGNAL (triggered ()),
 						&Core::Instance (),
 						SLOT (exportXbel ()));
+				*/
 			
+				/*
 				connect (Ui_.WebView_,
 						SIGNAL (titleChanged (const QString&)),
 						this,
@@ -715,6 +717,7 @@ namespace LeechCraft
 			{
 				Client_ = new RemoteWebViewClient (Ui_.WebView_);
 				QWidget *w = Client_->GetWidget ();
+				w->setSizePolicy (QSizePolicy::Expanding, QSizePolicy::Expanding);
 				QVBoxLayout *lay = new QVBoxLayout ();
 				QPushButton *p1 = new QPushButton ("Show");
 				lay->addWidget (ToolBar_);
@@ -728,6 +731,23 @@ namespace LeechCraft
 					<< w->windowOpacity ()
 					<< w->winId ()
 					<< w->parentWidget ()->winId ();
+
+				connect (Client_,
+						SIGNAL (titleChanged (const QString&)),
+						this,
+						SIGNAL (titleChanged (const QString&)));
+				connect (Client_,
+						SIGNAL (urlChanged (const QString&)),
+						this,
+						SIGNAL (urlChanged (const QString&)));
+				connect (Client_,
+						SIGNAL (urlChanged (const QString&)),
+						Ui_.URLEdit_,
+						SLOT (setText (const QString&)));
+				connect (Client_,
+						SIGNAL (loadProgress (int)),
+						this,
+						SLOT (handleLoadProgress (int)));
 			}
 
 			void BrowserWidget::handleViewIsReady ()
@@ -1065,6 +1085,7 @@ namespace LeechCraft
 				if (!HtmlMode_ && isVisible ())
 					Ui_.WebView_->setFocus ();
 			}
+			*/
 			
 			void BrowserWidget::handleLoadProgress (int p)
 			{
@@ -1082,6 +1103,7 @@ namespace LeechCraft
 					o = Stop_;
 					n = Reload_;
 				}
+				/*
 				disconnect (ReloadStop_,
 						SIGNAL (triggered ()),
 						o,
@@ -1093,8 +1115,10 @@ namespace LeechCraft
 						SIGNAL (triggered ()),
 						n,
 						SLOT (trigger ()));
+						*/
 			}
 
+			/*
 			void BrowserWidget::notifyLoadFinished (bool ok)
 			{
 				if (!NotifyWhenFinished_->isChecked () ||

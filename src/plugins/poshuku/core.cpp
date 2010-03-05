@@ -814,15 +814,20 @@ namespace LeechCraft
 
 				action->deleteLater ();
 			}
+			*/
 			
 			void Core::handleTitleChanged (const QString& newTitle)
 			{
+				// TODO finish
 				emit changeTabName (dynamic_cast<QWidget*> (sender ()), newTitle);
+				/*
 				HandleHistory (dynamic_cast<BrowserWidget*> (sender ())->GetView ());
 			
 				saveSingleSession ();
+				*/
 			}
 			
+			/*
 			void Core::handleURLChanged (const QString&)
 			{
 				HandleHistory (dynamic_cast<BrowserWidget*> (sender ())->GetView ());

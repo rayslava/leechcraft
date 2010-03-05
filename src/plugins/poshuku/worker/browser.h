@@ -45,6 +45,10 @@ namespace LeechCraft
 					
 					WId GetEmbedWidget () const;
 					void LoadURL (const QUrl&);
+				signals:
+					void titleChanged (const QString&);
+					void urlChanged (const QString&);
+					void loadProgress (int);
 				};
 			};
 		};

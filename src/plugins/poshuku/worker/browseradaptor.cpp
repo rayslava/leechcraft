@@ -35,6 +35,18 @@ namespace LeechCraft
 				: QDBusAbstractAdaptor (b)
 				, Browser_ (b)
 				{
+					connect (b,
+							SIGNAL (titleChanged (const QString&)),
+							this,
+							SIGNAL (titleChanged (const QString&)));
+					connect (b,
+							SIGNAL (urlChanged (const QString&)),
+							this,
+							SIGNAL (urlChanged (const QString&)));
+					connect (b,
+							SIGNAL (loadProgress (int)),
+							this,
+							SIGNAL (loadProgress (int)));
 				}
 
 				void BrowserAdaptor::LoadURL (const QByteArray& encoded)

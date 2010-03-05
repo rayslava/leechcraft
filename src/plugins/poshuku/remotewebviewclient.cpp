@@ -126,6 +126,7 @@ namespace LeechCraft
 				}
 
 				InitiateEmbedding ();
+				ConnectSignals ();
 			}
 
 			void RemoteWebViewClient::InitiateEmbedding ()
@@ -146,6 +147,22 @@ namespace LeechCraft
 						SIGNAL (clientIsEmbedded ()),
 						this,
 						SLOT (handleClientIsEmbedded ()));
+			}
+
+			void RemoteWebViewClient::ConnectSignals ()
+			{
+				connect (ClientInterface_.get (),
+						SIGNAL (titleChanged (const QString&)),
+						this,
+						SIGNAL (titleChanged (const QString&)));
+				connect (ClientInterface_.get (),
+						SIGNAL (urlChanged (const QString&)),
+						this,
+						SIGNAL (urlChanged (const QString&)));
+				connect (ClientInterface_.get (),
+						SIGNAL (loadProgress (int)),
+						this,
+						SIGNAL (loadProgress (int)));
 			}
 
 			QString RemoteWebViewClient::GetServiceName () const

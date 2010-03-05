@@ -34,6 +34,18 @@ namespace LeechCraft
 				: CM_ (cm)
 				{
 					Embedded_ = new EmbedWidget;
+					connect (Embedded_->GetWebView (),
+							SIGNAL (titleChanged (const QString&)),
+							this,
+							SIGNAL (titleChanged (const QString&)));
+					connect (Embedded_->GetWebView (),
+							SIGNAL (urlChanged (const QString&)),
+							this,
+							SIGNAL (urlChanged (const QString&)));
+					connect (Embedded_->GetWebView (),
+							SIGNAL (loadProgress (int)),
+							this,
+							SIGNAL (loadProgress (int)));
 				}
 
 				WId Browser::GetEmbedWidget () const

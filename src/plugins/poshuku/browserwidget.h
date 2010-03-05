@@ -175,7 +175,9 @@ namespace LeechCraft
 				void checkLinkRels ();
 				void setScrollPosition ();
 				void pageFocus ();
+				*/
 				void handleLoadProgress (int);
+				/*
 				void notifyLoadFinished (bool);
 				void handleChangeEncodingAboutToShow ();
 				void handleChangeEncodingTriggered (QAction*);

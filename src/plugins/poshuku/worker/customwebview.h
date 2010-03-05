@@ -58,7 +58,9 @@ namespace LeechCraft
 					void zoomOut ();
 					void zoomReset ();
 				private slots:
+				*/
 					void remakeURL (const QUrl&);
+					/*
 					void openLinkHere ();
 					void openLinkInNewTab ();
 					void saveLink ();
@@ -72,8 +74,10 @@ namespace LeechCraft
 					void copyImageLocation ();
 					void searchSelectedText ();
 					void renderSettingsChanged ();
+					*/
 				signals:
 					void urlChanged (const QString&);
+					/*
 					void gotEntity (const LeechCraft::DownloadEntity&);
 					void couldHandle (const LeechCraft::DownloadEntity&, bool*);
 					void addToFavorites (const QString&, const QString&);

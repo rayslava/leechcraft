@@ -62,12 +62,14 @@ namespace LeechCraft
 					/*
 					CustomWebPage *page = new CustomWebPage (this);
 					setPage (page);
+					*/
 				
 					connect (this,
 							SIGNAL (urlChanged (const QUrl&)),
 							this,
 							SLOT (remakeURL (const QUrl&)));
 				
+					/*
 					connect (page,
 							SIGNAL (couldHandle (const LeechCraft::DownloadEntity&, bool*)),
 							this,
@@ -409,12 +411,14 @@ namespace LeechCraft
 
 					emit invalidateSettings ();
 				}
+				*/
 				
 				void CustomWebView::remakeURL (const QUrl& url)
 				{
 					emit urlChanged (url.toString ());
 				}
 
+				/*
 				void CustomWebView::openLinkHere ()
 				{
 					Load (qobject_cast<QAction*> (sender ())->data ().toUrl ());

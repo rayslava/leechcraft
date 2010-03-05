@@ -58,6 +58,7 @@ namespace LeechCraft
 				void HandleReady (const QString&, const QString&);
 			private:
 				void InitiateEmbedding ();
+				void ConnectSignals ();
 				QString GetServiceName () const;
 				QString GetPath () const;
 			private slots:
@@ -68,6 +69,9 @@ namespace LeechCraft
 				void handleClientClosed ();
 				void handleClientError (QX11EmbedContainer::Error);
 			signals:
+				void titleChanged (const QString&);
+				void urlChanged (const QString&);
+				void loadProgress (int);
 				void viewIsReady ();
 			};
 		};
