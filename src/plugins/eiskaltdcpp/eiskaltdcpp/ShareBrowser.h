@@ -49,6 +49,7 @@ class ShareBrowser : public QWidget,
                      private Ui::UIShareBrowser
 {
     Q_OBJECT
+    Q_INTERFACES(ArenaWidget IMultiTabsWidget)
 
     class Menu : public dcpp::Singleton<Menu>{
 
@@ -81,11 +82,15 @@ public:
     ShareBrowser(dcpp::UserPtr, QString file, QString jump_to);
     virtual ~ShareBrowser();
 
+    // Arena Widget interface
     QString  getArenaTitle();
     QString  getArenaShortTitle();
     QWidget *getWidget();
     QMenu   *getMenu();
     const QPixmap &getPixmap(){ return WulforUtil::getInstance()->getPixmap(WulforUtil::eiOWN_FILELIST); }
+
+    // IMultiTabsWidget interface
+    void Remove() { close(); }
 
 protected:
     virtual void closeEvent(QCloseEvent *);

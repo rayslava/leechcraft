@@ -30,7 +30,7 @@ using namespace dcpp;
 inline QString _q (const std::string &s) __attribute__((always_inline));
 inline std::string _tq(const QString &s) __attribute__((always_inline));
 
-inline QString _q (const std::string &s) { return QTextCodec::codecForCStrings()->fromUnicode(s.c_str()); }
+inline QString _q (const std::string &s) { return (s.c_str()); }
 inline std::string _tq(const QString &s) { return QTextCodec::codecForCStrings()->toUnicode(s.toAscii()).toStdString(); }
 
 class WulforUtil :

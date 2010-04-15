@@ -21,6 +21,8 @@
 #include <QKeySequence>
 
 #include <interfaces/iinfo.h>
+#include <interfaces/itoolbarembedder.h>
+#include <interfaces/imultitabs.h>
 
 #include "dcpp/stdinc.h"
 #include "dcpp/DCPlusPlus.h"
@@ -75,28 +77,34 @@ public:
 };
 
 class MainLayoutWrapper:
-        public QMainWindow,
-		public IInfo,
+        public QWidget,
+        public IInfo,
+        public IToolBarEmbedder,
+        public IMultiTabs,
         private LogManagerListener,
         private TimerManagerListener,
         private QueueManagerListener
 {
-		Q_OBJECT
-		Q_INTERFACES (IInfo)
+    Q_OBJECT
+    Q_INTERFACES (IInfo IToolBarEmbedder IMultiTabs)
 
-		static MainLayoutWrapper *S_StaticThis;
+    static MainLayoutWrapper *S_StaticThis;
     public:
-		void Init (ICoreProxy_ptr);
-		void SecondInit ();
-		void Release ();
+        void Init (ICoreProxy_ptr);
+        void SecondInit ();
+        void Release ();
 
-		QString GetName () const;
-		QString GetInfo () const;
-		QStringList Provides () const;
-		QStringList Needs () const;
-		QStringList Uses () const;
-		void SetProvider (QObject*, const QString&);
-		QIcon GetIcon () const;
+        /** IInfo */
+        QString GetName () const;
+        QString GetInfo () const;
+        QStringList Provides () const;
+        QStringList Needs () const;
+        QStringList Uses () const;
+        void SetProvider (QObject*, const QString&);
+        QIcon GetIcon () const;
+
+        /** IToolBarEmbedder */
+        virtual QList<QAction*> GetActions () const;
 
         typedef QList<QAction*> ActionList;
         typedef QList<ArenaWidget*> ArenaWidgetList;
@@ -143,6 +151,16 @@ class MainLayoutWrapper:
 
         /** */
         void retranslateUi();
+
+signals:
+        void changeTabName(QWidget *widget, const QString& newName);
+        void changeTabIcon(QWidget *widget, const QIcon& icon);
+        void statusBarChanged(QWidget *widget, const QString& newText);
+        void raiseTab(QWidget *widget);
+
+        void addNewTab(const QString& name, QWidget *widget);
+        void removeTab(QWidget *widget);
+
     public slots:
         void slotChatClear();
 
@@ -187,10 +205,10 @@ class MainLayoutWrapper:
         void slotAboutQt();
 
     private:
-		void ConstructAsConstructor ();
-		void ReleaseAsClosed ();
-		void ReleaseAsAfterExec ();
-		void ReleaseAsDestructor ();
+        void ConstructAsConstructor ();
+        void ReleaseAsClosed ();
+        void ReleaseAsAfterExec ();
+        void ReleaseAsDestructor ();
 
         /** LogManagerListener */
         virtual void on(dcpp::LogManagerListener::Message, time_t t, const std::string&) throw();
@@ -217,7 +235,7 @@ class MainLayoutWrapper:
         void updateStatus(QMap<QString,QString>);
 
         // Widgets
-        QDockWidget *arena;
+        //QDockWidget *arena;
         QDockWidget *transfer_dock;
 
         ToolBar *tBar;//for tabs
@@ -284,6 +302,10 @@ class MainLayoutWrapper:
         ArenaWidgetMap arenaMap;
 
         HistoryInterface<QWidget*> history;
+
+        ICoreProxy_ptr core_ptr;
+
+        QSet<ArenaWidget*> shown;
 };
 
 #endif //MAINWINDOW_H_

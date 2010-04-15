@@ -40,6 +40,12 @@
 #include "SpyFrame.h"
 #include "Notification.h"
 
+#ifdef USE_ASPELL
+#include "SpellCheck.h"
+#endif
+
+#include "core.h"
+
 #include "UPnPMapper.h"
 #include "WulforSettings.h"
 #include "WulforUtil.h"
@@ -122,8 +128,7 @@ void MainLayoutWrapper::Init (ICoreProxy_ptr proxy)
     Notification::newInstance();
     Notification::getInstance()->enableTray(WBGET(WB_TRAY_ENABLED));
 
-    autoconnect();
-    parseCmdLine();
+    core_ptr = proxy;
 
     if (WBGET(WB_MAINWINDOW_HIDE))
         getInstance()->hide();
@@ -132,6 +137,9 @@ void MainLayoutWrapper::Init (ICoreProxy_ptr proxy)
 void MainLayoutWrapper::SecondInit ()
 {
 	ConstructAsConstructor ();
+
+        autoconnect();
+        parseCmdLine();
 }
 
 void MainLayoutWrapper::Release ()
@@ -148,7 +156,7 @@ QString MainLayoutWrapper::GetName () const
 
 QString MainLayoutWrapper::GetInfo () const
 {
-	return tr ("EiskaltDC++ is a cool DC client.");
+        return tr ("EiskaltDC++ is a cool ADC/NMDC client.");
 }
 
 QStringList MainLayoutWrapper::Provides () const
@@ -173,6 +181,10 @@ void MainLayoutWrapper::SetProvider (QObject*, const QString&)
 QIcon MainLayoutWrapper::GetIcon () const
 {
 	return QIcon ();
+}
+
+QList<QAction*> MainLayoutWrapper::GetActions() const {
+    return toolBarActions;
 }
 
 void MainLayoutWrapper::ReleaseAsClosed ()
@@ -288,7 +300,7 @@ void MainLayoutWrapper::ReleaseAsDestructor ()
         IPFilter::deleteInstance();
     }
 
-    delete arena;
+    //delete arena;
 
     delete fBar;
     delete tBar;
@@ -314,7 +326,7 @@ void MainLayoutWrapper::ConstructAsConstructor ()
 
     startSocket();
 
-    setStatusMessage(tr("Ready"));
+    //setStatusMessage(tr("Ready"));
 
     TransferView::newInstance();
 
@@ -347,9 +359,9 @@ void MainLayoutWrapper::showEvent(QShowEvent *e){
     if (e->spontaneous())
         redrawToolPanel();
 
-    QWidget *wg = arena->widget();
+    //QWidget *wg = arena->widget();
 
-    bool pmw = false;
+    /*bool pmw = false;
 
     if (wg != 0)
         pmw = (typeid(*wg) == typeid(PMWindow));
@@ -360,7 +372,7 @@ void MainLayoutWrapper::showEvent(QShowEvent *e){
 
     chatClear->setEnabled(enable || pmw);
     findInChat->setEnabled(enable);
-    chatDisable->setEnabled(enable);
+    chatDisable->setEnabled(enable); */
 
     e->accept();
 }
@@ -376,16 +388,16 @@ void MainLayoutWrapper::customEvent(QEvent *e){
 }
 
 bool MainLayoutWrapper::eventFilter(QObject *obj, QEvent *e){
-    return QMainWindow::eventFilter(obj, e);
+
 }
 
 void MainLayoutWrapper::init(){
-    arena = new QDockWidget();
+    /*arena = new QDockWidget();
     arena->setFloating(false);
     arena->setAllowedAreas(Qt::RightDockWidgetArea);
     arena->setFeatures(QDockWidget::NoDockWidgetFeatures);
     arena->setContextMenuPolicy(Qt::CustomContextMenu);
-    arena->setTitleBarWidget(new QWidget(arena));
+    arena->setTitleBarWidget(new QWidget(arena));*/
 
     transfer_dock = new QDockWidget(this);
     transfer_dock->setObjectName("transfer_dock");
@@ -395,9 +407,11 @@ void MainLayoutWrapper::init(){
     transfer_dock->setContextMenuPolicy(Qt::CustomContextMenu);
     transfer_dock->setTitleBarWidget(new QWidget(transfer_dock));
 
-    setCentralWidget(arena);
+    QMainWindow *mw = core_ptr->GetMainWindow();
+
+    //setCentralWidget(arena);
     //addDockWidget(Qt::RightDockWidgetArea, arena);
-    addDockWidget(Qt::BottomDockWidgetArea, transfer_dock);
+    mw->addDockWidget(Qt::BottomDockWidgetArea, transfer_dock);
 
     transfer_dock->hide();
 
@@ -407,7 +421,7 @@ void MainLayoutWrapper::init(){
 
     setWindowIcon(WulforUtil::getInstance()->getPixmap(WulforUtil::eiICON_APPL));
 
-    setWindowTitle(QString("%1").arg(EISKALTDCPP_WND_TITLE));
+    //setWindowTitle(QString("%1").arg(EISKALTDCPP_WND_TITLE));
 
     initActions();
 
@@ -423,7 +437,7 @@ void MainLayoutWrapper::init(){
 }
 
 void MainLayoutWrapper::loadSettings(){
-    WulforSettings *WS = WulforSettings::getInstance();
+    /*WulforSettings *WS = WulforSettings::getInstance();
 
     bool showMax = WS->getBool(WB_MAINWINDOW_MAXIMIZED);
     int w = WS->getInt(WI_MAINWINDOW_WIDTH);
@@ -446,11 +460,11 @@ void MainLayoutWrapper::loadSettings(){
     QString wstate = WSGET(WS_MAINWINDOW_STATE);
 
     if (!wstate.isEmpty())
-        this->restoreState(QByteArray::fromBase64(wstate.toAscii()));
+        this->restoreState(QByteArray::fromBase64(wstate.toAscii()));*/
 }
 
 void MainLayoutWrapper::saveSettings(){
-    static bool stateIsSaved = false;
+    /*static bool stateIsSaved = false;
 
     if (stateIsSaved)
         return;
@@ -465,7 +479,7 @@ void MainLayoutWrapper::saveSettings(){
 
     WSSET(WS_MAINWINDOW_STATE, saveState().toBase64());
 
-    stateIsSaved = true;
+    stateIsSaved = true;*/
 }
 
 void MainLayoutWrapper::initActions(){
@@ -713,16 +727,16 @@ void MainLayoutWrapper::initMenuBar(){
         menuAbout->addAction(aboutQt);
     }
 
-    menuBar()->addMenu(menuFile);
+    /*menuBar()->addMenu(menuFile);
     menuBar()->addMenu(menuHubs);
     menuBar()->addMenu(menuTools);
     menuBar()->addMenu(menuWidgets);
     menuBar()->addMenu(menuAbout);
-    menuBar()->setContextMenuPolicy(Qt::CustomContextMenu);
+    menuBar()->setContextMenuPolicy(Qt::CustomContextMenu);*/
 }
 
 void MainLayoutWrapper::initStatusBar(){
-    statusLabel = new QLabel(statusBar());
+/*    statusLabel = new QLabel(statusBar());
     statusLabel->setFrameShadow(QFrame::Plain);
     statusLabel->setFrameShape(QFrame::NoFrame);
     statusLabel->setAlignment(Qt::AlignRight);
@@ -779,7 +793,7 @@ void MainLayoutWrapper::initStatusBar(){
     statusBar()->addPermanentWidget(statusLabel);
 #if (defined FREE_SPACE_BAR)
     statusBar()->addPermanentWidget(progressSpace);
-#endif //FREE_SPACE_BAR
+#endif //FREE_SPACE_BAR*/
 }
 
 void MainLayoutWrapper::retranslateUi(){
@@ -844,7 +858,7 @@ void MainLayoutWrapper::retranslateUi(){
         aboutQt->setText(tr("About Qt"));
     }
     {
-        arena->setWindowTitle(tr("Main layout"));
+        //arena->setWindowTitle(tr("Main layout"));
     }
 }
 
@@ -865,8 +879,8 @@ void MainLayoutWrapper::initToolbar(){
     tBar->setFloatable(true);
     tBar->setAllowedAreas(Qt::AllToolBarAreas);
 
-    addToolBar(fBar);
-    addToolBar(tBar);
+    /*addToolBar(fBar);
+    addToolBar(tBar);*/
 }
 
 void MainLayoutWrapper::newHubFrame(QString address, QString enc){
@@ -891,7 +905,7 @@ void MainLayoutWrapper::newHubFrame(QString address, QString enc){
 }
 
 void MainLayoutWrapper::updateStatus(QMap<QString, QString> map){
-    if (!statusLabel)
+    /*if (!statusLabel)
         return;
 
     statusLabel->setText(map["STATS"]);
@@ -930,11 +944,11 @@ void MainLayoutWrapper::updateStatus(QMap<QString, QString> map){
             progressSpace->setValue(static_cast<unsigned>(percent));
         }
 #endif //FREE_SPACE_BAR
-    }
+    }*/
 }
 
 void MainLayoutWrapper::setStatusMessage(QString msg){
-    msgLabel->setText(msg);
+    //msgLabel->setText(msg);
 }
 
 void MainLayoutWrapper::autoconnect(){
@@ -1034,113 +1048,46 @@ void MainLayoutWrapper::remArenaWidget(ArenaWidget *awgt){
         arenaWidgets.removeAt(arenaWidgets.indexOf(awgt));
         arenaMap.erase(arenaMap.find(awgt));
 
-        if (arena->widget() == awgt->getWidget()){
-            arena->setWidget(NULL);
-
-            chatClear->setEnabled(false);
-            findInChat->setEnabled(false);
-            chatDisable->setEnabled(false);
-        }
+        chatClear->setEnabled(false);
+        findInChat->setEnabled(false);
+        chatDisable->setEnabled(false);
     }
 }
 
 void MainLayoutWrapper::mapWidgetOnArena(ArenaWidget *awgt){
-    if (!arenaWidgets.contains(awgt))
-        return;
-
-    if (arena->widget())
-        arena->widget()->hide();
-
-    arena->setWidget(arenaMap[awgt]);
-
-    setWindowTitle(awgt->getArenaTitle() + " :: " + QString("%1").arg(EISKALTDCPP_WND_TITLE));
-
-    tBar->mapped(awgt);
-
-    QWidget *wg = arenaMap[awgt];
-    
-    if (awgt->toolButton())
-        awgt->toolButton()->setChecked(true);
-
-    bool pmw = false;
-
-    if (wg != 0)
-        pmw = (typeid(*wg) == typeid(PMWindow));
-
-    HubFrame *fr = HubManager::getInstance()->activeHub();
-
-    chatClear->setEnabled(fr == arena->widget() || pmw);
-    findInChat->setEnabled(fr == arena->widget());
-    chatDisable->setEnabled(fr == arena->widget());
-
-    if (fr == arena->widget()){
-        fr->plainTextEdit_INPUT->setFocus();
-    }
-    else if(pmw){
-        PMWindow *pm = qobject_cast<PMWindow *>(wg);
-        if (pm)
-            pm->plainTextEdit_INPUT->setFocus();
-    }
-    else{
-        arenaMap[awgt]->setFocus();
-    }
+    /**
+      Void function (only for plugin)
+    */
 }
 
 void MainLayoutWrapper::remWidgetFromArena(ArenaWidget *awgt){
-    if (!arenaWidgets.contains(awgt))
-        return;
-
-    if (awgt->toolButton())
-        awgt->toolButton()->setChecked(false);
-
-    if (arena->widget() == awgt->getWidget())
-        arena->widget()->hide();
-
-    /*chatClear->setEnabled(false);
-    findInChat->setEnabled(false);
-    chatDisable->setEnabled(false);*/
+    /**
+      Void function (only for plugin)
+    */
 }
 
 void MainLayoutWrapper::addArenaWidgetOnToolbar(ArenaWidget *awgt, bool keepFocus){
-    if (!arenaWidgets.contains(awgt))
+    if (!arenaWidgets.contains(awgt) || shown.contains(awgt))
         return;
-
-    QAction *act = new QAction(awgt->getArenaShortTitle(), this);
-    act->setIcon(awgt->getPixmap());
-
-    connect(act, SIGNAL(triggered()), this, SLOT(slotWidgetsToggle()));
-
-    menuWidgetsActions.push_back(act);
-    menuWidgetsHash.insert(act, awgt);
-
-    menuWidgets->clear();
-    menuWidgets->addActions(menuWidgetsActions);
 
     if (awgt->toolButton())
         awgt->toolButton()->setChecked(true);
 
-    tBar->insertWidget(awgt, keepFocus);
+    shown.insert(awgt);
+
+    emit addNewTab(awgt->getArenaShortTitle(), awgt->getWidget());
+    emit changeTabIcon(awgt->getWidget(), awgt->getPixmap());
+    emit raiseTab(awgt->getWidget());
 }
 
 void MainLayoutWrapper::remArenaWidgetFromToolbar(ArenaWidget *awgt){
-    QHash<QAction*, ArenaWidget*>::iterator it = menuWidgetsHash.begin();
-    for (; it != menuWidgetsHash.end(); ++it){
-        if (it.value() == awgt){
-            menuWidgetsActions.removeAt(menuWidgetsActions.indexOf(it.key()));
-            menuWidgetsHash.erase(it);
-
-            menuWidgets->clear();
-
-            menuWidgets->addActions(menuWidgetsActions);
-
-            break;
-        }
-    }
-
     if (awgt->toolButton())
         awgt->toolButton()->setChecked(false);
 
-    tBar->removeWidget(awgt);
+    if (shown.contains(awgt))
+        shown.remove(awgt);
+
+    emit removeTab(awgt->getWidget());
 }
 
 void MainLayoutWrapper::toggleSingletonWidget(ArenaWidget *a){
@@ -1155,40 +1102,10 @@ void MainLayoutWrapper::toggleSingletonWidget(ArenaWidget *a){
         a->setToolButton(act);
     }
 
-    if (tBar->hasWidget(a)){
-        QHash<QAction*, ArenaWidget*>::iterator it = menuWidgetsHash.begin();
-        for (; it != menuWidgetsHash.end(); ++it){
-            if (it.value() == a){
-                menuWidgetsActions.removeAt(menuWidgetsActions.indexOf(it.key()));
-                menuWidgetsHash.erase(it);
-
-                menuWidgets->clear();
-
-                menuWidgets->addActions(menuWidgetsActions);
-
-                break;
-            }
-        }
-
-        tBar->removeWidget(a);
-        remWidgetFromArena(a);
-    }
-    else {
-        tBar->insertWidget(a);
-
-        QAction *act = new QAction(a->getArenaShortTitle(), this);
-        act->setIcon(a->getPixmap());
-
-        connect(act, SIGNAL(triggered()), this, SLOT(slotWidgetsToggle()));
-
-        menuWidgetsActions.push_back(act);
-        menuWidgetsHash.insert(act, a);
-
-        menuWidgets->clear();
-        menuWidgets->addActions(menuWidgetsActions);
-
-        mapWidgetOnArena(a);
-    }
+    if (shown.contains(a))
+        remArenaWidgetFromToolbar(a);
+    else
+        addArenaWidgetOnToolbar(a);
 }
 
 void MainLayoutWrapper::startSocket(){
@@ -1364,7 +1281,7 @@ void MainLayoutWrapper::slotToolsTransfer(bool toggled){
 }
 
 void MainLayoutWrapper::slotChatClear(){
-    HubFrame *fr = HubManager::getInstance()->activeHub();
+    /*HubFrame *fr = HubManager::getInstance()->activeHub();
 
     if (fr)
         fr->clearChat();
@@ -1385,7 +1302,7 @@ void MainLayoutWrapper::slotChatClear(){
                 pm->addStatus(tr("Chat cleared."));
             }
         }
-    }
+    }*/
 }
 
 void MainLayoutWrapper::slotFindInChat(){
@@ -1486,8 +1403,8 @@ void MainLayoutWrapper::slotUnixSignal(int sig){
 }
 
 void MainLayoutWrapper::slotCloseCurrentWidget(){
-    if (arena->widget())
-        arena->widget()->close();
+    /*if (arena->widget())
+        arena->widget()->close();*/
 }
 
 void MainLayoutWrapper::slotAboutQt(){

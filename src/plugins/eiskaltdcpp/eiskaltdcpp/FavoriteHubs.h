@@ -41,17 +41,21 @@ class FavoriteHubs :
         public dcpp::Singleton<FavoriteHubs>
 {
     Q_OBJECT
+    Q_INTERFACES(ArenaWidget IMultiTabsWidget)
 
     friend class dcpp::Singleton<FavoriteHubs>;
 
     typedef QMap<QString,QVariant> StrMap;
 public:
+    // Arena Widget interface
     QWidget *getWidget();
     QString getArenaTitle();
     QString getArenaShortTitle();
     QMenu *getMenu();
     const QPixmap &getPixmap(){ return WulforUtil::getInstance()->getPixmap(WulforUtil::eiFAVSERVER); }
 
+    // IMultiTabsWidget interface
+    void Remove() { close(); }
 protected:
     virtual void closeEvent(QCloseEvent *);
 
