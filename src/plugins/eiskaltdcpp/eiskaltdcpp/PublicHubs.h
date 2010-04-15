@@ -39,14 +39,20 @@ class PublicHubs :
         private Ui::UIPublicHubs
 {
 Q_OBJECT
+Q_INTERFACES(ArenaWidget IMultiTabsWidget)
+
 friend class dcpp::Singleton<PublicHubs>;
 
 public:
+    // Arena Widget interface
     QString  getArenaTitle(){ return tr("Public Hubs"); }
     QString  getArenaShortTitle(){ return getArenaTitle(); }
     QWidget *getWidget(){ return this; }
     QMenu   *getMenu(){ return NULL; }
     const QPixmap &getPixmap(){ return WulforUtil::getInstance()->getPixmap(WulforUtil::eiSERVER); }
+
+    // IMultiTabsWidget interface
+    void Remove() { close(); }
 
 protected:
     virtual void closeEvent(QCloseEvent *);

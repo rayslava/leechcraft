@@ -167,6 +167,14 @@ QMenu *PMWindow::getMenu(){
     return arena_menu;
 }
 
+void PMWindow::Remove(){
+    close();
+}
+
+QList<QAction*> PMWindow::GetTabBarContextMenuActions() const{
+    return ( arena_menu? arena_menu->actions() : QList<QAction*>() );
+}
+
 const QPixmap &PMWindow::getPixmap(){
     if (hasMessages)
         return WulforUtil::getInstance()->getPixmap(WulforUtil::eiMESSAGE);

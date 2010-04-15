@@ -203,6 +203,10 @@ DownloadQueue::~DownloadQueue(){
     delete menu;
 }
 
+void DownloadQueue::Remove(){
+    close();
+}
+
 void DownloadQueue::closeEvent(QCloseEvent *e){
     if (isUnload()){
         MainLayoutWrapper::getInstance()->remArenaWidgetFromToolbar(this);
