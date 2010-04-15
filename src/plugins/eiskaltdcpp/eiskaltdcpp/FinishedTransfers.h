@@ -42,17 +42,20 @@ private:
 
 class FinishedTransferProxy: public QWidget{
 Q_OBJECT
+
 public:
     FinishedTransferProxy(QWidget *parent):QWidget(parent){}
     ~FinishedTransferProxy(){}
 
     QString uploadTitle();
     QString downloadTitle();
+
 public slots:
     virtual void slotTypeChanged(int) = 0;
     virtual void slotClear() = 0;
     virtual void slotContextMenu() = 0;
     virtual void slotHeaderMenu() = 0;
+
 };
 
 template <bool isUpload>
@@ -63,6 +66,7 @@ class FinishedTransfers :
         public ArenaWidget,
         public FinishedTransferProxy
 {
+Q_INTERFACES(ArenaWidget IMultiTabsWidget)
 
 typedef QMap<QString, QVariant> VarMap;
 friend class dcpp::Singleton< FinishedTransfers<isUpload> >;
@@ -78,6 +82,8 @@ public:
         else
             return WulforUtil::getInstance()->getPixmap(WulforUtil::eiDOWN);
     }
+
+    void Remove(){ close(); }
 
 protected:
     virtual void customEvent(QEvent *e){

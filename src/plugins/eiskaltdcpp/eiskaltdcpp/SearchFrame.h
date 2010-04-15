@@ -50,7 +50,7 @@ class SearchFrame : public QWidget,
                     private ClientManagerListener
 {
     Q_OBJECT
-
+    Q_INTERFACES(ArenaWidget IMultiTabsWidget)
 
     typedef QMap<QString, QVariant> VarMap;
 
@@ -134,11 +134,15 @@ public:
     SearchFrame(QWidget* = NULL);
     virtual ~SearchFrame();
 
+    // Arena Widget interface
     QWidget *getWidget();
     QString  getArenaTitle();
     QString  getArenaShortTitle();
     QMenu   *getMenu();
     const QPixmap &getPixmap();
+
+    // IMultiTabsWidget interface
+    void Remove() { close(); }
 
     void searchAlternates(const QString &);
     void searchFile(const QString &);

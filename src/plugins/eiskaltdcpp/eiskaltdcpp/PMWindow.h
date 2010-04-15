@@ -17,6 +17,7 @@ class PMWindow: public QWidget,
                 public ArenaWidget
 {
     Q_OBJECT
+    Q_INTERFACES(ArenaWidget IMultiTabsWidget)
 
 public:
     friend class HubFrame;
@@ -24,11 +25,16 @@ public:
     PMWindow(QString cid, QString hubUrl);
     virtual ~PMWindow();
 
+    // Arena Widget interface
     QString  getArenaTitle();
     QString  getArenaShortTitle();
     QWidget *getWidget();
     QMenu   *getMenu();
     const QPixmap &getPixmap();
+
+    // IMultiTabsWidget interface
+    void Remove();
+    QList<QAction*> GetTabBarContextMenuActions () const;
 
     void addStatus(QString);
 

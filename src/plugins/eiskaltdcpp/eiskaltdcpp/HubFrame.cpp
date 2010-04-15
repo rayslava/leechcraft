@@ -977,6 +977,17 @@ const QPixmap &HubFrame::getPixmap(){
         return WulforUtil::getInstance()->getPixmap(WulforUtil::eiSERVER);
 }
 
+void HubFrame::Remove(){
+    close();
+}
+
+QList<QAction*> HubFrame::GetTabBarContextMenuActions () const{
+    if (arenaMenu)
+        return arenaMenu->actions();
+    else
+        return ArenaWidget::GetTabBarContextMenuActions();
+}
+
 void HubFrame::clearChat(){
     textEdit_CHAT->setHtml("");
 

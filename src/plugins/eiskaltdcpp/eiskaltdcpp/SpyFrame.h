@@ -37,15 +37,20 @@ class SpyFrame :
         private Ui::UISpy
 {
 Q_OBJECT
+Q_INTERFACES(ArenaWidget IMultiTabsWidget)
+
 friend class dcpp::Singleton<SpyFrame>;
 
 public:
-
+    // Arena Widget interface
     QString getArenaShortTitle() { return tr("Search Spy"); }
     QString getArenaTitle() {return getArenaShortTitle(); }
     QMenu *getMenu() {return NULL; }
     QWidget *getWidget() { return this; }
     const QPixmap &getPixmap(){ return WulforUtil::getInstance()->getPixmap(WulforUtil::eiSPY); }
+
+    // IMultiTabsWidget interface
+    void Remove() { close(); }
 
 protected:
     virtual void closeEvent(QCloseEvent *);

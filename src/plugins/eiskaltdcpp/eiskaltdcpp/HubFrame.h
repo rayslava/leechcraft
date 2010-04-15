@@ -93,6 +93,7 @@ class HubFrame :
         public ArenaWidget
 {
     Q_OBJECT
+    Q_INTERFACES(ArenaWidget IMultiTabsWidget)
 
     class Menu{
 
@@ -177,6 +178,10 @@ public:
     QString getArenaShortTitle();
     QMenu *getMenu();
     const QPixmap &getPixmap();
+
+    // IMultiTabsWidget interface
+    void Remove();
+    QList<QAction*> GetTabBarContextMenuActions () const;
 
     void disableChat();
     void clearChat();
