@@ -1,3 +1,12 @@
+/***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 3 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************/
+
 #ifndef PMWindow_H
 #define PMWindow_H
 
@@ -12,12 +21,12 @@ class QCloseEvent;
 class QMenu;
 class QShowEvent;
 
-class PMWindow: public QWidget,
-                public Ui::UIPrivateMessage,
-                public ArenaWidget
+class PMWindow: public  QWidget,
+                private Ui::UIPrivateMessage,
+                public  ArenaWidget
 {
     Q_OBJECT
-    Q_INTERFACES(ArenaWidget IMultiTabsWidget)
+    Q_INTERFACES(ArenaWidget)
 
 public:
     friend class HubFrame;
@@ -25,18 +34,26 @@ public:
     PMWindow(QString cid, QString hubUrl);
     virtual ~PMWindow();
 
-    // Arena Widget interface
     QString  getArenaTitle();
     QString  getArenaShortTitle();
     QWidget *getWidget();
     QMenu   *getMenu();
     const QPixmap &getPixmap();
-
-    // IMultiTabsWidget interface
-    void Remove();
-    QList<QAction*> GetTabBarContextMenuActions () const;
+    ArenaWidget::Role role() const { return ArenaWidget::PrivateMessage; }
+    void setCompleter(QCompleter *, UserListModel *);
 
     void addStatus(QString);
+    void sendMessage(QString,bool = false, bool = false);
+    QWidget *inputWidget() const { return plainTextEdit_INPUT; }
+
+    void setHasHighlightMessages(bool h) { hasHighlightMessages = (h && !isVisible()); }
+
+public slots:
+    void reloadSomeSettings();
+    void slotActivate();
+    void clearChat();
+    void nextMsg();
+    void prevMsg();
 
 private slots:
     void slotHub();
@@ -45,6 +62,8 @@ private slots:
 
 signals:
     void privateMessageClosed(QString);
+    void inputTextChanged();
+    void inputTextMenu();
 
 protected:
     virtual bool eventFilter(QObject*, QEvent*);
@@ -52,17 +71,20 @@ protected:
     virtual void showEvent(QShowEvent *);
 
 private:
-    void sendMessage(QString,bool = false);
     void addStatusMessage(QString);
     void addOutput(QString);
 
     bool hasMessages;
+    bool hasHighlightMessages;
 
     static int unread;
 
     QString cid;
     QString hubUrl;
     QMenu *arena_menu;
+
+    QStringList out_messages;
+    int out_messages_index;
 };
 
 #endif // PMWindow_H

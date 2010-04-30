@@ -1,3 +1,12 @@
+/***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 3 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************/
+
 #ifndef SEARCHFRAME_H
 #define SEARCHFRAME_H
 
@@ -12,6 +21,7 @@
 #include <QCloseEvent>
 #include <QTimer>
 #include <QCustomEvent>
+#include <QCompleter>
 
 #include "ui_UISearchFrame.h"
 #include "ArenaWidget.h"
@@ -28,6 +38,7 @@
 using namespace dcpp;
 
 class SearchModel;
+class SearchProxyModel;
 class SearchItem;
 
 class SearchCustomEvent: public QEvent{
@@ -44,13 +55,13 @@ private:
 };
 
 class SearchFrame : public QWidget,
-                    private Ui::SearchFrame,
                     public ArenaWidget,
+                    private Ui::SearchFrame,
                     private SearchManagerListener,
                     private ClientManagerListener
 {
     Q_OBJECT
-    Q_INTERFACES(ArenaWidget IMultiTabsWidget)
+    Q_INTERFACES(ArenaWidget)
 
     typedef QMap<QString, QVariant> VarMap;
 
@@ -134,26 +145,29 @@ public:
     SearchFrame(QWidget* = NULL);
     virtual ~SearchFrame();
 
-    // Arena Widget interface
     QWidget *getWidget();
     QString  getArenaTitle();
     QString  getArenaShortTitle();
     QMenu   *getMenu();
     const QPixmap &getPixmap();
-
-    // IMultiTabsWidget interface
-    void Remove() { close(); }
+    ArenaWidget::Role role() const { return ArenaWidget::Search; }
 
     void searchAlternates(const QString &);
     void searchFile(const QString &);
+    void fastSearch(const QString &, bool);
+
+    void CTRL_F_pressed() { slotFilter(); }
+
+    bool isFindFrameActivated();
+
+public slots:
+    void slotFilter();
 
 protected:
     virtual void closeEvent(QCloseEvent*);
-    virtual bool eventFilter(QObject *, QEvent *);
     virtual void customEvent(QEvent *);
 
 private slots:
-    void slotStartSearch();
     void timerTick();
     void slotClear();
     void slotTimer();
@@ -161,6 +175,8 @@ private slots:
     void slotContextMenu(const QPoint&);
     void slotHeaderMenu(const QPoint&);
     void slotToggleSidePanel();
+    void slotStartSearch();
+    void slotChangeProxyColumn(int);
 
 private:
     void init();
@@ -198,11 +214,14 @@ private:
     QTimer *timer;
     QTimer *timer1;
 
+    QCompleter *completer;
+
     QMenu *arena_menu;
 
     bool saveFileType;
 
     SearchModel *model;
+    SearchProxyModel *proxy;
 
     bool isHash;
     int left_pane_old_size;

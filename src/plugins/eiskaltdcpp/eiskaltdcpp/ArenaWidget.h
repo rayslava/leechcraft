@@ -1,3 +1,12 @@
+/***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 3 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************/
+
 #ifndef ARENAWIDGET_H
 #define ARENAWIDGET_H
 
@@ -5,14 +14,25 @@
 #include <QMenu>
 #include <QAction>
 #include <QPixmap>
-#include <QToolBar>
 
-#include <interfaces/imultitabs.h>
-
-class ArenaWidget: public IMultiTabsWidget
+class ArenaWidget
 {
-    Q_INTERFACES(IMultiTabsWidget)
 public:
+    enum Role{
+        Hub=0,
+        PrivateMessage,
+        ShareBrowser,
+        FavoriteHubs,
+        FavoriteUsers,
+        Search,
+        PublicHubs,
+        Downloads,
+        FinishedUploads,
+        FinishedDownloads,
+        Spy,
+        NoRole  //Not valid for widgets
+    };
+
     ArenaWidget();
     virtual ~ArenaWidget();
 
@@ -24,14 +44,13 @@ public:
     virtual void  setToolButton(QAction *btn) { if (btn) toolBtn = btn; }
     virtual const QPixmap &getPixmap(){ return _pxmap; }
 
-    virtual void Remove () { /** Do nothing */ }
-    virtual QToolBar* GetToolBar () const { return NULL; }
-    virtual void NewTabRequested () { /** Do nothing */ }
-    virtual QObject* ParentMultiTabs () const { return NULL; }
-    virtual QList<QAction*> GetTabBarContextMenuActions () const { return QList<QAction*>(); }
+    virtual void DEL_pressed() {}
+    virtual void CTRL_F_pressed() {}
 
     virtual void setUnload(bool b){ _arenaUnload = b; }
     virtual bool isUnload() const { return _arenaUnload; }
+
+    virtual Role role() const = 0;
 
 private:
     bool _arenaUnload;
@@ -39,6 +58,5 @@ private:
     QPixmap _pxmap;
 };
 
-Q_DECLARE_INTERFACE (ArenaWidget, "org.negativ.EiskaltDCPP.ArenaWidget/1.0");
-
+Q_DECLARE_INTERFACE (ArenaWidget, "com.NegatiV.EiskaltDCPP.ArenaWidget/1.0")
 #endif // ARENAWIDGET_H

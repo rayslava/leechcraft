@@ -1,3 +1,12 @@
+/***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 3 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************/
+
 #ifndef NOTIFICATION_H
 #define NOTIFICATION_H
 
@@ -68,6 +77,7 @@ enum Type{
 
     void enableTray(bool);
     void showMessage(Type t, const QString&, const QString&);
+    void setToolTip(const QString &, const QString &, const QString &, const QString &);
     void reloadSounds();
     void resetTrayIcon(){
         if (tray)
@@ -78,9 +88,11 @@ public slots:
     void switchModule(int);
 
 private slots:
+    void slotExit();
     void slotShowHide();
     void slotTrayMenuTriggered(QSystemTrayIcon::ActivationReason);
     void slotCmdFinished(bool, QString);
+    void slotCheckTray();
 
 private:
     explicit Notification(QObject *parent = 0);

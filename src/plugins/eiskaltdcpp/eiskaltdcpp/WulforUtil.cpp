@@ -24,6 +24,7 @@
 #include <QAbstractItemModel>
 #include <QHostAddress>
 #include <QMenu>
+#include <QHeaderView>
 
 #ifndef CLIENT_DATA_DIR
 #define CLIENT_DATA_DIR ""
@@ -47,7 +48,7 @@ const QString WulforUtil::magnetSignature = "magnet:?xt=urn:tree:tiger:";
 
 WulforUtil::WulforUtil(): http(NULL)
 {
-    QHttpRequestHeader header("GET", "/index.html");
+    QHttpRequestHeader header("GET", WSGET(WS_APP_DYNDNS_INDEX));
     header.setValue("Host", WSGET(WS_APP_DYNDNS_SERVER));
     QString useragent = QString("EiskaltDCPP");
     header.setValue("User-Agent", useragent);
@@ -56,6 +57,12 @@ WulforUtil::WulforUtil(): http(NULL)
     connect(http, SIGNAL(done(bool)), this, SLOT(slotHttpDone(bool)));
     http->setHost(WSGET(WS_APP_DYNDNS_SERVER));
     http->request(header);
+
+    http_timer = new QTimer();
+    http_timer->setInterval(30*1000);
+    connect(http_timer, SIGNAL(timeout()), this, SLOT(slotHttpTimer()));
+
+    http_timer->start();
 
     memset(userIconCache, 0, sizeof (userIconCache));
 
@@ -103,6 +110,7 @@ WulforUtil::WulforUtil(): http(NULL)
 
 WulforUtil::~WulforUtil(){
     delete userIcons;
+    delete http_timer;
     delete http;
 
     clearUserIconCache();
@@ -240,66 +248,72 @@ bool WulforUtil::loadIcons(){
 
     m_PixmapMap.clear();
 
-    m_PixmapMap[eiBALL_GREEN] = loadPixmap("ball_green.png");
+    m_PixmapMap[eiAWAY]         = loadPixmap("away");
+    m_PixmapMap[eiBALL_GREEN]   = loadPixmap("ball_green.png");
     m_PixmapMap[eiBOOKMARK_ADD] = loadPixmap("bookmark_add.png");
-    m_PixmapMap[eiCHAT] = loadPixmap("chat.png");
-    m_PixmapMap[eiCLEAR] = loadPixmap("clear.png");
-    m_PixmapMap[eiCONFIGURE] = loadPixmap("configure.png");
-    m_PixmapMap[eiCONNECT] = loadPixmap("connect.png");
-    m_PixmapMap[eiCONNECT_NO] = loadPixmap("connect_no.png");
-    m_PixmapMap[eiDOWN] = loadPixmap("down.png");
-    m_PixmapMap[eiDOWNLIST] = loadPixmap("downlist.png");
-    m_PixmapMap[eiDOWNLOAD] = loadPixmap("download.png");
-    m_PixmapMap[eiDOWNLOAD_AS] = loadPixmap("download_as.png");
-    m_PixmapMap[eiEDIT] = loadPixmap("edit.png");
-    m_PixmapMap[eiEDITADD] = loadPixmap("editadd.png");
-    m_PixmapMap[eiEDITCOPY] = loadPixmap("editcopy.png");
-    m_PixmapMap[eiEDITDELETE] = loadPixmap("editdelete.png");
-    m_PixmapMap[eiEMOTICON] = loadPixmap("emoticon.png");
-    m_PixmapMap[eiEXIT] = loadPixmap("exit.png");
-    m_PixmapMap[eiFAV] = loadPixmap("fav.png");
-    m_PixmapMap[eiFAVADD] = loadPixmap("favadd.png");
-    m_PixmapMap[eiFAVREM] = loadPixmap("favrem.png");
-    m_PixmapMap[eiFAVSERVER] = loadPixmap("favserver.png");
-    m_PixmapMap[eiFAVUSERS] = loadPixmap("favusers.png");
-    m_PixmapMap[eiFILECLOSE] = loadPixmap("fileclose.png");
-    m_PixmapMap[eiFILEFIND] = loadPixmap("filefind.png");
-    m_PixmapMap[eiFILTER] = loadPixmap("filter.png");
-    m_PixmapMap[eiFIND] = loadPixmap("find.png");
-    m_PixmapMap[eiFOLDER_BLUE] = loadPixmap("folder_blue.png");
-    m_PixmapMap[eiFREESPACE] = loadPixmap("freespace.png");
-    m_PixmapMap[eiGUI] = loadPixmap("gui.png");
-    m_PixmapMap[eiGV] = QPixmap(gv_xpm);
-    m_PixmapMap[eiHASHING] = loadPixmap("hashing.png");
-    m_PixmapMap[eiHIDEWINDOW] = loadPixmap("hidewindow.png");
-    m_PixmapMap[eiICON_APPL] = loadPixmap("icon_appl.png");
-    m_PixmapMap[eiMESSAGE] = loadPixmap("message.png");
+    m_PixmapMap[eiCHAT]         = loadPixmap("chat.png");
+    m_PixmapMap[eiCLEAR]        = loadPixmap("clear.png");
+    m_PixmapMap[eiCONFIGURE]    = loadPixmap("configure.png");
+    m_PixmapMap[eiCONNECT]      = loadPixmap("connect.png");
+    m_PixmapMap[eiCONNECT_NO]   = loadPixmap("connect_no.png");
+    m_PixmapMap[eiDOWN]         = loadPixmap("down.png");
+    m_PixmapMap[eiDOWNLIST]     = loadPixmap("downlist.png");
+    m_PixmapMap[eiDOWNLOAD]     = loadPixmap("download.png");
+    m_PixmapMap[eiDOWNLOAD_AS]  = loadPixmap("download_as.png");
+    m_PixmapMap[eiEDIT]         = loadPixmap("edit.png");
+    m_PixmapMap[eiEDITADD]      = loadPixmap("editadd.png");
+    m_PixmapMap[eiEDITCOPY]     = loadPixmap("editcopy.png");
+    m_PixmapMap[eiEDITDELETE]   = loadPixmap("editdelete.png");
+    m_PixmapMap[eiEDITCLEAR]    = loadPixmap("edit-clear.png");
+    m_PixmapMap[eiEMOTICON]     = loadPixmap("emoticon.png");
+    m_PixmapMap[eiERASER]       = loadPixmap("eraser.png");
+    m_PixmapMap[eiEXIT]         = loadPixmap("exit.png");
+    m_PixmapMap[eiFAV]          = loadPixmap("fav.png");
+    m_PixmapMap[eiFAVADD]       = loadPixmap("favadd.png");
+    m_PixmapMap[eiFAVREM]       = loadPixmap("favrem.png");
+    m_PixmapMap[eiFAVSERVER]    = loadPixmap("favserver.png");
+    m_PixmapMap[eiFAVUSERS]     = loadPixmap("favusers.png");
+    m_PixmapMap[eiFILECLOSE]    = loadPixmap("fileclose.png");
+    m_PixmapMap[eiFILEFIND]     = loadPixmap("filefind.png");
+    m_PixmapMap[eiFILTER]       = loadPixmap("filter.png");
+    m_PixmapMap[eiFIND]         = loadPixmap("find.png");
+    m_PixmapMap[eiFOLDER_BLUE]  = loadPixmap("folder_blue.png");
+    m_PixmapMap[eiFREESPACE]    = loadPixmap("freespace.png");
+    m_PixmapMap[eiGUI]          = loadPixmap("gui.png");
+    m_PixmapMap[eiGV]           = QPixmap(gv_xpm);
+    m_PixmapMap[eiHASHING]      = loadPixmap("hashing.png");
+    m_PixmapMap[eiHIDEWINDOW]   = loadPixmap("hidewindow.png");
+    m_PixmapMap[eiHUBMSG]       = loadPixmap("hubmsg.png");
+    m_PixmapMap[eiICON_APPL]    = loadPixmap("icon_appl.png");
+    m_PixmapMap[eiMESSAGE]      = loadPixmap("message.png");
     m_PixmapMap[eiMESSAGE_TRAY_ICON] = loadPixmap("icon_msg.png");
     m_PixmapMap[eiOWN_FILELIST] = loadPixmap("own_filelist.png");
-    m_PixmapMap[eiOPENLIST] = loadPixmap("openlist.png");
-    m_PixmapMap[eiOPEN_LOG_FILE] = loadPixmap("log_file.png");
-    m_PixmapMap[eiRECONNECT] = loadPixmap("reconnect.png");
-    m_PixmapMap[eiREFRLIST] = loadPixmap("refrlist.png");
-    m_PixmapMap[eiRELOAD] = loadPixmap("reload.png");
-    m_PixmapMap[eiSERVER] = loadPixmap("server.png");
-    m_PixmapMap[eiSPAM] = loadPixmap("spam.png");
-    m_PixmapMap[eiSPY] = loadPixmap("spy.png");
-    m_PixmapMap[eiSPLASH] = loadPixmap("splash.png");
-    m_PixmapMap[eiTRANSFER] = loadPixmap("transfer.png");
-    m_PixmapMap[eiUP] = loadPixmap("up.png");
-    m_PixmapMap[eiUPLIST] = loadPixmap("uplist.png");
-    m_PixmapMap[eiUSERS] = loadPixmap("users.png");
-    m_PixmapMap[eiZOOM_IN] = loadPixmap("zoom-in.png");
-    m_PixmapMap[eiZOOM_OUT] = loadPixmap("zoom-out.png");
-    m_PixmapMap[eiQT_LOGO] = loadPixmap("qt-logo.png");
+    m_PixmapMap[eiOPENLIST]     = loadPixmap("openlist.png");
+    m_PixmapMap[eiOPEN_LOG_FILE]= loadPixmap("log_file.png");
+    m_PixmapMap[eiPMMSG]        = loadPixmap("pmmsg.png");
+    m_PixmapMap[eiRECONNECT]    = loadPixmap("reconnect.png");
+    m_PixmapMap[eiREFRLIST]     = loadPixmap("refrlist.png");
+    m_PixmapMap[eiRELOAD]       = loadPixmap("reload.png");
+    m_PixmapMap[eiSERVER]       = loadPixmap("server.png");
+    m_PixmapMap[eiSPAM]         = loadPixmap("spam.png");
+    m_PixmapMap[eiSPY]          = loadPixmap("spy.png");
+    m_PixmapMap[eiSPLASH]       = loadPixmap("splash.png");
+    m_PixmapMap[eiSTATUS]       = loadPixmap("status.png");
+    m_PixmapMap[eiTRANSFER]     = loadPixmap("transfer.png");
+    m_PixmapMap[eiUP]           = loadPixmap("up.png");
+    m_PixmapMap[eiUPLIST]       = loadPixmap("uplist.png");
+    m_PixmapMap[eiUSERS]        = loadPixmap("users.png");
+    m_PixmapMap[eiZOOM_IN]      = loadPixmap("zoom-in.png");
+    m_PixmapMap[eiZOOM_OUT]     = loadPixmap("zoom-out.png");
+    m_PixmapMap[eiQT_LOGO]      = loadPixmap("qt-logo.png");
 
     m_PixmapMap[eiFILETYPE_APPLICATION] = loadPixmap("filetype-application.png");
-    m_PixmapMap[eiFILETYPE_ARCHIVE] = loadPixmap("filetype-archive.png");
-    m_PixmapMap[eiFILETYPE_DOCUMENT] = loadPixmap("filetype-document.png");
-    m_PixmapMap[eiFILETYPE_MP3] = loadPixmap("filetype-audio.png");
-    m_PixmapMap[eiFILETYPE_PICTURE] = loadPixmap("filetype-picture.png");
-    m_PixmapMap[eiFILETYPE_UNKNOWN] = loadPixmap("filetype-unknown.png");
-    m_PixmapMap[eiFILETYPE_VIDEO] = loadPixmap("filetype-video.png");
+    m_PixmapMap[eiFILETYPE_ARCHIVE]     = loadPixmap("filetype-archive.png");
+    m_PixmapMap[eiFILETYPE_DOCUMENT]    = loadPixmap("filetype-document.png");
+    m_PixmapMap[eiFILETYPE_MP3]         = loadPixmap("filetype-audio.png");
+    m_PixmapMap[eiFILETYPE_PICTURE]     = loadPixmap("filetype-picture.png");
+    m_PixmapMap[eiFILETYPE_UNKNOWN]     = loadPixmap("filetype-unknown.png");
+    m_PixmapMap[eiFILETYPE_VIDEO]       = loadPixmap("filetype-video.png");
 
     return !m_bError;
 }
@@ -673,11 +687,61 @@ QStringList WulforUtil::getLocalIPs(){
     return addresses;
 }
 
+QString WulforUtil::formatBytes(int64_t aBytes){
+    QString s;
+    if(aBytes < 1024)
+        s = tr("%1 B").arg((int)(aBytes & 0xffffffff));
+    else if(aBytes < 1024*1024)
+        s = tr("%1 KiB").arg(static_cast<double>(aBytes)/1024.0, 0, 'f', 1);
+    else if(aBytes < 1024*1024*1024)
+        s = tr("%1 MiB").arg(static_cast<double>(aBytes)/(1024.0*1024.0), 0, 'f', 1);
+    else if(aBytes < static_cast<int64_t>(1024)*1024*1024*1024)
+        s = tr("%1 GiB").arg(static_cast<double>(aBytes)/(1024.0*1024.0*1024.0), 0, 'f', 2);
+    else if(aBytes < static_cast<int64_t>(1024)*1024*1024*1024*1024)
+        s = tr("%1 TiB").arg(static_cast<double>(aBytes)/(1024.0*1024.0*1024.0*1024.0), 0, 'f', 3);
+    else
+        s = tr("%1 PiB").arg(static_cast<double>(aBytes)/(1024.0*1024.0*1024.0*1024.0*1024.0), 0, 'f', 4);
+    return s;
+}
+
 QString WulforUtil::makeMagnet(const QString &path, const int64_t size, const QString &tth){
     if (path.isEmpty() || tth.isEmpty())
         return "";
 
     return magnetSignature + tth + "&xl=" + _q(Util::toString(size)) + "&dn=" + _q(Util::encodeURI(path.toStdString()));
+}
+
+void WulforUtil::splitMagnet(const QString &magnet, int64_t &size, QString &tth, QString &name){
+    size = 0;
+    tth = "";
+    name = "";
+
+    if (magnet.isEmpty() || !magnet.contains("urn:tree:tiger"))
+        return;
+
+    QUrl url;
+
+    if (!magnet.contains("+"))
+        url.setEncodedUrl(magnet.toAscii());
+    else {
+        QString _l = magnet;
+
+        _l.replace("+", "%20");
+        url.setEncodedUrl(_l.toAscii());
+    }
+
+    if (url.hasQueryItem("dn"))
+        name = url.queryItemValue("dn");
+
+    if (url.hasQueryItem("xl"))
+        size = url.queryItemValue("xl").toLongLong();
+
+    if (url.hasQueryItem("xt")){
+        tth = url.queryItemValue("xt");
+
+        if (tth.startsWith("urn:tree:tiger:"))
+            tth.remove(0, strlen("urn:tree:tiger:"));
+    }
 }
 
 int WulforUtil::sortOrderToInt(Qt::SortOrder order){
@@ -787,6 +851,15 @@ void WulforUtil::slotHttpDone(bool error){
     }
 }
 
+void WulforUtil::slotHttpTimer(){
+    QHttpRequestHeader header("GET", WSGET(WS_APP_DYNDNS_INDEX));
+    header.setValue("Host", WSGET(WS_APP_DYNDNS_SERVER));
+    QString useragent = QString("EiskaltDCPP");
+    header.setValue("User-Agent", useragent);
+
+    http->request(header);
+}
+
 QMenu *WulforUtil::buildUserCmdMenu(const QList<QString> &hub_list, int ctx){
     if (hub_list.empty())
         return NULL;
@@ -821,6 +894,7 @@ QMenu *WulforUtil::buildUserCmdMenu(const QList<QString> &hub_list, int ctx){
 
             if (raw_name.contains("\\")){
                 QStringList submenus = raw_name.split("\\", QString::SkipEmptyParts);
+                if (!submenus.isEmpty()){
                 QString name = submenus.takeLast();
                 QString key = "";
                 QMenu *parent = usr_menu;
@@ -843,15 +917,17 @@ QMenu *WulforUtil::buildUserCmdMenu(const QList<QString> &hub_list, int ctx){
 
                 action = new QAction(name, parent);
                 parent->addAction(action);
+                }
             }
             else{
                 action = new QAction(_q(uc.getName()), usr_menu);
                 usr_menu->addAction(action);
             }
-
-            action->setToolTip(_q(uc.getCommand()));
-            action->setStatusTip(_q(uc.getName()));
-            action->setData(_q(uc.getHub()));
+            if (action) {
+                action->setToolTip(_q(uc.getCommand()));
+                action->setStatusTip(_q(uc.getName()));
+                action->setData(_q(uc.getHub()));
+            }
 
         }
     }

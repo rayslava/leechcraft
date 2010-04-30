@@ -19,11 +19,23 @@
 
 #include "WulforUtil.h"
 
+void UserListProxyModel::sort(int column, Qt::SortOrder order){
+    if (sourceModel())
+        sourceModel()->sort(column, order);
+}
+
 UserListModel::UserListModel(QObject * parent) : QAbstractItemModel(parent) {
     sortColumn = COLUMN_SHARE;
     sortOrder = Qt::DescendingOrder;
     stripper.setPattern("\\[.*\\]");
     stripper.setMinimal(true);
+
+    _needResort = false;
+
+    t = new QTimer();
+    t->setSingleShot(true);
+    t->setInterval(3000);
+    connect(t, SIGNAL(timeout()), this, SLOT(slotResort()));
 
     rootItem = new UserListItem(NULL);
 
@@ -33,6 +45,8 @@ UserListModel::UserListModel(QObject * parent) : QAbstractItemModel(parent) {
 
 UserListModel::~UserListModel() {
     delete rootItem;
+
+    t->deleteLater();
 }
 
 
@@ -70,7 +84,7 @@ QVariant UserListModel::data(const QModelIndex & index, int role) const {
                 case COLUMN_TAG: return item->tag;
                 case COLUMN_CONN: return item->conn;
                 case COLUMN_EMAIL: return item->email;
-                case COLUMN_SHARE: return QString::fromStdString(dcpp::Util::formatBytes(item->share));
+                case COLUMN_SHARE: return WulforUtil::formatBytes(item->share);
                 case COLUMN_IP: return item->ip;
             }
 
@@ -98,8 +112,12 @@ QVariant UserListModel::data(const QModelIndex & index, int role) const {
                 ttip += "<b>" + headerData(COLUMN_EMAIL, Qt::Horizontal, Qt::DisplayRole).toString() + "</b>: " + item->email + "<br/>";
                 ttip += "<b>" + headerData(COLUMN_IP, Qt::Horizontal, Qt::DisplayRole).toString() + "</b>: " + item->ip + "<br/>";
                 ttip += "<b>" + headerData(COLUMN_SHARE, Qt::Horizontal, Qt::DisplayRole).toString() + "</b>: " +
-                        QString::fromStdString(dcpp::Util::formatBytes(item->share)) + "<br/>";
-                ttip += "<b>" + headerData(COLUMN_TAG, Qt::Horizontal, Qt::DisplayRole).toString() + "</b>: " + item->tag + "<br/>";
+                        WulforUtil::formatBytes(item->share) + "<br/>";
+
+                QString tag = item->tag;
+                WulforUtil::getInstance()->textToHtml(tag, true);
+
+                ttip += "<b>" + headerData(COLUMN_TAG, Qt::Horizontal, Qt::DisplayRole).toString() + "</b>: " + tag + "<br/>";
                 ttip += "<b>" + headerData(COLUMN_CONN, Qt::Horizontal, Qt::DisplayRole).toString() + "</b>: " + item->conn + "<br/>";
 
                 if (item->isOp)
@@ -208,7 +226,7 @@ struct Compare {
         bool static IPCmp(const UserListItem * l, const UserListItem * r){
             if (l->isOp != r->isOp)
                 return l->isOp;
-            else {
+            else if (!(l->ip.isEmpty() || r->ip.isEmpty())){
                 QString ip1 = l->ip;
                 QString ip2 = r->ip;
 
@@ -233,7 +251,7 @@ struct Compare {
         }
 
         template <typename T>
-        bool static Cmp(const T& l, const T& r);
+        inline bool static Cmp(const T& l, const T& r) __attribute__((always_inline));
 };
 
 template <> template <typename T>
@@ -302,6 +320,15 @@ void UserListModel::clear() {
     emit layoutChanged();
 }
 
+void UserListModel::needResort(){
+    if (_needResort)
+        return;
+
+    _needResort = true;
+
+    t->start();
+}
+
 void UserListModel::removeUser(const UserPtr &ptr) {
     USRMap::iterator iter = users.find(ptr);
 
@@ -312,7 +339,9 @@ void UserListModel::removeUser(const UserPtr &ptr) {
 
     beginRemoveRows(QModelIndex(), index, index);
 
-    UserListItem *item = users.value(ptr);
+    UserListItem *item = iter.value();
+
+    nicks.remove(item->nick);
 
     rootItem->childItems.removeAt(index);
     delete item;
@@ -396,7 +425,9 @@ void UserListModel::addUser(const QString& nick,
 }
 
 UserListItem *UserListModel::itemForPtr(const UserPtr &ptr){
-    UserListItem *item = (users.contains(ptr))? (users.value(ptr)) : (NULL);
+    USRMap::iterator iter = users.find(ptr);
+
+    UserListItem *item = (iter != users.end())? (iter.value()) : (NULL);
 
     return item;
 }
@@ -480,6 +511,19 @@ QStringList UserListModel::matchNicksAny(const QString &part, bool stripTags) co
     }
 
     return matches;
+}
+
+QStringList UserListModel::findItems(const QString &part, Qt::MatchFlags flags, int column) const
+{
+    QModelIndexList indexes = match(index(0, column, QModelIndex()),
+                                    Qt::DisplayRole, part, -1, flags);
+    QStringList items;
+    for (int i = 0; i < indexes.size(); ++i) {
+        QModelIndex index = indexes.at(i);
+        if (index.isValid())
+            items.append( index.data().toString() );
+    }
+    return items;
 }
 
 UserListItem::UserListItem(UserListItem *parent) :

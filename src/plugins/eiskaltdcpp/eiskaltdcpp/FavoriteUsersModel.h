@@ -1,3 +1,12 @@
+/***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 3 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************/
+
 #ifndef FAVORITEUSERSMODEL_H
 #define FAVORITEUSERSMODEL_H
 
@@ -62,7 +71,7 @@ public:
     virtual void sort(int column, Qt::SortOrder order = Qt::AscendingOrder);
 
     void addUser(const VarMap&);
-    void updateUserStatus(const QString &, const QString &);
+    void updateUserStatus(const QString &, const QString &, const QString &);
     void removeUser(const QString &);
 
     FavoriteUserItem *itemForCID(const QString &cid){

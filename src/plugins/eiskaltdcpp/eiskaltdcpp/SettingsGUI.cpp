@@ -65,6 +65,10 @@ void SettingsGUI::init(){
                 lang = tr("Belarusian");
             else if (f == "eiskaltdcpp.hu.qm")
                 lang = tr("Hungarian");
+            else if (f == "eiskaltdcpp.fr.qm")
+                lang = tr("French");
+            else if (f == "eiskaltdcpp.pl.qm")
+                lang = tr("Polish");
 
             if (!lang.isEmpty()){
                 comboBox_LANGS->addItem(lang, full_path);
@@ -110,8 +114,19 @@ void SettingsGUI::init(){
         lineEdit_LANGFILE->setText(WSGET(WS_TRANSLATION_FILE));
 
         toolButton_LANGBROWSE->setIcon(WU->getPixmap(WulforUtil::eiFOLDER_BLUE));
+
+        if (WBGET(WB_MAINWINDOW_REMEMBER))
+            radioButton_REMEMBER->setChecked(true);
+        else if (WBGET(WB_MAINWINDOW_HIDE))
+            radioButton_HIDE->setChecked(true);
+        else
+            radioButton_SHOW->setChecked(true);
+
+        checkBox_SIDEBAR->setChecked(WBGET(WB_MAINWINDOW_USE_SIDEBAR));
     }
     {//Chat tab
+        spinBox_OUT_IN_HIST->setValue(WIGET(WI_OUT_IN_HIST));
+        spinBox_TEXT_EDIT_HEIGHT->setValue(WIGET(WI_TEXT_EDIT_HEIGHT));
         spinBox_PARAGRAPHS->setValue(WIGET(WI_CHAT_MAXPARAGRAPHS));
 
         checkBox_CHATJOINS->setChecked(WBGET(WB_CHAT_SHOW_JOINS));
@@ -123,6 +138,7 @@ void SettingsGUI::init(){
         checkBox_KEEPFOCUS->setChecked(WBGET(WB_CHAT_KEEPFOCUS));
         checkBox_EMOT->setChecked(WBGET(WB_APP_ENABLE_EMOTICON));
         checkBox_EMOTFORCE->setChecked(WBGET(WB_APP_FORCE_EMOTICONS));
+        checkBox_USE_CTRL_ENTER->setChecked(WBGET(WB_USE_CTRL_ENTER));
     }
     {//Color tab
         QColor c;
@@ -212,13 +228,25 @@ void SettingsGUI::ok(){
         if (!lineEdit_LANGFILE->text().isEmpty())
             WSSET(WS_TRANSLATION_FILE, lineEdit_LANGFILE->text());
 
+        WBSET(WB_MAINWINDOW_REMEMBER, radioButton_REMEMBER->isChecked());
+        WBSET(WB_MAINWINDOW_HIDE, radioButton_HIDE->isChecked());
+
         if (WSGET(WS_APP_EMOTICON_THEME) != comboBox_EMOT->currentText()){
             WSSET(WS_APP_EMOTICON_THEME, comboBox_EMOT->currentText());
 
             EmoticonFactory::getInstance()->load();
         }
+
+        WBSET(WB_MAINWINDOW_USE_SIDEBAR, checkBox_SIDEBAR->isChecked());
     }
     {//Chat tab
+        if (WIGET(WI_TEXT_EDIT_HEIGHT) != spinBox_TEXT_EDIT_HEIGHT->value()){
+            WISET(WI_TEXT_EDIT_HEIGHT, spinBox_TEXT_EDIT_HEIGHT->value());
+  #warning "class MainLayoutWrapper has no member named reloadSomeSettings"
+            //MainLayoutWrapper::getInstance()->reloadSomeSettings();
+        }
+
+        WISET(WI_OUT_IN_HIST, spinBox_OUT_IN_HIST->value());
         WISET(WI_CHAT_MAXPARAGRAPHS, spinBox_PARAGRAPHS->value());
 
         WBSET(WB_SHOW_HIDDEN_USERS, checkBox_CHATHIDDEN->isChecked());
@@ -228,11 +256,10 @@ void SettingsGUI::ok(){
         WBSET(WB_CHAT_KEEPFOCUS, checkBox_KEEPFOCUS->isChecked());
         WBSET(WB_APP_ENABLE_EMOTICON, checkBox_EMOT->isChecked());
         WBSET(WB_APP_FORCE_EMOTICONS, checkBox_EMOTFORCE->isChecked());
+        WBSET(WB_USE_CTRL_ENTER, checkBox_USE_CTRL_ENTER->isChecked());
 
         SM->set(SettingsManager::IGNORE_BOT_PMS, checkBox_IGNOREPMBOT->isChecked());
         SM->set(SettingsManager::IGNORE_HUB_PMS, checkBox_IGNOREPMHUB->isChecked());
-
-        SM->save();
     }
     {//Color tab
         int i = 0;
@@ -253,8 +280,6 @@ void SettingsGUI::ok(){
         WSSET(WS_CHAT_FIND_COLOR,       h_color.name());
         WISET(WI_CHAT_FIND_COLOR_ALPHA, horizontalSlider_H_COLOR->value());
     }
-
-    WulforSettings::getInstance()->save();
 }
 
 void SettingsGUI::slotChatColorItemClicked(QListWidgetItem *item){

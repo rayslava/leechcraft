@@ -1336,7 +1336,7 @@ void MainLayoutWrapper::slotQC(){
 }
 
 void MainLayoutWrapper::slotHideWindow(){
-    HubFrame *fr = HubManager::getInstance()->activeHub();
+    /*HubFrame *fr = HubManager::getInstance()->activeHub();
     if (fr){
         if (fr->lineEdit_FIND->hasFocus() && WBGET(WB_TRAY_ENABLED)){
             fr->slotHideFindFrame();
@@ -1346,7 +1346,7 @@ void MainLayoutWrapper::slotHideWindow(){
             fr->slotHideFindFrame();
             return;
         }
-    }
+    }*/
 }
 
 void MainLayoutWrapper::slotHideProgressSpace() {

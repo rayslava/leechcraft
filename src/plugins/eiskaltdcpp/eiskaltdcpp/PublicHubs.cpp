@@ -5,11 +5,12 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QItemSelectionModel>
+#include <QHeaderView>
 
 using namespace dcpp;
 
 PublicHubs::PublicHubs(QWidget *parent) :
-    QWidget(parent)
+    QWidget(parent), proxy(NULL)
 {
     setupUi(this);
 
@@ -25,6 +26,18 @@ PublicHubs::PublicHubs(QWidget *parent) :
     MainLayoutWrapper *MW = MainLayoutWrapper::getInstance();
     MW->addArenaWidget(this);
 
+    QString hubs = _q(SettingsManager::getInstance()->get(SettingsManager::HUBLIST_SERVERS));
+
+    comboBox_HUBS->addItems(hubs.split(";"));
+    comboBox_HUBS->setCurrentIndex(FavoriteManager::getInstance()->getSelectedHubList());
+
+    for (int i = 0; i < model->columnCount(); i++)
+        comboBox_FILTER->addItem(model->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString());
+
+    comboBox_FILTER->setCurrentIndex(COLUMN_PHUB_DESC);
+
+    frame->hide();
+
     entries = FavoriteManager::getInstance()->getPublicHubs();
 
     updateList();
@@ -39,11 +52,15 @@ PublicHubs::PublicHubs(QWidget *parent) :
     treeView->header()->setContextMenuPolicy(Qt::CustomContextMenu);
 
     connect(treeView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(slotContextMenu()));
+    connect(treeView, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(slotDoubleClicked(QModelIndex)));
     connect(treeView->header(), SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(slotHeaderMenu()));
+    connect(toolButton_CLOSEFILTER, SIGNAL(clicked()), this, SLOT(slotFilter()));
+    connect(comboBox_HUBS, SIGNAL(activated(int)), this, SLOT(slotHubChanged(int)));
 }
 
 PublicHubs::~PublicHubs(){
     delete model;
+    delete proxy;
 
     FavoriteManager::getInstance()->removeListener(this);
 }
@@ -92,7 +109,7 @@ void PublicHubs::updateList(){
         data.clear();
 
         data << _q(entry->getName())         << _q(entry->getDescription())  << entry->getUsers()
-             << _q(entry->getServer())       << _q(entry->getCountry())      << (qulonglong)entry->getShared()
+             << _q(entry->getServer())       << _q(entry->getCountry())      << (qlonglong)entry->getShared()
              << (qint64)entry->getMinShare() << (qint64)entry->getMinSlots() << (qint64)entry->getMaxHubs()
              << (qint64)entry->getMaxUsers() << static_cast<double>(entry->getReliability()) << _q(entry->getRating());
 
@@ -114,6 +131,13 @@ void PublicHubs::slotContextMenu(){
 
     if (indexes.isEmpty())
         return;
+
+    if (proxy){
+        QModelIndexList list;
+        foreach (QModelIndex i, indexes)
+            list.push_back(proxy->mapToSource(i));
+        indexes = list;
+    }
 
     WulforUtil *WU = WulforUtil::getInstance();
 
@@ -177,6 +201,67 @@ void PublicHubs::slotContextMenu(){
 
 void PublicHubs::slotHeaderMenu(){
     WulforUtil::headerMenu(treeView);
+}
+
+void PublicHubs::slotDoubleClicked(const QModelIndex &index){
+    if (!index.isValid())
+        return;
+
+    QModelIndex i = proxy? proxy->mapToSource(index) : index;
+
+    PublicHubItem * item = reinterpret_cast<PublicHubItem*>(i.internalPointer());
+    MainLayoutWrapper *MW = MainLayoutWrapper::getInstance();
+
+    if (item)
+        MW->newHubFrame(item->data(COLUMN_PHUB_ADDRESS).toString(), "");
+}
+
+bool PublicHubs::isFindFrameActivated(){
+    return (frame->isVisible() && lineEdit_FILTER->hasFocus());
+}
+
+void PublicHubs::slotFilter(){
+    if (frame->isVisible()){
+        treeView->setModel(model);
+
+        disconnect(lineEdit_FILTER, SIGNAL(textChanged(QString)), proxy, SLOT(setFilterFixedString(QString)));
+
+        delete proxy;
+        proxy = NULL;
+    }
+    else {
+        proxy = new PublicHubProxyModel();
+        proxy->setDynamicSortFilter(true);
+        proxy->setFilterFixedString(lineEdit_FILTER->text());
+        proxy->setFilterCaseSensitivity(Qt::CaseInsensitive);
+        proxy->setFilterKeyColumn(comboBox_FILTER->currentIndex());
+        proxy->setSourceModel(model);
+
+        treeView->setModel(proxy);
+
+        connect(lineEdit_FILTER, SIGNAL(textChanged(QString)), proxy, SLOT(setFilterFixedString(QString)));
+        connect(comboBox_FILTER, SIGNAL(currentIndexChanged(int)), this, SLOT(slotFilterColumnChanged()));
+
+        lineEdit_FILTER->setFocus();
+
+        if (!lineEdit_FILTER->text().isEmpty())
+            lineEdit_FILTER->selectAll();
+    }
+
+    frame->setVisible(!frame->isVisible());
+}
+
+void PublicHubs::slotHubChanged(int pos){
+    FavoriteManager::getInstance()->setHubList(pos);
+    FavoriteManager::getInstance()->refresh();
+}
+
+void PublicHubs::slotFilterColumnChanged(){
+    if (proxy)
+        proxy->setFilterKeyColumn(comboBox_FILTER->currentIndex());
+
+    if (comboBox_FILTER->hasFocus())
+        lineEdit_FILTER->setFocus();
 }
 
 void PublicHubs::on(DownloadStarting, const std::string& l) throw(){

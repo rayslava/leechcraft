@@ -1,3 +1,12 @@
+/***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 3 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************/
+
 #ifndef HUBFRAME_H
 #define HUBFRAME_H
 
@@ -11,11 +20,13 @@
 #include <QAction>
 #include <QHash>
 #include <QSortFilterProxyModel>
+#include <QCompleter>
 
 #include "ui_HubFrame.h"
 
 #include "dcpp/stdinc.h"
 #include "dcpp/DCPlusPlus.h"
+#include "dcpp/FastAlloc.h"
 #include "dcpp/ClientListener.h"
 #include "dcpp/ClientManager.h"
 #include "dcpp/ClientManagerListener.h"
@@ -34,7 +45,7 @@ class PMWindow;
 
 using namespace dcpp;
 
-class UserUpdatedEvent: public QEvent{
+class UserUpdatedEvent: public QEvent, public dcpp::FastAlloc<UserUpdatedEvent>{
 public:
     static const QEvent::Type Event = static_cast<QEvent::Type>(1200);
 
@@ -56,7 +67,7 @@ private:
     QHash<QString, QVariant> map;
 };
 
-class UserRemovedEvent: public QEvent{
+class UserRemovedEvent: public QEvent, public dcpp::FastAlloc<UserRemovedEvent>{
 public:
     static const QEvent::Type Event = static_cast<QEvent::Type>(1201);
 
@@ -73,7 +84,7 @@ private:
     dcpp::UserPtr user;
 };
 
-class UserCustomEvent: public QEvent{
+class UserCustomEvent: public QEvent, public dcpp::FastAlloc<UserCustomEvent>{
 public:
     static const QEvent::Type Event = static_cast<QEvent::Type>(1202);
 
@@ -87,13 +98,14 @@ private:
 };
 
 class HubFrame :
-        public QWidget,
-        public Ui::UIHubFrame,
+        public  QWidget,
+        private Ui::UIHubFrame,
         private dcpp::ClientListener,
-        public ArenaWidget
+        private FavoriteManagerListener,
+        public  ArenaWidget
 {
     Q_OBJECT
-    Q_INTERFACES(ArenaWidget IMultiTabsWidget)
+    Q_INTERFACES(ArenaWidget)
 
     class Menu{
 
@@ -152,7 +164,7 @@ class HubFrame :
 
     class LinkParser{
     public:
-       static QString parseForLinks(QString);
+       static QString parseForLinks(QString, bool);
 
     private:
        static QStringList link_types;
@@ -167,9 +179,14 @@ public:
     ~HubFrame();
 
     void addStatus(QString);
+    bool parseForCmd(QString, QWidget *);
+
     void createPMWindow(const QString&);
     void createPMWindow(const dcpp::CID&);
+
     bool hasCID(const dcpp::CID &, const QString &);
+    bool isFindFrameActivated();
+
     inline void reconnect() { slotReconnect(); }
 
     // Arena Widget interface
@@ -178,16 +195,18 @@ public:
     QString getArenaShortTitle();
     QMenu *getMenu();
     const QPixmap &getPixmap();
-
-    // IMultiTabsWidget interface
-    void Remove();
-    QList<QAction*> GetTabBarContextMenuActions () const;
+    void CTRL_F_pressed() { slotHideFindFrame(); }
+    ArenaWidget::Role role() const { return ArenaWidget::Hub; }
 
     void disableChat();
     void clearChat();
 
 public slots:
+    void reloadSomeSettings();
     void slotHideFindFrame();
+    void slotActivate();
+    void nextMsg();
+    void prevMsg();
 
 protected:
     virtual bool eventFilter(QObject *, QEvent *);
@@ -218,12 +237,13 @@ private slots:
     void slotInputTextChanged();
     void slotInputContextMenu();
     void slotFindAll();
+    void slotStatusLinkOpen(const QString &url);
+    void slotHubMenu(QAction*);
     void slotSmile();
 
 private:
     // Chat functions
     void addOutput(QString);
-    bool parseForCmd(QString);
 
     // GUI setup functions
     void init();
@@ -233,6 +253,7 @@ private:
     void grantSlot(const QString&);
     void addUserToFav(const QString&);
     void delUserFromFav(const QString&);
+    void changeFavStatus(QString);
     void delUserFromQueue(const QString&);
     void addAsFavorite();
 
@@ -251,14 +272,17 @@ private:
     void follow(string);
 
     void findText(QTextDocument::FindFlags );
-    void nickCompletion();
 
     /** Extracts data from user identity */
     void getParams(UserMap &, const Identity &);
-    void on_userUpdated(const VarMap&, const UserPtr&, bool);
+    inline void on_userUpdated(const VarMap&, const UserPtr&, bool) __attribute__((always_inline));
 
     // PM functions
     void addPM(QString, QString);
+
+    // FavoriteManagerListener
+    virtual void on(FavoriteManagerListener::UserAdded, const FavoriteUser& /*aUser*/) throw();
+    virtual void on(FavoriteManagerListener::UserRemoved, const FavoriteUser& /*aUser*/) throw();
 
     // ClientListener interface
     virtual void on(ClientListener::Connecting, Client*) throw();
@@ -290,16 +314,19 @@ private:
 
     bool chatDisabled;
     bool hasMessages;
+    bool hasHighlightMessages;
 
-    QList<QString> commands;
-    int command_index;
+    QStringList out_messages;
+    int out_messages_index;
 
     PMMap pm;
     ShellList shell_list;
 
     // Userlist data and some helpful functions
     UserListModel *model;
-    QSortFilterProxyModel *proxy;
+    UserListProxyModel *proxy;
+
+    QCompleter * completer;
 };
 
 #endif // HUBFRAME_H

@@ -54,7 +54,7 @@ const string SettingsManager::settingTags[] =
     // Ints
     "IncomingConnections", "InPort", "Slots", "AutoFollow", "ClearSearch",
     "BackgroundColor", "TextColor", "UseOemMonoFont", "ShareHidden", "FilterMessages", "MinimizeToTray", "AlwaysTray",
-    "AutoSearch", "TimeStamps", "PopupHubPms", "PopupBotPms", "IgnoreHubPms", "IgnoreBotPms",
+    "AutoSearch","AutoSearchTime", "ReportFoundAlternates", "TimeStamps", "PopupHubPms", "PopupBotPms", "IgnoreHubPms", "IgnoreBotPms",
     "ListDuplicates", "BufferSize", "DownloadSlots", "MaxDownloadSpeed", "LogMainChat", "LogPrivateChat",
     "LogDownloads", "LogUploads", "StatusInChat", "ShowJoins",
     "UseSystemIcons", "PopupPMs", "MinUploadSpeed", "GetUserInfo", "UrlHandler", "MainWindowState",
@@ -64,7 +64,7 @@ const string SettingsManager::settingTags[] =
     "MaxCompression", "NoAwayMsgToBots", "SkipZeroByte", "AdlsBreakOnFirst",
     "HubUserCommands", "AutoSearchAutoMatch", "DownloadBarColor", "UploadBarColor", "LogSystem",
     "LogFilelistTransfers", "SendUnknownCommands", "MaxHashSpeed", "OpenUserCmdHelp",
-    "GetUserCountry", "FavShowJoins", "LogStatusMessages", "ShowStatusbar",
+    "GetUserCountry", "FavShowJoins", "LogStatusMessages", "ShowStatusbar", "AllowUpdateFilelistsOnStartup",
     "ShowToolbar", "ShowTransferview", "PopunderPm", "PopunderFilelist", "MagnetAsk", "MagnetAction", "MagnetRegister",
     "AddFinishedInstantly", "DontDLAlreadyShared", "UseCTRLForLineHistory",
     "OpenNewWindow", "UDPPort", "ShowLastLinesLog",
@@ -144,7 +144,9 @@ SettingsManager::SettingsManager()
     setDefault(FILTER_MESSAGES, true);
     setDefault(MINIMIZE_TRAY, true);
     setDefault(ALWAYS_TRAY, true);
-    setDefault(AUTO_SEARCH, false);
+    setDefault(AUTO_SEARCH, true);
+    setDefault(AUTO_SEARCH_TIME, 2);
+    setDefault(REPORT_ALTERNATES, true);
     setDefault(TIME_STAMPS, true);
     setDefault(POPUP_HUB_PMS, true);
     setDefault(POPUP_BOT_PMS, true);
@@ -152,7 +154,16 @@ SettingsManager::SettingsManager()
     setDefault(IGNORE_BOT_PMS, false);
     setDefault(LIST_DUPES, true);
     setDefault(BUFFER_SIZE, 64);
-    setDefault(HUBLIST_SERVERS, "http://hublist.openhublist.org/hublist.xml.bz2;http://dchublist.com/hublist.xml.bz2;http://adchublist.com/hublist.xml.bz2;http://www.hublist.org/PublicHubList.xml.bz2;http://dclist.eu/hublist.xml.bz2;http://download.hublist.cz/hublist.xml.bz2;http://hublist.awenet.info/PublicHubList.xml.bz2");
+    setDefault(HUBLIST_SERVERS,
+               "http://hublist.openhublist.org/hublist.xml.bz2;"
+               "http://dchublist.com/hublist.xml.bz2;"
+               "http://adchublist.com/hublist.xml.bz2;"
+               "http://www.hublist.org/PublicHubList.xml.bz2;"
+               "http://dclist.eu/hublist.xml.bz2;"
+               "http://download.hublist.cz/hublist.xml.bz2;"
+               "http://hublist.awenet.info/PublicHubList.xml.bz2;"
+               "http://www.hublista.hu/hublist.xml.bz2"
+               );
     setDefault(DOWNLOAD_SLOTS, 3);
     setDefault(SKIPLIST_SHARE, "*.~*|*.*~");
     setDefault(MAX_DOWNLOAD_SPEED, 0);
@@ -210,7 +221,7 @@ SettingsManager::SettingsManager()
     setDefault(SKIP_ZERO_BYTE, false);
     setDefault(ADLS_BREAK_ON_FIRST, false);
     setDefault(HUB_USER_COMMANDS, true);
-    setDefault(AUTO_SEARCH_AUTO_MATCH, true);
+    setDefault(AUTO_SEARCH_AUTO_MATCH, false);
     setDefault(LOG_FILELIST_TRANSFERS, false);
     setDefault(LOG_SYSTEM, false);
     setDefault(SEND_UNKNOWN_COMMANDS, true);
@@ -248,9 +259,9 @@ SettingsManager::SettingsManager()
     setDefault(AUTODROP_INACTIVITY, 10);
     setDefault(AUTODROP_MINSOURCES, 2);
     setDefault(AUTODROP_FILESIZE, 0);
-    setDefault(AUTODROP_ALL, false);
-    setDefault(AUTODROP_FILELISTS, false);
-    setDefault(AUTODROP_DISCONNECT, false);
+    setDefault(AUTODROP_ALL, true);
+    setDefault(AUTODROP_FILELISTS, true);
+    setDefault(AUTODROP_DISCONNECT, true);
     setDefault(OPEN_PUBLIC, false);
     setDefault(OPEN_FAVORITE_HUBS, false);
     setDefault(OPEN_FAVORITE_USERS, false);
@@ -262,6 +273,7 @@ SettingsManager::SettingsManager()
     setDefault(OPEN_NOTEPAD, false);
     setDefault(NO_IP_OVERRIDE, false);
     setDefault(NO_USE_TEMP_DIR, false);
+    setDefault(ALLOW_UPDATE_FILELIST_ON_STARTUP, true);
     setDefault(SHARE_TEMP_FILES, false);
     setDefault(SEARCH_ONLY_FREE_SLOTS, false);
     setDefault(SEARCH_FILTER_SHARED, true);
@@ -309,6 +321,10 @@ SettingsManager::SettingsManager()
     setDefault(CONFIRM_ITEM_REMOVAL, true);
     setDefault(CONFIRM_ADLS_REMOVAL, true);
     setDefault(SEARCH_MERGE, true);
+    setDefault(HASH_BUFFER_SIZE_MB, 8);
+    setDefault(HASH_BUFFER_POPULATE, true);
+    setDefault(HASH_BUFFER_NORESERVE, true);
+    setDefault(HASH_BUFFER_PRIVATE, true);
     setDefault(TRANSFERS_PANED_POS, .7);
     setDefault(QUEUE_PANED_POS, .3);
     setDefault(SEARCH_PANED_POS, .2);

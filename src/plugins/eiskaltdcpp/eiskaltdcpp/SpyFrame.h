@@ -1,3 +1,12 @@
+/***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 3 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************/
+
 #ifndef SPYFRAME_H
 #define SPYFRAME_H
 
@@ -37,20 +46,18 @@ class SpyFrame :
         private Ui::UISpy
 {
 Q_OBJECT
-Q_INTERFACES(ArenaWidget IMultiTabsWidget)
+Q_INTERFACES(ArenaWidget)
 
 friend class dcpp::Singleton<SpyFrame>;
 
 public:
-    // Arena Widget interface
+
     QString getArenaShortTitle() { return tr("Search Spy"); }
     QString getArenaTitle() {return getArenaShortTitle(); }
     QMenu *getMenu() {return NULL; }
     QWidget *getWidget() { return this; }
     const QPixmap &getPixmap(){ return WulforUtil::getInstance()->getPixmap(WulforUtil::eiSPY); }
-
-    // IMultiTabsWidget interface
-    void Remove() { close(); }
+    ArenaWidget::Role role() const { return ArenaWidget::Spy; }
 
 protected:
     virtual void closeEvent(QCloseEvent *);
