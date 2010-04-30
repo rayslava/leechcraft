@@ -1,3 +1,12 @@
+/***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 3 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************/
+
 #ifndef FAVORITEUSERS_H
 #define FAVORITEUSERS_H
 
@@ -28,7 +37,7 @@ class FavoriteUsers :
         private Ui::UIFavoriteUsers
 {
 Q_OBJECT
-Q_INTERFACES(ArenaWidget IMultiTabsWidget)
+Q_INTERFACES(ArenaWidget)
 
 friend class dcpp::Singleton<FavoriteUsers>;
 typedef QMap<QString, QVariant> VarMap;
@@ -40,7 +49,7 @@ public:
     static const QEvent::Type EventUpdUser  = static_cast<QEvent::Type>(1213);
 
     FavUserEvent(): QEvent(EventAddUser) {}
-    FavUserEvent(const QString &stat): QEvent(EventUpdUser), stat(stat) {}
+    FavUserEvent(const dcpp::CID &cid, const QString &stat): QEvent(EventUpdUser), cid(cid), stat(stat) {}
     FavUserEvent(const dcpp::CID &cid):QEvent(EventRemUser), cid(cid) {}
     virtual ~FavUserEvent() { }
 
@@ -54,15 +63,13 @@ private:
 };
 
 public:
-    // Arena Widget interface
+
     virtual QWidget *getWidget() { return this; }
     virtual QString getArenaTitle() { return tr("Favourite users"); }
     virtual QString getArenaShortTitle() { return getArenaTitle(); }
     virtual QMenu *getMenu() { return NULL; }
     const QPixmap &getPixmap(){ return WulforUtil::getInstance()->getPixmap(WulforUtil::eiFAVUSERS); }
-
-    // IMultiTabsWidget interface
-    void Remove() { close(); }
+    ArenaWidget::Role role() const { return ArenaWidget::FavoriteUsers; }
 
 protected:
     virtual void closeEvent(QCloseEvent *);

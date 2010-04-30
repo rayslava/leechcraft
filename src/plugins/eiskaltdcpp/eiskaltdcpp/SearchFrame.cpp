@@ -216,7 +216,9 @@ SearchFrame::SearchFrame(QWidget *parent):
         filterShared(SearchFrame::None),
         withFreeSlots(false),
         timer1(NULL),
-        saveFileType(true)
+        saveFileType(true),
+        proxy(NULL),
+        completer(NULL)
 {
     setupUi(this);
 
@@ -251,9 +253,13 @@ SearchFrame::~SearchFrame(){
     MainLayoutWrapper::getInstance()->remArenaWidget(this);
     MainLayoutWrapper::getInstance()->remArenaWidgetFromToolbar(this);
 
+    if (completer)
+        completer->deleteLater();
+
     delete model;
     delete arena_menu;
     delete timer;
+    delete proxy;
 }
 
 void SearchFrame::closeEvent(QCloseEvent *e){
@@ -274,24 +280,18 @@ void SearchFrame::customEvent(QEvent *e){
     e->accept();
 }
 
-bool SearchFrame::eventFilter(QObject *obj, QEvent *e){
-    if (e->type() == QEvent::KeyRelease){
-        QKeyEvent *k_e = reinterpret_cast<QKeyEvent*>(e);
-        int key = k_e->key();
-
-        if (static_cast<QComboBox*>(obj) == comboBox_SEARCHSTR && (key == Qt::Key_Enter || key == Qt::Key_Return))
-            slotStartSearch();
-
-    }
-
-    return QWidget::eventFilter(obj, e);
-}
-
 void SearchFrame::init(){
     timer1 = new QTimer(this);
     timer1->setInterval(1000);
 
     model = new SearchModel(NULL);
+
+    for (int i = 0; i < model->columnCount(); i++)
+        comboBox_FILTERCOLUMNS->addItem(model->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString());
+
+    comboBox_FILTERCOLUMNS->setCurrentIndex(COLUMN_SF_FILENAME);
+
+    frame_FILTER->setVisible(false);
 
     treeView_RESULTS->setModel(model);
     treeView_RESULTS->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -317,6 +317,12 @@ void SearchFrame::init(){
     connect(treeView_RESULTS->header(), SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(slotHeaderMenu(QPoint)));
     connect(timer1, SIGNAL(timeout()), this, SLOT(slotTimer()));
     connect(pushButton_SIDEPANEL, SIGNAL(clicked()), this, SLOT(slotToggleSidePanel()));
+    connect(comboBox_SEARCHSTR->lineEdit(), SIGNAL(returnPressed()), this, SLOT(slotStartSearch()));
+    connect(comboBox_FILETYPES, SIGNAL(currentIndexChanged(int)), comboBox_SEARCHSTR, SLOT(setFocus()));
+    connect(comboBox_FILETYPES, SIGNAL(currentIndexChanged(int)), comboBox_SEARCHSTR->lineEdit(), SLOT(selectAll()));
+    connect(toolButton_CLOSEFILTER, SIGNAL(clicked()), this, SLOT(slotFilter()));
+    connect(comboBox_FILTERCOLUMNS, SIGNAL(currentIndexChanged(int)), lineEdit_FILTER, SLOT(selectAll()));
+    connect(comboBox_FILTERCOLUMNS, SIGNAL(currentIndexChanged(int)), this, SLOT(slotChangeProxyColumn(int)));
 
     MainLayoutWrapper *mwnd = MainLayoutWrapper::getInstance();
 
@@ -353,6 +359,16 @@ void SearchFrame::load(){
     comboBox_FILETYPES->setCurrentIndex(WIGET(WI_SEARCH_LAST_TYPE));
 
     treeView_RESULTS->sortByColumn(WIGET(WI_SEARCH_SORT_COLUMN), WulforUtil::getInstance()->intToSortOrder(WIGET(WI_SEARCH_SORT_ORDER)));
+
+    QString raw = QByteArray::fromBase64(WSGET(WS_SEARCH_HISTORY).toAscii());
+    QStringList list = raw.replace("\r","").split('\n', QString::SkipEmptyParts);
+
+    completer = new QCompleter(list, comboBox_SEARCHSTR);
+    completer->setCaseSensitivity(Qt::CaseInsensitive);
+    completer->setWrapAround(false);
+
+    comboBox_SEARCHSTR->setCompleter(completer);
+    comboBox_SEARCHSTR->setCurrentIndex(-1);
 }
 
 void SearchFrame::save(){
@@ -540,14 +556,12 @@ void SearchFrame::onHubRemoved(SearchFrame::HubInfo* info){
     QMap<Client*,HubInfo*>::const_iterator it = hub_list.find(info->client);
 
     if (it != hub_list.constEnd()){
-        listWidget_HUBS->removeItemWidget(info->item);
+        listWidget_HUBS->takeItem(listWidget_HUBS->row(info->item));
 
         hub_items.remove(info->item);
         hub_list.remove(info->client);
 
         delete info;
-
-        listWidget_HUBS->repaint();
     }
 }
 
@@ -630,9 +644,8 @@ bool SearchFrame::getWholeDirParams(SearchFrame::VarMap &params, SearchItem *ite
 
 void SearchFrame::addResult(QMap<QString, QVariant> map){
     try {
-        model->addResultPtr(map);
-
-        results++;
+        if (model->addResultPtr(map))
+            results++;
     }
     catch (const SearchListException&){}
 }
@@ -658,16 +671,32 @@ void SearchFrame::searchFile(const QString &file){
     comboBox_FILETYPES->setCurrentIndex(SearchManager::TYPE_ANY);
     lineEdit_SIZE->setText("");
 
+    saveFileType = false;
+
+    slotStartSearch();
+}
+
+void SearchFrame::fastSearch(const QString &text, bool isTTH){
+    if (text.isEmpty())
+        return;
+
+    if (!isTTH)
+        comboBox_FILETYPES->setCurrentIndex(0); // set type "Any"
+    else
+        comboBox_FILETYPES->setCurrentIndex(8); // set type "TTH"
+
+    comboBox_SEARCHSTR->setEditText(text);
+
     slotStartSearch();
 }
 
 void SearchFrame::slotStartSearch(){
-    MainLayoutWrapper *MW = MainLayoutWrapper::getInstance();
-    QString s = comboBox_SEARCHSTR->currentText();
-    StringList clients;
-
-    if (s.isEmpty())
+    if (comboBox_SEARCHSTR->currentText().trimmed().isEmpty())
         return;
+
+    MainLayoutWrapper *MW = MainLayoutWrapper::getInstance();
+    QString s = comboBox_SEARCHSTR->currentText().trimmed();
+    StringList clients;
 
     QMap<Client*,HubInfo*>::iterator it = hub_list.begin();
 
@@ -781,6 +810,31 @@ void SearchFrame::slotStartSearch(){
     }
 
     MW->redrawToolPanel();
+
+    { // save search history and update QComboBox items
+        QString     raw  = QByteArray::fromBase64(WSGET(WS_SEARCH_HISTORY).toAscii());
+        QStringList list = raw.replace("\r","").split('\n', QString::SkipEmptyParts);
+
+        if (list.indexOf(s) == -1)
+            list << s;
+
+        while (list.size() > 10)
+            list.removeFirst();
+
+#if QT_VERSION >= 0x040500
+        list.removeDuplicates();
+#endif
+        
+        comboBox_SEARCHSTR->setCompleter(NULL);
+        completer->deleteLater();
+        completer = new QCompleter(list, comboBox_SEARCHSTR);
+        completer->setCaseSensitivity(Qt::CaseInsensitive);
+        completer->setWrapAround(false);
+        comboBox_SEARCHSTR->setCompleter(completer);
+
+        QString hist = list.join("\n");
+        WSSET(WS_SEARCH_HISTORY, hist.toAscii().toBase64());
+    }
 }
 
 void SearchFrame::slotClear(){
@@ -795,7 +849,9 @@ void SearchFrame::slotResultDoubleClicked(const QModelIndex &index){
     if (!index.isValid() || !index.internalPointer())
         return;
 
-    SearchItem *item = reinterpret_cast<SearchItem*>(index.internalPointer());
+    QModelIndex i = proxy? proxy->mapToSource(index) : index;
+
+    SearchItem *item = reinterpret_cast<SearchItem*>(i.internalPointer());
     VarMap params;
 
     if (getDownloadParams(params, item)){
@@ -821,6 +877,13 @@ void SearchFrame::slotContextMenu(const QPoint &){
 
     if (list.size() < 1)
         return;
+
+    if (proxy){
+        QModelIndexList _list;
+        foreach (QModelIndex i, list)
+            _list.push_back(proxy->mapToSource(i));
+        list = _list;
+    }
 
     if (!Menu::getInstance())
         Menu::newInstance();
@@ -1180,6 +1243,45 @@ void SearchFrame::slotToggleSidePanel(){
     splitter->setSizes(panes);
 }
 
+void SearchFrame::slotFilter(){
+    if (frame_FILTER->isVisible()){
+        treeView_RESULTS->setModel(model);
+
+        disconnect(lineEdit_FILTER, SIGNAL(textChanged(QString)), proxy, SLOT(setFilterFixedString(QString)));
+
+        delete proxy;
+        proxy = NULL;
+    }
+    else {
+        proxy = new SearchProxyModel();
+        proxy->setDynamicSortFilter(true);
+        proxy->setFilterFixedString(lineEdit_FILTER->text());
+        proxy->setFilterCaseSensitivity(Qt::CaseInsensitive);
+        proxy->setFilterKeyColumn(comboBox_FILTERCOLUMNS->currentIndex());
+        proxy->setSourceModel(model);
+
+        treeView_RESULTS->setModel(proxy);
+
+        connect(lineEdit_FILTER, SIGNAL(textChanged(QString)), proxy, SLOT(setFilterFixedString(QString)));
+
+        lineEdit_FILTER->setFocus();
+
+        if (!lineEdit_FILTER->text().isEmpty())
+            lineEdit_FILTER->selectAll();
+    }
+
+    frame_FILTER->setVisible(!frame_FILTER->isVisible());
+}
+
+void SearchFrame::slotChangeProxyColumn(int col){
+    if (proxy)
+        proxy->setFilterKeyColumn(col);
+}
+
+bool SearchFrame::isFindFrameActivated(){
+    return (frame_FILTER->isVisible() && lineEdit_FILTER->hasFocus());
+}
+
 void SearchFrame::on(SearchManagerListener::SR, const dcpp::SearchResultPtr& aResult) throw() {
     if (currentSearch.empty() || aResult == NULL)
         return;
@@ -1234,20 +1336,31 @@ void SearchFrame::on(SearchManagerListener::SR, const dcpp::SearchResultPtr& aRe
     FUNC *func = new FUNC(this, &SearchFrame::addResult, map);
 
     QApplication::postEvent(this, new SearchCustomEvent(func));
-    //WulforManager::getInstance()->dispatchClientFunc(func);
 }
 
 void SearchFrame::on(ClientConnected, Client* c) throw(){
-    if (!hub_list.contains(c))
-        onHubAdded(new HubInfo(c, listWidget_HUBS));
+    typedef Func1<SearchFrame, HubInfo* > FUNC;
+
+    if (!hub_list.contains(c)){
+        FUNC *f = new FUNC(this, &SearchFrame::onHubAdded, new HubInfo(c, listWidget_HUBS));
+        QApplication::postEvent(this, new SearchCustomEvent(f));
+    }
 }
 
 void SearchFrame::on(ClientUpdated, Client* c) throw(){
-    if (hub_list.contains(c))
-        onHubChanged(hub_list[c]);
+    typedef Func1<SearchFrame, HubInfo* > FUNC;
+
+    if (hub_list.contains(c)){
+        FUNC *f = new FUNC(this, &SearchFrame::onHubChanged, hub_list[c]);
+        QApplication::postEvent(this, new SearchCustomEvent(f));
+    }
 }
 
 void SearchFrame::on(ClientDisconnected, Client* c) throw(){
-    if (hub_list.contains(c))
-        onHubRemoved(hub_list[c]);
+    typedef Func1<SearchFrame, HubInfo* > FUNC;
+
+    if (hub_list.contains(c)){
+        FUNC *f = new FUNC(this, &SearchFrame::onHubRemoved, hub_list[c]);
+        QApplication::postEvent(this, new SearchCustomEvent(f));
+    }
 }

@@ -2,7 +2,7 @@
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
+ *   the Free Software Foundation; either version 3 of the License, or     *
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
@@ -71,6 +71,14 @@ public:
     /** sort list */
     virtual void sort(int column, Qt::SortOrder order = Qt::AscendingOrder);
 
+    virtual Qt::DropActions supportedDragActions() const { return Qt::MoveAction; }
+    //virtual Qt::DropActions supportedDropActions() const { return Qt::MoveAction; }
+
+    virtual bool removeRow(int row, const QModelIndex &parent);
+    virtual bool insertRow(int row, const QModelIndex &parent);
+    virtual bool insertRows(int position, int rows, const QModelIndex &index = QModelIndex());
+    virtual bool removeRows(int position, int rows, const QModelIndex &index = QModelIndex());
+
     /** */
     void addResult(QList<QVariant> &data);
     /** */
@@ -84,10 +92,14 @@ public:
     /** */
     bool removeItem(const FavoriteHubItem*);
 
+    QModelIndex moveUp(const QModelIndex &);
+    QModelIndex moveDown(const QModelIndex &);
+
     /** */
     void repaint();
 
 private:
+    Qt::DropActions supportedDropActions() const;
 
     FavoriteHubItem *rootItem;
 

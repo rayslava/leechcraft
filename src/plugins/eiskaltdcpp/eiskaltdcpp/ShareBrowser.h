@@ -1,3 +1,12 @@
+/***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 3 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************/
+
 #ifndef SHAREBROWSER_H
 #define SHAREBROWSER_H
 
@@ -8,6 +17,7 @@
 #include <QItemSelectionModel>
 #include <QThread>
 #include <QCloseEvent>
+#include <QSortFilterProxyModel>
 
 #include "ArenaWidget.h"
 #include "Func.h"
@@ -44,12 +54,12 @@ class ShareBrowserLoader: public QThread
         LoaderFunc *func;
 };
 
-class ShareBrowser : public QWidget,
-                     public ArenaWidget,
+class ShareBrowser : public  QWidget,
+                     public  ArenaWidget,
                      private Ui::UIShareBrowser
 {
     Q_OBJECT
-    Q_INTERFACES(ArenaWidget IMultiTabsWidget)
+    Q_INTERFACES(ArenaWidget)
 
     class Menu : public dcpp::Singleton<Menu>{
 
@@ -61,6 +71,7 @@ class ShareBrowser : public QWidget,
             DownloadTo,
             Alternates,
             Magnet,
+            AddToFav,
             None
         };
 
@@ -82,15 +93,18 @@ public:
     ShareBrowser(dcpp::UserPtr, QString file, QString jump_to);
     virtual ~ShareBrowser();
 
-    // Arena Widget interface
     QString  getArenaTitle();
     QString  getArenaShortTitle();
     QWidget *getWidget();
     QMenu   *getMenu();
     const QPixmap &getPixmap(){ return WulforUtil::getInstance()->getPixmap(WulforUtil::eiOWN_FILELIST); }
+    void CTRL_F_pressed() { slotFilter(); }
+    ArenaWidget::Role role() const { return ArenaWidget::ShareBrowser; }
 
-    // IMultiTabsWidget interface
-    void Remove() { close(); }
+    bool isFindFrameActivated();
+
+public slots:
+    void slotFilter();
 
 protected:
     virtual void closeEvent(QCloseEvent *);
@@ -100,7 +114,6 @@ private slots:
     void slotLeftPaneSelChanged(const QItemSelection&, const QItemSelection&);
     void slotCustomContextMenu(const QPoint&);
     void slotHeaderMenu();
-
     void slotLoaderFinish();
 
 private:
@@ -122,6 +135,8 @@ private:
     ShareBrowserLoader::LoaderFunc *loader_func;
 
     QMenu *arena_menu;
+
+    QSortFilterProxyModel *proxy;
 
     QString nick;
     QString file;

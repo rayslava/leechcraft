@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>438</width>
-    <height>190</height>
+    <width>436</width>
+    <height>229</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -35,6 +35,9 @@
       <enum>QFrame::Plain</enum>
      </property>
      <layout class="QGridLayout" name="gridLayout_2">
+      <property name="margin">
+       <number>2</number>
+      </property>
       <item row="1" column="1" colspan="2">
        <widget class="QLineEdit" name="lineEdit_TTH">
         <property name="readOnly">
@@ -43,7 +46,7 @@
        </widget>
       </item>
       <item row="3" column="1" colspan="2">
-       <widget class="QLineEdit" name="lineEdit_FNAME">
+       <widget class="LineEdit" name="lineEdit_FNAME">
         <property name="readOnly">
          <bool>false</bool>
         </property>
@@ -64,7 +67,7 @@
        </widget>
       </item>
       <item row="5" column="1">
-       <widget class="QLineEdit" name="lineEdit_FPATH"/>
+       <widget class="LineEdit" name="lineEdit_FPATH"/>
       </item>
       <item row="5" column="0">
        <widget class="QLabel" name="label_1">
@@ -120,6 +123,9 @@
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QPushButton" name="pushButton_SEARCH">
+       <property name="toolTip">
+        <string>Opens search dialog and searches file.</string>
+       </property>
        <property name="text">
         <string>Search</string>
        </property>
@@ -127,8 +133,12 @@
      </item>
      <item>
       <widget class="QPushButton" name="pushButton_DOWNLOAD">
+       <property name="toolTip">
+        <string>Adds magnet to download queue. If autosearch for alternatives is enabled
+in options, file will be downloaded without opening search dialog.</string>
+       </property>
        <property name="text">
-        <string>Download</string>
+        <string>Add to queue</string>
        </property>
       </widget>
      </item>
@@ -163,6 +173,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>LineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>LineEdit.h</header>
+  </customwidget>
+ </customwidgets>
  <tabstops>
   <tabstop>pushButton_CANCEL</tabstop>
   <tabstop>pushButton_SEARCH</tabstop>

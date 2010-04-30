@@ -2,7 +2,7 @@
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
+ *   the Free Software Foundation; either version 3 of the License, or     *
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
@@ -11,6 +11,7 @@
 #define SEARCHRESULTMODEL_H
 
 #include <QAbstractItemModel>
+#include <QSortFilterProxyModel>
 #include <QString>
 #include <QPixmap>
 #include <QList>
@@ -24,6 +25,13 @@
 #include "dcpp/SearchManager.h"
 
 #include <boost/pool/object_pool.hpp>
+
+class SearchProxyModel: public QSortFilterProxyModel {
+    Q_OBJECT
+
+public:
+    virtual void sort(int column, Qt::SortOrder order);
+};
 
 #define COLUMN_SF_COUNT            0
 #define COLUMN_SF_FILENAME         1
@@ -74,6 +82,7 @@ public:
     QVariant data(int column) const;
     int row() const;
     SearchItem *parent() const;
+    bool exists(const QString &user_cid) const;
 
     unsigned count;
 
@@ -113,6 +122,8 @@ public:
     int columnCount(const QModelIndex &parent = QModelIndex()) const;
     /** sort list */
     virtual void sort(int column, Qt::SortOrder order = Qt::AscendingOrder);
+    virtual bool hasChildren(const QModelIndex &parent) const;
+    virtual bool canFetchMore(const QModelIndex &parent) const;
 
     /** */
     QModelIndex createIndexForItem(SearchItem*);
@@ -120,7 +131,7 @@ public:
     void setFilterRole(int);
 
     /** */
-    void addResult(
+    bool addResult(
             const QString &file,
             qulonglong size,
             const QString &tth,
@@ -135,7 +146,7 @@ public:
             const bool isDir);
 
     /** */
-    void addResultPtr(const QMap<QString, QVariant>&);
+    bool addResultPtr(const QMap<QString, QVariant>&);
     /** */
     int getSortColumn() const;
     /** */

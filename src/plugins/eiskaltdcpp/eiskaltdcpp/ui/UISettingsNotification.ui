@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>348</width>
-    <height>325</height>
+    <width>372</width>
+    <height>382</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -89,14 +89,21 @@
            </widget>
           </item>
           <item>
-           <widget class="QCheckBox" name="checkBox_MWACTIVE">
+           <widget class="QCheckBox" name="checkBox_MWVISIBLE">
             <property name="text">
-             <string>Enable notifications with visible main window</string>
+             <string>Enable notifications with not active main window</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QCheckBox" name="checkBox_MWVISIBLE">
+           <widget class="QCheckBox" name="checkBox_MWACTIVE">
+            <property name="text">
+             <string>Enable notifications with active main window</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="checkBox_CHICON">
             <property name="text">
              <string>Change icon when main window is visible</string>
             </property>
@@ -186,8 +193,11 @@
              <bool>true</bool>
             </property>
             <layout class="QGridLayout" name="gridLayout_7">
+             <property name="margin">
+              <number>1</number>
+             </property>
              <item row="0" column="0">
-              <widget class="QLineEdit" name="lineEdit_SNDNICKSAY"/>
+              <widget class="LineEdit" name="lineEdit_SNDNICKSAY"/>
              </item>
              <item row="0" column="1">
               <widget class="QPushButton" name="pushButton_TESTNICKSAY">
@@ -215,8 +225,11 @@
              <bool>true</bool>
             </property>
             <layout class="QGridLayout" name="gridLayout_8">
+             <property name="margin">
+              <number>1</number>
+             </property>
              <item row="0" column="0">
-              <widget class="QLineEdit" name="lineEdit_SNDPM"/>
+              <widget class="LineEdit" name="lineEdit_SNDPM"/>
              </item>
              <item row="0" column="1">
               <widget class="QPushButton" name="pushButton_TESTPM">
@@ -244,8 +257,11 @@
              <bool>true</bool>
             </property>
             <layout class="QGridLayout" name="gridLayout_9">
+             <property name="margin">
+              <number>1</number>
+             </property>
              <item row="0" column="0">
-              <widget class="QLineEdit" name="lineEdit_SNDTRDONE"/>
+              <widget class="LineEdit" name="lineEdit_SNDTRDONE"/>
              </item>
              <item row="0" column="1">
               <widget class="QPushButton" name="pushButton_TESTTR">
@@ -289,8 +305,17 @@
           <bool>true</bool>
          </property>
          <layout class="QGridLayout" name="gridLayout_6">
+          <property name="margin">
+           <number>1</number>
+          </property>
           <item row="0" column="0">
-           <widget class="QLineEdit" name="lineEdit_SNDCMD"/>
+           <widget class="LineEdit" name="lineEdit_SNDCMD">
+            <property name="toolTip">
+             <string>If your sound files' format is unsupported by Qt, you can define
+custom media player here to play them.
+For example: /usr/bin/mplayer</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </widget>
@@ -301,6 +326,46 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>LineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>LineEdit.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>checkBox_MWACTIVE</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>checkBox_MWVISIBLE</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>186</x>
+     <y>252</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>186</x>
+     <y>227</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBox_MWACTIVE</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>checkBox_MWVISIBLE</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>186</x>
+     <y>252</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>186</x>
+     <y>227</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

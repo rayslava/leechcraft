@@ -1,3 +1,12 @@
+/***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 3 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************/
+
 #ifndef WULFORSETTINGS_H
 #define WULFORSETTINGS_H
 
@@ -29,6 +38,7 @@ const char * const WS_QCONNECT_HISTORY        = "qc-history";
 const char * const WS_DEFAULT_LOCALE          = "default_locale";
 const char * const WS_DQUEUE_STATE            = "dqueue-state";
 const char * const WS_SEARCH_STATE            = "search-state";
+const char * const WS_SEARCH_HISTORY          = "search-history";
 const char * const WS_TRANSLATION_FILE        = "translation-file";
 const char * const WS_TRANSFERS_STATE         = "transfer-state";
 const char * const WS_MAINWINDOW_STATE        = "mainwindow-state";
@@ -51,6 +61,7 @@ const char * const WS_APP_TOTAL_DOWN          = "app-stat-total-down";
 const char * const WS_APP_ASPELL_LANG         = "app-aspell-lang";
 const char * const WS_APP_EMOTICON_THEME      = "app-emoticon-theme";
 const char * const WS_APP_DYNDNS_SERVER       = "app-dyndns-server";
+const char * const WS_APP_DYNDNS_INDEX        = "app-dyndns-server-index";
 const char * const WS_PUBLICHUBS_STATE        = "publichubs-state";
 const char * const WB_CHAT_SHOW_TIMESTAMP     = "chat-show-timestamp";
 const char * const WB_SHOW_FREE_SPACE         = "show-free-space";
@@ -60,6 +71,8 @@ const char * const WB_CHAT_REDIRECT_BOT_PMS   = "chat-redirect-pms-from-bot";
 const char * const WB_CHAT_KEEPFOCUS          = "chat-keep-focus";
 const char * const WB_MAINWINDOW_MAXIMIZED    = "mainwindow-maximized";
 const char * const WB_MAINWINDOW_HIDE         = "mainwindow-autohide";
+const char * const WB_MAINWINDOW_REMEMBER     = "mainwindow-remember-position-on-exit";
+const char * const WB_MAINWINDOW_USE_SIDEBAR  = "mainwindow-use-sidebar";
 const char * const WB_SEARCHFILTER_NOFREE     = "search-filter-nofree";
 const char * const WB_SEARCH_DONTHIDEPANEL    = "search-panel-dont-hide";
 const char * const WB_ANTISPAM_ENABLED        = "antispam-enabled";
@@ -69,15 +82,26 @@ const char * const WB_TRAY_ENABLED            = "systemtray-enabled";
 const char * const WB_EXIT_CONFIRM            = "exit-confirm";
 const char * const WB_SHOW_HIDDEN_USERS       = "show-hidden-users";
 const char * const WB_SHOW_JOINS              = "show-joins";
+const char * const WB_LAST_STATUS             = "last-status";
+const char * const WB_USERS_STATISTICS        = "users-statistics";
 const char * const WB_NOTIFY_ENABLED          = "notify-enabled";
 const char * const WB_NOTIFY_SND_ENABLED      = "notify-sound-enabled";
 const char * const WB_NOTIFY_SND_EXTERNAL     = "notify-sound-use-external";
 const char * const WB_NOTIFY_SHOW_ON_ACTIVE   = "notify-show-on-active";
+const char * const WB_NOTIFY_SHOW_ON_VISIBLE  = "notify-show-on-visible";
 const char * const WB_NOTIFY_CH_ICON_ALWAYS   = "notify-change-icon-always";
 const char * const WB_FAVUSERS_AUTOGRANT      = "favusers-auto-grant";
 const char * const WB_APP_ENABLE_EMOTICON     = "app-enable-emoticon";
 const char * const WB_APP_FORCE_EMOTICONS     = "app-force-find-emoticons";
 const char * const WB_APP_ENABLE_ASPELL       = "app-enable-aspell";
+const char * const WB_APP_AUTO_AWAY           = "app-auto-away";
+const char * const WB_APP_REMOVE_NOT_EX_DIRS  = "app-auto-rem-not-exsisting-dirs";
+const char * const WB_WIDGETS_PANEL_VISIBLE   = "widgets-panel-visible";
+const char * const WB_TOOLS_PANEL_VISIBLE     = "tools-panel-visible";
+const char * const WB_SEARCH_PANEL_VISIBLE    = "search-panel-visible";
+const char * const WB_MAIN_MENU_VISIBLE       = "main-menu-visible";
+const char * const WB_USE_CTRL_ENTER          = "use-ctrl-enter";
+const char * const WB_SIMPLE_SHARE_MODE       = "use-simple-share-mode";
 const char * const WI_DEF_MAGNET_ACTION       = "def-magnet-action"; //0-not do any 1-search 2-download
 const char * const WI_CHAT_MAXPARAGRAPHS      = "chat-max-paragraph";
 const char * const WI_CHAT_WIDTH              = "chat-width";
@@ -91,6 +115,7 @@ const char * const WI_SEARCH_SORT_COLUMN      = "search-sort-column";
 const char * const WI_SEARCH_SORT_ORDER       = "search-sort-order";
 const char * const WI_SEARCH_SHARED_ACTION    = "search-shared-action";
 const char * const WI_SEARCH_LAST_TYPE        = "search-last-search-type";
+const char * const WI_TEXT_EDIT_HEIGHT        = "text-edit-height";
 const char * const WI_TRANSFER_HEIGHT         = "transfer-height";
 const char * const WI_MAINWINDOW_WIDTH        = "mainwindow-width";
 const char * const WI_MAINWINDOW_HEIGHT       = "mainwindow-height";
@@ -101,6 +126,7 @@ const char * const WI_SHARE_WIDTH             = "sharebrowser-width";
 const char * const WI_NOTIFY_EVENTMAP         = "notify-event-map";
 const char * const WI_NOTIFY_SNDMAP           = "notify-snd-map";
 const char * const WI_NOTIFY_MODULE           = "notify-module";
+const char * const WI_OUT_IN_HIST             = "number-of-output-messages-in-history";
 
 
 class WulforSettings :

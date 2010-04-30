@@ -5,6 +5,7 @@
 #include "SearchFrame.h"
 
 #include "dcpp/SettingsManager.h"
+#include "dcpp/FavoriteManager.h"
 
 #if (HAVE_MALLOC_TRIM)
 #include <malloc.h>
@@ -18,6 +19,7 @@
 #include <QTreeView>
 #include <QModelIndex>
 #include <QClipboard>
+#include <QHeaderView>
 
 using namespace dcpp;
 
@@ -44,19 +46,25 @@ ShareBrowser::Menu::Menu(){
     QAction *down    = new QAction(tr("Download"), menu);
     down->setIcon(WU->getPixmap(WulforUtil::eiDOWNLOAD));
     down_to = new QMenu(tr("Download to"));
+    down_to->setIcon(WU->getPixmap(WulforUtil::eiDOWNLOAD_AS));
     QAction *sep     = new QAction(menu);
     QAction *alter   = new QAction(tr("Search for alternates"), menu);
     alter->setIcon(WU->getPixmap(WulforUtil::eiFILEFIND));
     QAction *magnet  = new QAction(tr("Copy magnet"), menu);
     magnet->setIcon(WU->getPixmap(WulforUtil::eiEDITCOPY));
+    QAction *sep1    = new QAction(menu);
+    QAction *add_to_fav = new QAction(tr("Add to favorites"), menu);
+    add_to_fav->setIcon(WU->getPixmap(WulforUtil::eiBOOKMARK_ADD));
 
     actions.insert(down, Download);
     actions.insert(alter, Alternates);
     actions.insert(magnet, Magnet);
+    actions.insert(add_to_fav, AddToFav);
 
     sep->setSeparator(true);
+    sep1->setSeparator(true);
 
-    menu->addActions(QList<QAction*>() << down << sep << alter << magnet);
+    menu->addActions(QList<QAction*>() << down << sep << alter << magnet << sep1 << add_to_fav);
     menu->insertMenu(sep, down_to);
 }
 
@@ -119,7 +127,8 @@ ShareBrowser::ShareBrowser(UserPtr user, QString file, QString jump_to):
         list_root(NULL),
         tree_model(NULL),
         list_model(NULL),
-        loader_func(NULL)
+        loader_func(NULL),
+        proxy(NULL)
 {
     setupUi(this);
 
@@ -146,6 +155,8 @@ ShareBrowser::~ShareBrowser(){
     delete list_model;
     delete arena_menu;
 
+    delete proxy;
+
     MainLayoutWrapper::getInstance()->remWidgetFromArena(this);
     MainLayoutWrapper::getInstance()->remArenaWidget(this);
     MainLayoutWrapper::getInstance()->remArenaWidgetFromToolbar(this);
@@ -164,6 +175,8 @@ void ShareBrowser::closeEvent(QCloseEvent *e){
 }
 
 void ShareBrowser::init(){
+    frame_FILTER->setVisible(false);
+
     initModels();
 
     buildList();
@@ -180,7 +193,7 @@ void ShareBrowser::init(){
     treeView_RPANE->setContextMenuPolicy(Qt::CustomContextMenu);
     treeView_RPANE->header()->setContextMenuPolicy(Qt::CustomContextMenu);
 
-    label_LEFT->setText(QString(tr("Total share size: %1;  Files: %2")).arg(_q(Util::formatBytes(share_size))).arg(itemsCount));
+    label_LEFT->setText(QString(tr("Total share size: %1;  Files: %2")).arg(WulforUtil::formatBytes(share_size)).arg(itemsCount));
 
     arena_menu = new QMenu(tr("Filebrowser"));
 
@@ -191,6 +204,7 @@ void ShareBrowser::init(){
     connect(treeView_LPANE, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(slotCustomContextMenu(QPoint)));
 
     connect(close_wnd, SIGNAL(triggered()), this, SLOT(close()));
+    connect(toolButton_CLOSEFILTER, SIGNAL(clicked()), this, SLOT(slotFilter()));
 
     connect(treeView_RPANE->selectionModel(), SIGNAL(selectionChanged(QItemSelection,QItemSelection)),
             this, SLOT(slotLeftPaneSelChanged(QItemSelection,QItemSelection)));
@@ -276,7 +290,7 @@ void ShareBrowser::createTree(DirectoryListing::Directory *dir, FileBrowserItem 
     size = dir->getTotalSize();
 
     data << QString::fromUtf8(dir->getName().c_str())
-         << _q(Util::formatBytes(size))
+         << WulforUtil::formatBytes(size)
          << size
          << "";
 
@@ -339,10 +353,21 @@ void ShareBrowser::slotLeftPaneClicked(const QModelIndex &index){
     if (!index.isValid())
         return;
 
-    FileBrowserItem *item = static_cast<FileBrowserItem*>(index.internalPointer());
+    FileBrowserItem *item = NULL;
 
-    if (!(item && item->dir))
+    if (sender() == treeView_RPANE && treeView_RPANE->model() == proxy)
+        item = static_cast<FileBrowserItem*>(proxy->mapToSource(index).internalPointer());
+    else
+        item = static_cast<FileBrowserItem*>(index.internalPointer());
+
+    if (!item)
         return;
+
+    if (item->file){
+        download(item->file, _q(SETTING(DOWNLOAD_DIRECTORY)));
+
+        return;
+    }
 
     if (sender() == treeView_LPANE){
         label_PATH->setText(tree_model->createRemotePath(item));
@@ -395,7 +420,7 @@ void ShareBrowser::changeRoot(dcpp::DirectoryListing::Directory *root){
         current_size += size;
 
         data << QString::fromUtf8((*it)->getName().c_str())
-             << _q(Util::formatBytes(size))
+             << WulforUtil::formatBytes(size)
              << size
              << "";
 
@@ -417,7 +442,7 @@ void ShareBrowser::changeRoot(dcpp::DirectoryListing::Directory *root){
         current_size += size;
 
         data << QString::fromUtf8((*it_file)->getName().c_str())
-             << _q(Util::formatBytes(size))
+             << WulforUtil::formatBytes(size)
              << size
              << QString::fromUtf8((*it_file)->getTTH().toBase32().c_str());
 
@@ -427,9 +452,9 @@ void ShareBrowser::changeRoot(dcpp::DirectoryListing::Directory *root){
         list_root->appendChild(child);
     }
 
-    label_RIGHT->setText(QString(tr("Total size: %1")).arg(_q(Util::formatBytes(current_size))));
+    label_RIGHT->setText(QString(tr("Total size: %1")).arg(WulforUtil::formatBytes(current_size)));
 
-    list_model->repaint();
+    list_model->sort();
 }
 
 void ShareBrowser::slotLeftPaneSelChanged(const QItemSelection&, const QItemSelection&){
@@ -440,10 +465,10 @@ void ShareBrowser::slotLeftPaneSelChanged(const QItemSelection&, const QItemSele
     foreach (QModelIndex i, list)
         selected_size += (reinterpret_cast<FileBrowserItem*>(i.internalPointer()))->data(COLUMN_FILEBROWSER_ESIZE).toULongLong();
 
-    QString status = QString(tr("Total size: %1")).arg(_q(Util::formatBytes(current_size)));
+    QString status = QString(tr("Total size: %1")).arg(WulforUtil::formatBytes(current_size));
 
     if (selected_size)
-        status += QString(tr("; Selected: %1")).arg(_q(Util::formatBytes(selected_size)));
+        status += QString(tr("; Selected: %1")).arg(WulforUtil::formatBytes(selected_size));
 
     label_RIGHT->setText(status);
 }
@@ -455,7 +480,15 @@ void ShareBrowser::slotCustomContextMenu(const QPoint &){
         return;
 
     QItemSelectionModel *selection_model = view->selectionModel();
-    QModelIndexList list = selection_model->selectedRows(0);
+    QModelIndexList list;
+    QModelIndexList selected  = selection_model->selectedRows(0);
+
+    if (view == treeView_RPANE && treeView_RPANE->model() == proxy){
+        foreach (QModelIndex i, selected)
+            list.push_back(proxy->mapToSource(i));
+    }
+    else
+        list = selected;
 
     if (!Menu::getInstance())
         Menu::newInstance();
@@ -552,6 +585,13 @@ void ShareBrowser::slotCustomContextMenu(const QPoint &){
 
             break;
         }
+        case Menu::AddToFav:
+        {
+            if (user && user != ClientManager::getInstance()->getMe())
+                FavoriteManager::getInstance()->addFavoriteUser(user);
+
+            break;
+        }
     }
 }
 
@@ -619,4 +659,38 @@ void ShareBrowser::slotLoaderFinish(){
 
 void ShareBrowser::slotHeaderMenu(){
     WulforUtil::headerMenu(treeView_RPANE);
+}
+
+bool ShareBrowser::isFindFrameActivated(){
+    return (frame_FILTER->isVisible() && lineEdit_FILTER->hasFocus());
+}
+
+void ShareBrowser::slotFilter(){
+    if (frame_FILTER->isVisible()){
+        treeView_RPANE->setModel(list_model);
+
+        disconnect(lineEdit_FILTER, SIGNAL(textChanged(QString)), proxy, SLOT(setFilterFixedString(QString)));
+
+        delete proxy;
+        proxy = NULL;
+    }
+    else {
+        proxy = new QSortFilterProxyModel(NULL);
+        proxy->setDynamicSortFilter(true);
+        proxy->setFilterFixedString(lineEdit_FILTER->text());
+        proxy->setFilterCaseSensitivity(Qt::CaseInsensitive);
+        proxy->setFilterKeyColumn(COLUMN_FILEBROWSER_NAME);
+        proxy->setSourceModel(list_model);
+
+        treeView_RPANE->setModel(proxy);
+
+        connect(lineEdit_FILTER, SIGNAL(textChanged(QString)), proxy, SLOT(setFilterFixedString(QString)));
+
+        lineEdit_FILTER->setFocus();
+
+        if (!lineEdit_FILTER->text().isEmpty())
+            lineEdit_FILTER->selectAll();
+    }
+
+    frame_FILTER->setVisible(!frame_FILTER->isVisible());
 }

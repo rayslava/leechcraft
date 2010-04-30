@@ -33,6 +33,12 @@ Magnet::Magnet(QWidget *parent) :
     connect(pushButton_SEARCH,  SIGNAL(clicked()), this, SLOT(search()));
     connect(pushButton_DOWNLOAD,SIGNAL(clicked()), this, SLOT(download()));
     connect(pushButton_BROWSE, SIGNAL(clicked()), SLOT(slotBrowse()));
+    if (!SETTING(AUTO_SEARCH)){
+        pushButton_DOWNLOAD->setToolTip(tr("Run search alternatives manually."));
+    }
+    else {
+        pushButton_DOWNLOAD->setToolTip(tr("Download file via auto search alternatives"));
+    }
 }
 
 Magnet::~Magnet(){
@@ -50,46 +56,23 @@ void Magnet::customEvent(QEvent *e){
 }
 
 void Magnet::setLink(const QString &link){
-    if (link.isEmpty() || !link.startsWith("magnet:?xt=urn:tree:tiger:"))
-        return;
 
-    QUrl url;
-
-    if (!link.contains("+"))
-        url.setEncodedUrl(link.toAscii());
-    else {
-        QString _l = link;
-
-        _l.replace("+", "%20");
-        url.setEncodedUrl(_l.toAscii());
-    }
-
-    if (url.hasQueryItem("dn"))
-        lineEdit_FNAME->setText(url.queryItemValue("dn"));
+    QString name = "", tth = "";
+    int64_t size = 0;
 
     lineEdit_SIZE->setReadOnly(true);
 
-    qulonglong size = 0;
-    if (url.hasQueryItem("xl"))
-        size = url.queryItemValue("xl").toLongLong();
+    WulforUtil::splitMagnet(link, size, tth, name);
 
-    if (size > 0){
-        lineEdit_SIZE->setText(QString("%1 (%2)").arg(size).arg(_q(Util::formatBytes(size))));
-    }
+    lineEdit_FNAME->setText(name);
+
+    if (size > 0)
+        lineEdit_SIZE->setText(QString("%1 (%2)").arg(size).arg(WulforUtil::formatBytes(size)));
     else
         lineEdit_SIZE->setText("0 (0 MiB)");
 
-    QString tth = link;
-
-    tth.replace("magnet:?xt=urn:tree:tiger:", "");//remove magnet signature
-
-    if (!lineEdit_SIZE->text().isEmpty())
-        tth = tth.left(tth.indexOf("&xl="));
-    else if (!lineEdit_FNAME->text().isEmpty())
-        tth = tth.left(tth.indexOf("&dn="));
-
     if (lineEdit_FNAME->text().isEmpty())
-    lineEdit_FNAME->setText(tth);
+        lineEdit_FNAME->setText(tth);
 
     lineEdit_TTH->setText(tth);
     lineEdit_FPATH->setText(_q(SETTING(DOWNLOAD_DIRECTORY)));

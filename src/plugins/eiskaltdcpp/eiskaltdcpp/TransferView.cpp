@@ -21,6 +21,7 @@
 
 #include <QItemSelectionModel>
 #include <QModelIndex>
+#include <QClipboard>
 
 TransferView::Menu::Menu():
         menu(NULL)
@@ -43,10 +44,13 @@ TransferView::Menu::Menu():
     QAction *grant      = new QAction(tr("Grant extra slot"), menu);
     grant->setIcon(WU->getPixmap(WulforUtil::eiEDITADD));
 
+    QAction *copy_ip = new QAction(tr("Copy IP-address of user"), menu);
+    copy_ip->setIcon(WU->getPixmap(WulforUtil::eiEDITCOPY));
+
     QAction *sep1       = new QAction(menu);
     sep1->setSeparator(true);
 
-    QAction *rem_queue  = new QAction(tr("Remove from Queue"), menu);
+    QAction *rem_queue  = new QAction(tr("Remove Source"), menu);
     rem_queue->setIcon(WU->getPixmap(WulforUtil::eiEDITDELETE));
 
     QAction *sep3       = new QAction(menu);
@@ -63,6 +67,7 @@ TransferView::Menu::Menu():
     actions.insert(send_pm, SendPM);
     actions.insert(add_to_fav, AddToFav);
     actions.insert(grant, GrantExtraSlot);
+    actions.insert(copy_ip, CopyIp);
     actions.insert(rem_queue, RemoveFromQueue);
     actions.insert(force, Force);
     actions.insert(close, Close);
@@ -72,6 +77,7 @@ TransferView::Menu::Menu():
                                        << send_pm
                                        << add_to_fav
                                        << grant
+                                       << copy_ip
                                        << sep1
                                        << rem_queue
                                        << sep3
@@ -393,6 +399,18 @@ void TransferView::slotContextMenu(const QPoint &){
 
         break;
     }
+    case Menu::CopyIp:
+    {
+        QString ip = "";
+
+        foreach(TransferViewItem *i, items)
+            ip = i->data(COLUMN_TRANSFER_IP).toString();
+
+        if (!ip.isEmpty())
+            QApplication::clipboard()->setText(ip, QClipboard::Clipboard);
+
+        break;
+    }
     case Menu::RemoveFromQueue:
     {
         foreach(TransferViewItem *i, items)
@@ -498,7 +516,7 @@ void TransferView::on(dcpp::DownloadManagerListener::Tick, const dcpp::DownloadL
         if (dl->isSet(Download::FLAG_ZDOWNLOAD))
             str += tr("[Z]");
 
-        str += " " + QString(tr("Downloaded %1")).arg(_q(Util::formatBytes(dl->getPos())))
+        str += " " + QString(tr("Downloaded %1")).arg(WulforUtil::formatBytes(dl->getPos()))
             + QString(tr(" (%1%)")).arg(vdbl(params["PERC"]), 0, 'f', 1);
 
         params["STAT"] = str;
@@ -562,7 +580,21 @@ void TransferView::on(dcpp::ConnectionManagerListener::Added, dcpp::ConnectionQu
 
     getParams(params, cqi);
 
+    params["FNAME"] = "";
     params["STAT"] = tr("Connecting...");
+
+    if(cqi->getDownload()) {
+        string aTarget; int64_t aSize; int aFlags = 0;
+        if(QueueManager::getInstance()->getQueueInfo(cqi->getUser(), aTarget, aSize, aFlags)) {
+            params["TARGET"] = _q(aTarget);
+            params["ESIZE"] = (qlonglong)aSize;
+
+            if (!aFlags)
+                params["FNAME"] = _q(Util::getFileName(aTarget));
+
+            params["BGROUP"] = !aFlags;
+        }
+    }
 
     typedef Func1<TransferViewModel, VarMap> FUNC;
     FUNC *f = new FUNC(model, &TransferViewModel::addConnection, params);
@@ -571,6 +603,7 @@ void TransferView::on(dcpp::ConnectionManagerListener::Added, dcpp::ConnectionQu
 }
 
 void TransferView::on(dcpp::ConnectionManagerListener::Connected, dcpp::ConnectionQueueItem* cqi) throw(){
+
     VarMap params;
 
     getParams(params, cqi);
@@ -636,7 +669,7 @@ void TransferView::on(dcpp::QueueManagerListener::Finished, dcpp::QueueItem* qi,
 
     QApplication::postEvent(this, new TransferViewCustomEvent(f));
 
-    if (vstr(params["FNAME"]) != tr("File list")){
+    if (!qi->isSet(QueueItem::FLAG_USER_LIST)){//Do not show notify for filelists
         typedef Func1<TransferView, QString> FUNC2;
         FUNC2 *f2 = new FUNC2(this, &TransferView::downloadComplete, _q(qi->getTarget()).split(QDir::separator()).last());
 
@@ -694,7 +727,7 @@ void TransferView::on(dcpp::UploadManagerListener::Tick, const dcpp::UploadList&
         if (ul->isSet(Upload::FLAG_ZUPLOAD))
             stat += tr("[Z]");
 
-        stat += QString(tr(" Uploaded %1 (%2%) ")).arg(_q(Util::formatBytes(ul->getPos()))).arg(vdbl(params["PERC"]), 0, 'f', 1);
+        stat += QString(tr(" Uploaded %1 (%2%) ")).arg(WulforUtil::formatBytes(ul->getPos())).arg(vdbl(params["PERC"]), 0, 'f', 1);
 
         params["STAT"] = stat;
         params["DOWN"] = false;

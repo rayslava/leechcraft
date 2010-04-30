@@ -6,6 +6,7 @@
 #include <QMenu>
 #include <QInputDialog>
 #include <QKeyEvent>
+#include <QHeaderView>
 #include <QItemSelectionModel>
 
 #include "dcpp/ClientManager.h"
@@ -140,8 +141,13 @@ void FavoriteUsers::addUser(const VarMap &params){
     model->addUser(params);
 }
 
-void FavoriteUsers::updateUser(const QString &cid, const QString &stat){
-    model->updateUserStatus(cid, stat);
+void FavoriteUsers::updateUser(const QString &_cid, const QString &stat){
+    dcpp::CID cid(_tq(_cid));
+    const dcpp::UserPtr &user = ClientManager::getInstance()->findUser(cid);
+
+    QString userUrl = user ? _q(FavoriteManager::getInstance()->getUserURL(user)) : QString();
+    model->updateUserStatus(_cid, stat,
+        (user && user->isOnline()) ? (WulforUtil::getInstance()->getHubNames(user)) : userUrl);
 }
 
 void FavoriteUsers::remUser(const QString &cid){
@@ -158,6 +164,7 @@ void FavoriteUsers::handleRemove(const QString & _cid){
 
 void FavoriteUsers::handleDesc(const QString & _cid){
     FavoriteUserItem *item = model->itemForCID(_cid);
+    static QString old = "";
 
     if (!item)
         return;
@@ -166,9 +173,10 @@ void FavoriteUsers::handleDesc(const QString & _cid){
     const dcpp::UserPtr &user = ClientManager::getInstance()->findUser(cid);
 
     if (user){
-        QString desc = QInputDialog::getText(this, item->data(COLUMN_USER_NICK).toString(), tr("Description"));
+        QString desc = QInputDialog::getText(this, item->data(COLUMN_USER_NICK).toString(), tr("Description"), QLineEdit::Normal, old);
 
         if (!desc.isEmpty()){
+            old = desc;
             item->updateColumn(COLUMN_USER_DESC, desc);
             FavoriteManager::getInstance()->setUserDescription(user, _tq(desc));
         }
@@ -261,7 +269,7 @@ void FavoriteUsers::on(UserRemoved, const FavoriteUser& aUser) throw() {
 }
 
 void FavoriteUsers::on(StatusChanged, const UserPtr& u) throw(){
-    FavUserEvent *u_e = new FavUserEvent(u->isOnline()?
+    FavUserEvent *u_e = new FavUserEvent(u->getCID(), u->isOnline()?
                                          tr("Online")
                                          :
                                         _q(Util::formatTime("%Y-%m-%d %H:%M", FavoriteManager::getInstance()->getLastSeen(u))));

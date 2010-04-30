@@ -28,16 +28,26 @@ PMWindow::PMWindow(QString cid, QString hubUrl):
         cid(cid),
         hubUrl(hubUrl),
         arena_menu(NULL),
-        hasMessages(false)
+        hasMessages(false),
+        hasHighlightMessages(false)
 {
     setupUi(this);
 
     setAttribute(Qt::WA_DeleteOnClose);
 
-    this->installEventFilter(this);
+    plainTextEdit_INPUT->setWordWrapMode(QTextOption::NoWrap);
+    plainTextEdit_INPUT->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    plainTextEdit_INPUT->setContextMenuPolicy(Qt::CustomContextMenu);
     plainTextEdit_INPUT->installEventFilter(this);
+
     textEdit_CHAT->viewport()->installEventFilter(this);
     textEdit_CHAT->viewport()->setMouseTracking(true);
+
+    textEdit_CHAT->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    textEdit_CHAT->setTabStopWidth(40);
+    textEdit_CHAT->document()->setDefaultStyleSheet(
+            QString("pre { margin:0px; white-space:pre-wrap; font-family:'%1' }")
+            .arg(QApplication::font().family()));
 
     if (WBGET(WB_APP_ENABLE_EMOTICON) && EmoticonFactory::getInstance())
         EmoticonFactory::getInstance()->addEmoticons(textEdit_CHAT->document());
@@ -53,6 +63,16 @@ PMWindow::PMWindow(QString cid, QString hubUrl):
     connect(pushButton_HUB, SIGNAL(clicked()), this, SLOT(slotHub()));
     connect(pushButton_SHARE, SIGNAL(clicked()), this, SLOT(slotShare()));
     connect(toolButton_SMILE, SIGNAL(clicked()), this, SLOT(slotSmile()));
+    connect(plainTextEdit_INPUT, SIGNAL(textChanged()), this, SIGNAL(inputTextChanged()));
+    connect(plainTextEdit_INPUT, SIGNAL(customContextMenuRequested(QPoint)), this, SIGNAL(inputTextMenu()));
+
+    out_messages_index = 0;
+
+    reloadSomeSettings();
+}
+
+void PMWindow::setCompleter(QCompleter *completer, UserListModel *model) {
+    plainTextEdit_INPUT->setCompleter(completer, model);
 }
 
 PMWindow::~PMWindow(){
@@ -74,10 +94,20 @@ bool PMWindow::eventFilter(QObject *obj, QEvent *e){
         QKeyEvent *k_e = reinterpret_cast<QKeyEvent*>(e);
 
         if ((static_cast<QPlainTextEdit*>(obj) == plainTextEdit_INPUT) &&
-            ((k_e->key() == Qt::Key_Enter || k_e->key() == Qt::Key_Return) && k_e->modifiers() == Qt::NoModifier) ||
-             (k_e->key() == Qt::Key_Enter && k_e->modifiers() == Qt::KeypadModifier))
+            (!WBGET(WB_USE_CTRL_ENTER) || k_e->modifiers() == Qt::ControlModifier) &&
+            ((k_e->key() == Qt::Key_Enter || k_e->key() == Qt::Key_Return) && k_e->modifiers() != Qt::ShiftModifier) ||
+            (k_e->key() == Qt::Key_Enter && k_e->modifiers() == Qt::KeypadModifier))
         {
-            sendMessage(plainTextEdit_INPUT->toPlainText());
+            QString msg = plainTextEdit_INPUT->toPlainText();
+
+            HubFrame *fr = HubManager::getInstance()->getHub(hubUrl);
+
+            if (fr){
+                if (!fr->parseForCmd(msg, this))
+                    sendMessage(msg, false, false);
+            }
+            else
+                sendMessage(msg, false, false);
 
             plainTextEdit_INPUT->setPlainText("");
 
@@ -128,6 +158,7 @@ void PMWindow::closeEvent(QCloseEvent *c_e){
         unread--;
 
     hasMessages = false;
+    hasHighlightMessages = false;
     MainLayoutWrapper::getInstance()->redrawToolPanel();
 
     if (unread == 0)
@@ -144,6 +175,7 @@ void PMWindow::showEvent(QShowEvent *e){
             unread--;
 
         hasMessages = false;
+        hasHighlightMessages = false;
         MainLayoutWrapper::getInstance()->redrawToolPanel();
 
         if (unread == 0)
@@ -151,12 +183,26 @@ void PMWindow::showEvent(QShowEvent *e){
     }
 }
 
+void PMWindow::slotActivate(){
+    plainTextEdit_INPUT->setFocus();
+}
+
+void PMWindow::reloadSomeSettings(){
+    if (plainTextEdit_INPUT->maximumHeight() != WIGET(WI_TEXT_EDIT_HEIGHT))
+        plainTextEdit_INPUT->setMaximumHeight(WIGET(WI_TEXT_EDIT_HEIGHT));
+}
+
 QString PMWindow::getArenaTitle(){
-    return WulforUtil::getInstance()->getNicks(CID(cid.toStdString())) + tr(" on hub ") + hubUrl;
+    return ((cid.length() > 24)? WulforUtil::getInstance()->getNicks(CID(cid.toStdString())) : cid) + tr(" on hub ") + hubUrl;
 }
 
 QString PMWindow::getArenaShortTitle(){
-    return WulforUtil::getInstance()->getNicks(CID(cid.toStdString()));
+    QString nick = (cid.length() > 24)? WulforUtil::getInstance()->getNicks(CID(cid.toStdString())) : cid;
+
+    if (WBGET(WB_MAINWINDOW_USE_SIDEBAR))
+        return QString("%1@%2").arg(nick).arg(hubUrl);
+    else
+        return nick;
 }
 
 QWidget *PMWindow::getWidget(){
@@ -167,19 +213,25 @@ QMenu *PMWindow::getMenu(){
     return arena_menu;
 }
 
-void PMWindow::Remove(){
-    close();
-}
-
-QList<QAction*> PMWindow::GetTabBarContextMenuActions() const{
-    return ( arena_menu? arena_menu->actions() : QList<QAction*>() );
-}
-
 const QPixmap &PMWindow::getPixmap(){
-    if (hasMessages)
+    if (hasHighlightMessages)
         return WulforUtil::getInstance()->getPixmap(WulforUtil::eiMESSAGE);
+    else if (hasMessages)
+        return WulforUtil::getInstance()->getPixmap(WulforUtil::eiPMMSG);
     else
-        return WulforUtil::getInstance()->getPixmap(WulforUtil::eiSERVER);
+        return WulforUtil::getInstance()->getPixmap(WulforUtil::eiUSERS);
+}
+
+void PMWindow::clearChat(){
+    textEdit_CHAT->setHtml("");
+    addStatus(tr("Chat cleared."));
+
+    textEdit_CHAT->document()->setDefaultStyleSheet(
+            QString("pre { margin:0px; white-space:pre-wrap; font-family:'%1' }")
+            .arg(QApplication::font().family()));
+
+    if (WBGET(WB_APP_ENABLE_EMOTICON) && EmoticonFactory::getInstance())
+        EmoticonFactory::getInstance()->addEmoticons(textEdit_CHAT->document());
 }
 
 void PMWindow::addStatusMessage(QString msg){
@@ -199,8 +251,8 @@ void PMWindow::addStatus(QString msg){
     QString status = "";
     QString nick    = " * ";
 
-    WulforUtil::getInstance()->textToHtml(msg);
-    WulforUtil::getInstance()->textToHtml(nick);
+    WulforUtil::getInstance()->textToHtml(msg, true);
+    WulforUtil::getInstance()->textToHtml(nick, true);
 
     msg             = "<font color=\"" + WSGET(WS_CHAT_MSG_COLOR) + "\">" + msg + "</font>";
     QString time    = "<font color=\"" + WSGET(WS_CHAT_TIME_COLOR)+ "\">[" + QDateTime::currentDateTime().toString("hh:mm:ss") + "]</font>";
@@ -214,12 +266,8 @@ void PMWindow::addStatus(QString msg){
 }
 
 void PMWindow::addOutput(QString msg){
-
-    /* This is temporary block. Later we must make it more wise. */
     msg.replace("\r", "");
-    msg.replace("\n", "\n<br/>");
-    msg.replace("\t", "&nbsp;&nbsp;&nbsp;&nbsp;");
-
+    msg = "<pre>" + msg + "</pre>";
     textEdit_CHAT->append(msg);
 
     if (!isVisible()){
@@ -229,7 +277,7 @@ void PMWindow::addOutput(QString msg){
     }
 }
 
-void PMWindow::sendMessage(QString msg, bool stripNewLines){
+void PMWindow::sendMessage(QString msg, bool thirdPerson, bool stripNewLines){
     UserPtr user = ClientManager::getInstance()->findUser(CID(cid.toStdString()));
 
     if (user && user->isOnline()){
@@ -240,11 +288,50 @@ void PMWindow::sendMessage(QString msg, bool stripNewLines){
         if (msg.isEmpty() || msg == "\n")
             return;
 
-        ClientManager::getInstance()->privateMessage(user, msg.toStdString(), false, hubUrl.toStdString());
+        ClientManager::getInstance()->privateMessage(user, msg.toStdString(), thirdPerson, hubUrl.toStdString());
     }
     else {
         addStatusMessage(tr("User went offline"));
     }
+
+    out_messages << msg;
+
+    if (out_messages.size() >= WIGET(WI_OUT_IN_HIST))
+        out_messages.removeAt(0);
+
+    out_messages_index = out_messages.size()-1;
+}
+
+void PMWindow::nextMsg(){
+    if (!plainTextEdit_INPUT->hasFocus())
+        return;
+
+    if (out_messages_index < 0 ||
+        out_messages.size()-1 < out_messages_index+1 ||
+        out_messages.size() == 0)
+        return;
+
+    plainTextEdit_INPUT->setPlainText(out_messages.at(out_messages_index+1));
+
+    if (out_messages_index < out_messages.size()-1)
+        out_messages_index++;
+    else
+        out_messages_index = out_messages.size()-1;
+}
+
+void PMWindow::prevMsg(){
+    if (!plainTextEdit_INPUT->hasFocus())
+        return;
+
+    if (out_messages_index < 0 ||
+        out_messages.size()-1 < out_messages_index ||
+        out_messages.size() == 0)
+        return;
+
+    plainTextEdit_INPUT->setPlainText(out_messages.at(out_messages_index));
+
+    if (out_messages_index >= 1)
+        out_messages_index--;
 }
 
 void PMWindow::slotHub(){

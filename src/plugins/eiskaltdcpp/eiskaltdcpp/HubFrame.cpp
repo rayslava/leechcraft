@@ -38,6 +38,7 @@
 #include <QRegExp>
 #include <QScrollBar>
 #include <QShortcut>
+#include <QHeaderView>
 
 #include <QtDebug>
 
@@ -109,6 +110,7 @@ HubFrame::Menu::Menu(){
             << copy_nick
             << browse
             << match_queue
+            << private_msg
             << fav_add
             << fav_del
             << grant_slot
@@ -177,17 +179,15 @@ HubFrame::Menu::Action HubFrame::Menu::execUserMenu(Client *client, const QStrin
 
     QAction *res = menu->exec(QCursor::pos());
 
-    if (actions.contains(res)){
-        delete user_menu;
+    if (user_menu)
+        user_menu->deleteLater();
 
+    if (actions.contains(res))
         return static_cast<Action>(actions.indexOf(res));
-    }
     else if (res && !res->toolTip().isEmpty()){//User command{
         last_user_cmd = res->toolTip();
         QString cmd_name = res->statusTip();
         QString hub = res->data().toString();
-
-        delete user_menu;
 
         int id = FavoriteManager::getInstance()->findUserCommand(cmd_name.toStdString(), hub.toStdString());
         UserCommand uc;
@@ -225,6 +225,14 @@ HubFrame::Menu::Action HubFrame::Menu::execChatMenu(Client *client, const QStrin
 
     menu->clear();
 
+    QAction *title = new QAction(WulforUtil::getInstance()->getNicks(cid), menu);
+    QFont f;
+    f.setBold(true);
+    title->setFont(f);
+    title->setEnabled(false);
+
+    menu->addAction(title);
+
     if(pmw){
         menu->addActions(pm_actions);
         menu->addActions(pm_chat_actions);
@@ -243,21 +251,19 @@ HubFrame::Menu::Action HubFrame::Menu::execChatMenu(Client *client, const QStrin
 
     QAction *res = menu->exec(QCursor::pos());
 
-    if (actions.contains(res)){
-        delete user_menu;
-        return static_cast<Action>(actions.indexOf(res));
-    }
-    else if (chat_actions_map.contains(res)){
-        delete user_menu;
+    if (user_menu)
+        user_menu->deleteLater();
 
+    title->deleteLater();
+
+    if (actions.contains(res))
+        return static_cast<Action>(actions.indexOf(res));
+    else if (chat_actions_map.contains(res))
         return chat_actions_map[res];
-    }
     else if (res && !res->toolTip().isEmpty()){//User command
         last_user_cmd = res->toolTip();
         QString cmd_name = res->statusTip();
         QString hub = res->data().toString();
-
-        delete user_menu;
 
         int id = FavoriteManager::getInstance()->findUserCommand(cmd_name.toStdString(), hub.toStdString());
         UserCommand uc;
@@ -278,10 +284,8 @@ HubFrame::Menu::Action HubFrame::Menu::execChatMenu(Client *client, const QStrin
         else
             return None;
     }
-    else{
-        delete user_menu;
+    else
         return None;
-    }
 }
 
 QMenu *HubFrame::Menu::buildUserCmdMenu(const QString &hub){
@@ -291,31 +295,15 @@ QMenu *HubFrame::Menu::buildUserCmdMenu(const QString &hub){
     QMenu *menu = new QMenu();
     menu->setTitle(tr("Commands"));
 
-    QMenu *u_c = new QMenu(tr("Chat context"), menu);
-    QMenu *h_c = new QMenu(tr("Hub context"), menu);
-
     QMenu *tmp = WulforUtil::getInstance()->buildUserCmdMenu(QStringList() << hub, UserCommand::CONTEXT_CHAT);
 
-    if (tmp){
-        u_c->addMenu(tmp);
-        menu->addMenu(u_c);
-    }
-    else
-        delete u_c;
-
-    tmp = WulforUtil::getInstance()->buildUserCmdMenu(QStringList() << hub, UserCommand::CONTEXT_HUB);
-
-    if (tmp){
-        h_c->addMenu(tmp);
-        menu->addMenu(h_c);
-    }
-    else
-        delete h_c;
+    if (tmp)
+        menu->addMenu(tmp);
 
     return menu;
 }
 
-QString HubFrame::LinkParser::parseForLinks(QString input){
+QString HubFrame::LinkParser::parseForLinks(QString input, bool use_emot){
     if (input.isEmpty() || input.isNull())
         return input;
 
@@ -336,9 +324,8 @@ QString HubFrame::LinkParser::parseForLinks(QString input){
                 while (l_pos < input.size()){
                     QChar ch = input.at(l_pos);
 
-                    if (ch == ',' || ch == '!' || ch.isSpace() ||
-                        ch == '\n' || ch == '"' || ch == '\''||
-                        ch == '>' || ch == '<'){
+                    if (ch.isSpace() || ch == '\n'  ||
+                        ch == '>'    || ch == '<'){
                         break;
                     }
                     else
@@ -355,13 +342,14 @@ QString HubFrame::LinkParser::parseForLinks(QString input){
                     QUrl url;
                     toshow = link;
                     toshow.replace("+", "%20");
+                    toshow.replace("!", "%21");
                     url.setEncodedUrl(toshow.toAscii());
 
                     if (url.hasQueryItem("dn")) {
                         toshow = url.queryItemValue("dn");
 
                         if (url.hasQueryItem("xl"))
-                            toshow += " (" + QString::fromStdString(Util::formatBytes(url.queryItemValue("xl").toULongLong())) + ")";
+                            toshow += " (" + WulforUtil::formatBytes(url.queryItemValue("xl").toULongLong()) + ")";
                     }
                 }
 
@@ -391,7 +379,7 @@ QString HubFrame::LinkParser::parseForLinks(QString input){
         input.remove(0, 1);
     }
 
-    if (WBGET(WB_APP_ENABLE_EMOTICON) && EmoticonFactory::getInstance())
+    if (use_emot && WBGET(WB_APP_ENABLE_EMOTICON) && EmoticonFactory::getInstance())
         output = EmoticonFactory::getInstance()->convertEmoticons(output);
 
     QString out = "";
@@ -464,7 +452,8 @@ HubFrame::HubFrame(QWidget *parent=NULL, QString hub="", QString encoding=""):
         codec(NULL),
         chatDisabled(false),
         hasMessages(false),
-        command_index(0)
+        hasHighlightMessages(false),
+        client(NULL)
 {
     setupUi(this);
 
@@ -492,9 +481,18 @@ HubFrame::HubFrame(QWidget *parent=NULL, QString hub="", QString encoding=""):
 
     init();
 
+    FavoriteHubEntry* entry = FavoriteManager::getInstance()->getFavoriteHubEntry(_tq(hub));
+
+    if (entry && entry->getDisableChat())
+        disableChat();
+
     client->connect();
 
     setAttribute(Qt::WA_DeleteOnClose);
+
+    out_messages_index = 0;
+
+    FavoriteManager::getInstance()->addListener(this);
 }
 
 
@@ -520,15 +518,8 @@ bool HubFrame::eventFilter(QObject *obj, QEvent *e){
 
         if ((static_cast<QPlainTextEdit*>(obj) == plainTextEdit_INPUT) &&
             (k_e->key() == Qt::Key_Enter || k_e->key() == Qt::Key_Return) &&
-            (k_e->modifiers() == Qt::NoModifier))
+            (k_e->modifiers() != Qt::ShiftModifier))
         {
-            return true;
-        }
-        else if ((static_cast<QPlainTextEdit*>(obj) == plainTextEdit_INPUT) && k_e->key() == Qt::Key_Tab){
-            nickCompletion();
-
-            e->accept();
-
             return true;
         }
         else if (static_cast<QLineEdit*>(obj) == lineEdit_FIND){
@@ -545,7 +536,8 @@ bool HubFrame::eventFilter(QObject *obj, QEvent *e){
         QKeyEvent *k_e = reinterpret_cast<QKeyEvent*>(e);
 
         if ((static_cast<QPlainTextEdit*>(obj) == plainTextEdit_INPUT) &&
-            ((k_e->key() == Qt::Key_Enter || k_e->key() == Qt::Key_Return) && k_e->modifiers() == Qt::NoModifier) ||
+            (!WBGET(WB_USE_CTRL_ENTER) || k_e->modifiers() == Qt::ControlModifier) &&
+            ((k_e->key() == Qt::Key_Enter || k_e->key() == Qt::Key_Return) && k_e->modifiers() != Qt::ShiftModifier) ||
              (k_e->key() == Qt::Key_Enter && k_e->modifiers() == Qt::KeypadModifier))
         {
             sendChat(plainTextEdit_INPUT->toPlainText(), false, false);
@@ -554,28 +546,6 @@ bool HubFrame::eventFilter(QObject *obj, QEvent *e){
 
             return true;
         }
-        else if ((static_cast<QPlainTextEdit*>(obj) == plainTextEdit_INPUT) && k_e->key() == Qt::Key_Up){
-            if (command_index < 0 || commands.size()-1 < command_index || commands.size() == 0)
-                return false;
-
-            plainTextEdit_INPUT->setPlainText(commands.at(command_index));
-
-            if (command_index >= 1)
-                command_index--;
-        }
-        else if ((static_cast<QPlainTextEdit*>(obj) == plainTextEdit_INPUT) && k_e->key() == Qt::Key_Down){
-            if (command_index < 0 || commands.size()-1 < command_index+1 || commands.size() == 0)
-                return false;
-
-            plainTextEdit_INPUT->setPlainText(commands.at(command_index+1));
-
-            if (command_index < commands.size()-1)
-                command_index++;
-            else
-                command_index = commands.size()-1;
-        }
-        else if ((static_cast<QPlainTextEdit*>(obj) == plainTextEdit_INPUT) && k_e->key() == Qt::Key_Tab)
-            return true;
 
         if (k_e->modifiers() == Qt::ControlModifier){
             if (k_e->key() == Qt::Key_Equal || k_e->key() == Qt::Key_Plus){
@@ -731,7 +701,12 @@ void HubFrame::customEvent(QEvent *e){
             pmUserOffline(cid);
 
             QString nick = model->itemForPtr(u_e->getUser())->nick;
-            pm.insert(nick, pm[cid]);
+            PMWindow *pmw = pm[cid];
+
+            pm.insert(nick, pmw);
+
+            pmw->cid = nick;
+            pmw->plainTextEdit_INPUT->setEnabled(false);//we need interface function
 
             pm.remove(cid);
         }
@@ -753,6 +728,8 @@ void HubFrame::closeEvent(QCloseEvent *e){
     MW->remArenaWidgetFromToolbar(this);
     MW->remWidgetFromArena(this);
     MW->remArenaWidget(this);
+
+    FavoriteManager::getInstance()->removeListener(this);
 
     client->removeListener(this);
     HubManager::getInstance()->unregisterHubUrl(_q(client->getHubUrl()));
@@ -805,6 +782,7 @@ void HubFrame::showEvent(QShowEvent *e){
     HubManager::getInstance()->setActiveHub(this);
 
     hasMessages = false;
+    hasHighlightMessages = false;
     MainLayoutWrapper::getInstance()->redrawToolPanel();
 }
 
@@ -852,6 +830,7 @@ void HubFrame::init(){
     toolButton_SMILE->setVisible(WBGET(WB_APP_ENABLE_EMOTICON) && EmoticonFactory::getInstance());
     toolButton_SMILE->setIcon(WulforUtil::getInstance()->getPixmap(WulforUtil::eiEMOTICON));
 
+    connect(label_LAST_STATUS, SIGNAL(linkActivated(QString)), this, SLOT(slotStatusLinkOpen(QString)));
     connect(treeView_USERS, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(slotUserListMenu(QPoint)));
     connect(treeView_USERS->header(), SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(slotHeaderMenu(QPoint)));
     connect(updater, SIGNAL(timeout()), this, SLOT(slotUsersUpdated()));
@@ -872,17 +851,31 @@ void HubFrame::init(){
     plainTextEdit_INPUT->setContextMenuPolicy(Qt::CustomContextMenu);
 #endif
 
+    plainTextEdit_INPUT->setWordWrapMode(QTextOption::NoWrap);
+    plainTextEdit_INPUT->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     plainTextEdit_INPUT->installEventFilter(this);
+
+    textEdit_CHAT->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    textEdit_CHAT->setTabStopWidth(40);
+    textEdit_CHAT->document()->setDefaultStyleSheet(
+            QString("pre { margin:0px; white-space:pre-wrap; font-family:'%1' }")
+            .arg(QApplication::font().family()));
 
     initMenu();
 
     load();
 
     updater->start();
+
+    completer = new QCompleter(this);
+    // completer->setMaxVisibleItems(10); // This property was introduced in Qt 4.6.
+    plainTextEdit_INPUT->setCompleter(completer, model);
 }
 
 void HubFrame::initMenu(){
     WulforUtil *WU = WulforUtil::getInstance();
+
+    delete arenaMenu;
 
     arenaMenu = new QMenu(tr("Hub menu"), this);
 
@@ -894,9 +887,21 @@ void HubFrame::initMenu(){
 
     arenaMenu->addActions(QList<QAction*>() << reconnect
                                             << show_wnd
-                                            << sep
-                                            << close_wnd
                          );
+
+    if (client && client->isConnected()){
+        QMenu *u_c = WulforUtil::getInstance()->buildUserCmdMenu(QList<QString>() << _q(client->getHubUrl()), UserCommand::CONTEXT_HUB);
+
+        if (u_c){
+            u_c->setTitle(tr("Hub Menu"));
+
+            arenaMenu->addMenu(u_c);
+
+            connect(u_c, SIGNAL(triggered(QAction*)), this, SLOT(slotHubMenu(QAction*)));
+        }
+    }
+
+    arenaMenu->addActions(QList<QAction*>() << sep << close_wnd);
 
     connect(reconnect, SIGNAL(triggered()), this, SLOT(slotReconnect()));
     connect(show_wnd, SIGNAL(triggered()), this, SLOT(slotShowWnd()));
@@ -929,6 +934,16 @@ void HubFrame::load(){
     }
 
     treeView_USERS->sortByColumn(WIGET(WI_CHAT_SORT_COLUMN), WulforUtil::getInstance()->intToSortOrder(WIGET(WI_CHAT_SORT_ORDER)));
+
+    reloadSomeSettings();
+}
+
+void HubFrame::reloadSomeSettings(){
+    plainTextEdit_INPUT->setMaximumHeight(WIGET(WI_TEXT_EDIT_HEIGHT));
+
+    label_USERSTATE->setVisible(WBGET(WB_USERS_STATISTICS));
+
+    label_LAST_STATUS->setVisible(WBGET(WB_LAST_STATUS));
 }
 
 QWidget *HubFrame::getWidget(){
@@ -967,31 +982,27 @@ QString HubFrame::getArenaShortTitle(){
 }
 
 QMenu *HubFrame::getMenu(){
+    initMenu();
+
     return arenaMenu;
 }
 
 const QPixmap &HubFrame::getPixmap(){
-    if (hasMessages)
+    if (hasHighlightMessages)
         return WulforUtil::getInstance()->getPixmap(WulforUtil::eiMESSAGE);
+    else if (hasMessages)
+        return WulforUtil::getInstance()->getPixmap(WulforUtil::eiHUBMSG);
     else
         return WulforUtil::getInstance()->getPixmap(WulforUtil::eiSERVER);
 }
 
-void HubFrame::Remove(){
-    close();
-}
-
-QList<QAction*> HubFrame::GetTabBarContextMenuActions () const{
-    if (arenaMenu)
-        return arenaMenu->actions();
-    else
-        return ArenaWidget::GetTabBarContextMenuActions();
-}
-
 void HubFrame::clearChat(){
     textEdit_CHAT->setHtml("");
-
     addStatus(tr("Chat cleared."));
+
+    textEdit_CHAT->document()->setDefaultStyleSheet(
+            QString("pre { margin:0px; white-space:pre-wrap; font-family:'%1' }")
+            .arg(QApplication::font().family()));
 
     if (WBGET(WB_APP_ENABLE_EMOTICON) && EmoticonFactory::getInstance())
         EmoticonFactory::getInstance()->addEmoticons(textEdit_CHAT->document());
@@ -1010,8 +1021,7 @@ void HubFrame::disableChat(){
     }
 
     plainTextEdit_INPUT->setEnabled(!chatDisabled);
-    plainTextEdit_INPUT->setVisible(!chatDisabled);
-    toolButton_SMILE->setVisible(!chatDisabled);
+    frame_INPUT->setVisible(!chatDisabled);
 }
 
 
@@ -1023,7 +1033,7 @@ QString HubFrame::getUserInfo(UserListItem *item){
     ttip += model->headerData(COLUMN_EMAIL, Qt::Horizontal, Qt::DisplayRole).toString() + ": " + item->email + "\n";
     ttip += model->headerData(COLUMN_IP, Qt::Horizontal, Qt::DisplayRole).toString() + ": " + item->ip + "\n";
     ttip += model->headerData(COLUMN_SHARE, Qt::Horizontal, Qt::DisplayRole).toString() + ": " +
-            QString::fromStdString(dcpp::Util::formatBytes(item->share)) + "\n";
+            WulforUtil::formatBytes(item->share) + "\n";
     ttip += model->headerData(COLUMN_TAG, Qt::Horizontal, Qt::DisplayRole).toString() + ": " + item->tag + "\n";
     ttip += model->headerData(COLUMN_CONN, Qt::Horizontal, Qt::DisplayRole).toString() + ": " + item->conn + "\n";
 
@@ -1051,11 +1061,23 @@ void HubFrame::sendChat(QString msg, bool thirdPerson, bool stripNewLines){
     if (msg.endsWith("\n"))
         msg = msg.left(msg.lastIndexOf("\n"));
 
-    if (!parseForCmd(msg))
-        client->hubMessage(Text::toUtf8(msg.toStdString()), thirdPerson);
+    if (!parseForCmd(msg, this))
+        client->hubMessage(msg.toStdString(), thirdPerson);
+
+    if (!thirdPerson){
+        out_messages << msg;
+
+        if (out_messages.size() >= WIGET(WI_OUT_IN_HIST))
+            out_messages.removeAt(0);
+
+        out_messages_index = out_messages.size()-1;
+    }
 }
 
-bool HubFrame::parseForCmd(QString line){
+bool HubFrame::parseForCmd(QString line, QWidget *wg){
+    HubFrame *fr = qobject_cast<HubFrame *>(wg);
+    PMWindow *pm = qobject_cast<PMWindow *>(wg);
+
     QStringList list = line.split(" ", QString::SkipEmptyParts);
 
     if (list.size() == 0)
@@ -1078,17 +1100,24 @@ bool HubFrame::parseForCmd(QString line){
             Util::setAway(false);
             Util::setManualAway(false);
 
-            addStatus(tr("Away mode off"));
+            if (fr == this)
+                addStatus(tr("Away mode off"));
+            else if (pm)
+                pm->addStatus(tr("Away mode off"));
         }
         else {
             Util::setAway(true);
             Util::setManualAway(true);
 
-            line.remove(0, 6);
+            if (!emptyParam){
+                line.remove(0, 6);
+                Util::setAwayMessage(line.toStdString());
+            }
 
-            Util::setAwayMessage(line.toStdString());
-
-            addStatus(tr("Away mode on: ") + QString::fromStdString(Util::getAwayMessage()));
+            if (fr == this)
+                addStatus(tr("Away mode on: ") + QString::fromStdString(Util::getAwayMessage()));
+            else if (pm)
+                pm->addStatus(tr("Away mode on: ") + QString::fromStdString(Util::getAwayMessage()));
         }
     }
     else if (cmd == "/alias" && !emptyParam){
@@ -1098,10 +1127,18 @@ bool HubFrame::parseForCmd(QString line){
             QString aliases = QByteArray::fromBase64(WSGET(WS_CHAT_CMD_ALIASES).toAscii());
 
             if (lex.at(1) == "list"){
-                if (!aliases.isEmpty())
-                    addStatus("\n"+aliases);
-                else
-                    addStatus(tr("Aliases not found."));
+                if (!aliases.isEmpty()){
+                    if (fr == this)
+                        addStatus("\n"+aliases);
+                    else if (pm)
+                        pm->addStatus("\n"+aliases);
+                }
+                else{
+                    if (fr == this)
+                        addStatus(tr("Aliases not found."));
+                    else if (pm)
+                        pm->addStatus(tr("Aliases not found."));
+                }
             }
             else if (lex.at(1) == "purge" && lex.size() == 3){
                 QString alias = lex.at(2);
@@ -1119,7 +1156,10 @@ bool HubFrame::parseForCmd(QString line){
 
                         WSSET(WS_CHAT_CMD_ALIASES, new_aliases.toAscii().toBase64());
 
-                        addStatus(tr("Alias removed."));
+                        if (fr == this)
+                            addStatus(tr("Alias removed."));
+                        else if (pm)
+                            pm->addStatus(tr("Alias removed."));
                     }
                 }
             }
@@ -1129,19 +1169,29 @@ bool HubFrame::parseForCmd(QString line){
                 raw.remove(0, raw.indexOf(" ")+1);
 
                 if (raw.indexOf("::") <= 0){
-                    addStatus(tr("Invalid alias syntax."));
+                    if (fr == this)
+                        addStatus(tr("Invalid alias syntax."));
+                    else if (pm)
+                        pm->addStatus(tr("Invalid alias syntax."));
                 }
                 else {
                     QStringList new_cmd = raw.split("::", QString::SkipEmptyParts);
 
-                    if (new_cmd.size() < 2 || new_cmd.at(1).isEmpty())
-                        addStatus(tr("Invalid alias syntax."));
+                    if (new_cmd.size() < 2 || new_cmd.at(1).isEmpty()){
+                        if (fr == this)
+                            addStatus(tr("Invalid alias syntax."));
+                        else if (pm)
+                            pm->addStatus(tr("Invalid alias syntax."));
+                    }
                     else if (!aliases.contains(new_cmd.at(0)+'\t')){
                         aliases += new_cmd.at(0) + '\t' +  new_cmd.at(1) + '\n';
 
                         WSSET(WS_CHAT_CMD_ALIASES, aliases.toAscii().toBase64());
 
-                        addStatus(tr("Alias %1 => %2 has been added").arg(new_cmd.at(0)).arg(new_cmd.at(1)));
+                        if (fr == this)
+                            addStatus(tr("Alias %1 => %2 has been added").arg(new_cmd.at(0)).arg(new_cmd.at(1)));
+                        else if (pm)
+                            pm->addStatus(tr("Alias %1 => %2 has been added").arg(new_cmd.at(0)).arg(new_cmd.at(1)));
                     }
                 }
             }
@@ -1156,18 +1206,28 @@ bool HubFrame::parseForCmd(QString line){
         else if (SpellCheck::getInstance())
             SpellCheck::deleteInstance();
 
-        addStatus(tr("Aspell switched %1").arg((WBGET(WB_APP_ENABLE_ASPELL)? tr("on") : tr("off"))) );
+        if (fr == this)
+            addStatus(tr("Aspell switched %1").arg((WBGET(WB_APP_ENABLE_ASPELL)? tr("on") : tr("off"))) );
+        else if (pm)
+            pm->addStatus(tr("Aspell switched %1").arg((WBGET(WB_APP_ENABLE_ASPELL)? tr("on") : tr("off"))) );
     }
 #endif
     else if (cmd == "/back"){
         Util::setAway(false);
 
-        addStatus(tr("Away mode off"));
+        if (fr == this)
+            addStatus(tr("Away mode off"));
+        else if (pm)
+            pm->addStatus(tr("Away mode off"));
     }
     else if (cmd == "/clear"){
         textEdit_CHAT->setHtml("");
 
-        addStatus(tr("Chat has been cleared"));
+        if (fr == this)
+            addStatus(tr("Chat has been cleared"));
+        else if (pm)
+            pm->addStatus(tr("Chat has been cleared"));
+
     }
     else if (cmd == "/close"){
         this->close();
@@ -1190,16 +1250,25 @@ bool HubFrame::parseForCmd(QString line){
         if (item){
             QString ttip = "\n" + getUserInfo(item);
 
-            addStatus(ttip);
+            if (fr == this)
+                addStatus(ttip);
+            else if (pm)
+                pm->addStatus(ttip);
         }
     }
     else if (cmd == "/me" && !emptyParam){
         if (line.endsWith("\n"))//remove extra \n char
             line = line.left(line.lastIndexOf("\n"));
 
-        line.remove(0, 4);
+        // This is temporary. It is need to check ClientManager::privateMessage(...) function
+        // in dcpp kernel with version > 0.75. And "if (fr == this)" will not be needed.
+        if (fr == this)
+            line.remove(0, 4);
 
-        sendChat(line, true, false);
+        if (fr == this)
+            sendChat(line, true, false);
+        else if (pm)
+            pm->sendMessage(line, true, false);
     }
     else if (cmd == "/pm" && !emptyParam){
         addPM(model->CIDforNick(param), "");
@@ -1217,7 +1286,7 @@ bool HubFrame::parseForCmd(QString line){
                          "/back - set away-mode off\n"
                          "/browse <nick> - browse user files\n"
                          "/clear - clear chat window\n"
-                         "/magnet - default action with magnet (0-ask,1-search,2-download)\n"
+                         "/magnet - default action with magnet (0-ask, 1-search, 2-download)\n"
                          "/close - close this hub\n"
                          "/fav - add this hub to favorites\n"
                          "/grant <nick> - grant extra slot to user\n"
@@ -1227,7 +1296,10 @@ bool HubFrame::parseForCmd(QString line){
                          "/pm <nick> - begin private chat with user\n"
                          "/sh <command> - start command and redirect output to the chat");
 
-        addStatus(out);
+        if (fr == this)
+            addStatus(out);
+        else if (pm)
+            pm->addStatus(out);
     }
     else if (cmd == "/sh" && !emptyParam){
         if (line.endsWith("\n"))//remove extra \n char
@@ -1235,7 +1307,7 @@ bool HubFrame::parseForCmd(QString line){
 
         line = line.remove(0, 4);
 
-        ShellCommandRunner *sh = new ShellCommandRunner(line, this);
+        ShellCommandRunner *sh = new ShellCommandRunner(line, wg);
         connect(sh, SIGNAL(finished(bool,QString)), this, SLOT(slotShellFinished(bool,QString)));
 
         shell_list.append(sh);
@@ -1257,7 +1329,7 @@ bool HubFrame::parseForCmd(QString line){
             QStringList cmds = line.split('\t', QString::SkipEmptyParts);
 
             if (cmds.size() == 2 && cmd == ("/" + cmds.at(0))){
-                parseForCmd(cmds.at(1));
+                parseForCmd(cmds.at(1), wg);
 
                 ok = true;
             }
@@ -1269,13 +1341,6 @@ bool HubFrame::parseForCmd(QString line){
     else
         return false;
 
-    commands.push_back(line);
-
-    if (commands.size() >= 64)
-        commands.removeAt(0);
-
-    command_index = commands.size()-1;
-
     return true;
 }
 
@@ -1283,27 +1348,33 @@ void HubFrame::addStatus(QString msg){
     if (chatDisabled)
         return;
 
+    QString pure_msg = msg;
     QString status = "";
     QString nick    = " * ";
 
-    msg = LinkParser::parseForLinks(msg);
+    pure_msg = LinkParser::parseForLinks(msg, false);
+    msg      = LinkParser::parseForLinks(msg, true);
 
+    pure_msg        = "<font color=\"" + WSGET(WS_CHAT_MSG_COLOR) + "\">" + pure_msg + "</font>";
     msg             = "<font color=\"" + WSGET(WS_CHAT_MSG_COLOR) + "\">" + msg + "</font>";
     QString time    = "<font color=\"" + WSGET(WS_CHAT_TIME_COLOR)+ "\">[" + QDateTime::currentDateTime().toString("hh:mm:ss") + "]</font>";
 
     status = time + "<font color=\"" + WSGET(WS_CHAT_STAT_COLOR) + "\"><b>" + nick + "</b> </font>";
-    status += msg;
 
-    addOutput(status);
+    addOutput(status + msg);
+
+    status += pure_msg;
+    WulforUtil::getInstance()->textToHtml(status, false);
+
+    QString pre = tr("<b>Last status message on hub:</b><br/>%1").replace(" ","&nbsp;");
+
+    label_LAST_STATUS->setText(status);
+    label_LAST_STATUS->setToolTip(pre.arg(status));
 }
 
 void HubFrame::addOutput(QString msg){
-
-    /* This is temporary block. Later we must make it more wise. */
     msg.replace("\r", "");
-    msg.replace("\n", "\n<br/>");
-    msg.replace("\t", "&nbsp;&nbsp;&nbsp;&nbsp;");
-
+    msg = "<pre>" + msg + "</pre>";
     textEdit_CHAT->append(msg);
 }
 
@@ -1313,6 +1384,8 @@ void HubFrame::addPM(QString cid, QString output){
         p->textEdit_CHAT->setContextMenuPolicy(Qt::CustomContextMenu);
 
         connect(p, SIGNAL(privateMessageClosed(QString)), this, SLOT(slotPMClosed(QString)));
+        connect(p, SIGNAL(inputTextChanged()), this, SLOT(slotInputTextChanged()));
+        connect(p, SIGNAL(inputTextMenu()), this, SLOT(slotInputContextMenu()));
         connect(p->textEdit_CHAT, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(slotChatMenu(QPoint)));
 
         MainLayoutWrapper::getInstance()->addArenaWidget(p);
@@ -1320,6 +1393,8 @@ void HubFrame::addPM(QString cid, QString output){
 
         if (!WBGET(WB_CHAT_KEEPFOCUS))
             MainLayoutWrapper::getInstance()->mapWidgetOnArena(p);
+
+        p->setCompleter(completer, model);
 
         p->addOutput(output);
 
@@ -1329,6 +1404,9 @@ void HubFrame::addPM(QString cid, QString output){
     }
     else{
         PMMap::iterator it = pm.find(cid);
+
+        if (output.indexOf(_q(client->getMyNick())) >= 0)
+            it.value()->setHasHighlightMessages(true);
 
         it.value()->addOutput(output);
     }
@@ -1360,13 +1438,16 @@ void HubFrame::on_userUpdated(const HubFrame::VarMap &map, const UserPtr &user, 
 
     UserListItem *item = model->itemForPtr(user);
 
+    QString cid = map["CID"].toString();
+    QString nick = map["NICK"].toString();
+
     if (item){
         bool needresort = false;
         bool isOp = map["ISOP"].toBool();
 
         total_shared -= item->share;
 
-        item->nick = map["NICK"].toString();
+        item->nick = nick;
         item->comm = map["COMM"].toString();
         item->conn = map["CONN"].toString();
         item->email= map["EMAIL"].toString();
@@ -1380,13 +1461,15 @@ void HubFrame::on_userUpdated(const HubFrame::VarMap &map, const UserPtr &user, 
         item->isOp = isOp;
         item->px = WU->getUserIcon(user, map["AWAY"].toBool(), item->isOp, map["SPEED"].toString());
 
-        QModelIndex left = model->index(item->row(), COLUMN_NICK);
-        QModelIndex right= model->index(item->row(), COLUMN_EMAIL);
+        int row = item->row();
+
+        QModelIndex left = model->index(row, COLUMN_NICK);
+        QModelIndex right= model->index(row, COLUMN_EMAIL);
 
         model->repaintData(left, right);
 
         if (needresort)
-            model->sort(model->getSortColumn(), model->getSortOrder());
+            model->needResort();
     }
     else{
         if (join && WS->getBool(WB_CHAT_SHOW_JOINS)){
@@ -1394,19 +1477,22 @@ void HubFrame::on_userUpdated(const HubFrame::VarMap &map, const UserPtr &user, 
                 if (showFavJoinsOnly && !FavoriteManager::getInstance()->isFavoriteUser(user))
                     break;
 
-                addStatus(map["NICK"].toString() + tr(" joins the chat"));
+                addStatus(nick + tr(" joins the chat"));
             } while (0);
         }
 
-        model->addUser(map, user);
+        model->addUser(nick, map["SHARE"].toULongLong(),
+                       map["COMM"].toString(), map["TAG"].toString(),
+                       map["CONN"].toString(), map["IP"].toString(),
+                       map["EMAIL"].toString(), map["ISOP"].toBool(),
+                       map["AWAY"].toBool(), map["SPEED"].toString(),
+                       cid, user);
 
-        if (pm.contains(map["NICK"].toString())){
-            QString cid = map["CID"].toString();
-            QString nick = map["NICK"].toString();
-
+        if (pm.contains(nick)){
             PMWindow *wnd = pm[nick];
 
             wnd->cid = cid;
+            wnd->plainTextEdit_INPUT->setEnabled(true);
             wnd->hubUrl = _q(client->getHubUrl());
 
             pm.insert(cid, wnd);
@@ -1467,40 +1553,56 @@ void HubFrame::addUserToFav(const QString& id){
     if (id.isEmpty())
         return;
 
-    QString message = tr("User not found.");
     string cid = id.toStdString();
 
     UserPtr user = ClientManager::getInstance()->findUser(CID(cid));
 
     if (user){
-        if (user != ClientManager::getInstance()->getMe() && !FavoriteManager::getInstance()->isFavoriteUser(user)){
+        if (user != ClientManager::getInstance()->getMe() && !FavoriteManager::getInstance()->isFavoriteUser(user))
             FavoriteManager::getInstance()->addFavoriteUser(user);
-
-            message = WulforUtil::getInstance()->getNicks(id) + tr(" has been added to favorites.");
-        }
     }
-
-    MainLayoutWrapper::getInstance()->setStatusMessage(message);
 }
 
 void HubFrame::delUserFromFav(const QString& id){
     if (id.isEmpty())
         return;
 
-    QString message = tr("User not found.");
     string cid = id.toStdString();
 
     UserPtr user = ClientManager::getInstance()->findUser(CID(cid));
 
     if (user){
-        if (user != ClientManager::getInstance()->getMe() && FavoriteManager::getInstance()->isFavoriteUser(user)){
+        if (user != ClientManager::getInstance()->getMe() && FavoriteManager::getInstance()->isFavoriteUser(user))
             FavoriteManager::getInstance()->removeFavoriteUser(user);
-
-            message = WulforUtil::getInstance()->getNicks(id) + tr(" has been removed from favorites.");
-        }
     }
+}
 
-    MainLayoutWrapper::getInstance()->setStatusMessage(message);
+void HubFrame::changeFavStatus(QString id) {
+    if (id.isEmpty())
+        return;
+
+    UserPtr user = ClientManager::getInstance()->findUser(CID(id.toStdString()));
+
+    if (user) {
+        UserListItem *item = NULL;
+        if (model)
+            item = model->itemForPtr(user);
+
+        bool bFav = FavoriteManager::getInstance()->isFavoriteUser(user);
+
+        if (item) {
+            item->fav = bFav;
+            QModelIndex ixb = model->index(item->row(), COLUMN_NICK);
+            QModelIndex ixe = model->index(item->row(), COLUMN_EMAIL);
+
+            model->repaintData(ixb, ixe);
+        }
+
+        QString message = WulforUtil::getInstance()->getNicks(id) +
+                (bFav ? tr(" has been added to favorites.") : tr(" has been removed from favorites."));
+
+        MainLayoutWrapper::getInstance()->setStatusMessage(message);
+    }
 }
 
 void HubFrame::delUserFromQueue(const QString& id){
@@ -1554,20 +1656,24 @@ void HubFrame::newMsg(VarMap map){
 
     nick = third? ("* " + nick + " ") : ("<" + nick + "> ");
 
-    message = LinkParser::parseForLinks(message);
+    message = LinkParser::parseForLinks(message, true);
 
-    WulforUtil::getInstance()->textToHtml(nick);
+    WulforUtil::getInstance()->textToHtml(nick, true);
 
     message = "<font color=\"" + WSGET(msg_color) + "\">" + message + "</font>";
-    output  = time + QString(" <a style=\"text-decoration:none\" href=\"user://%1\"><font color=\"%2\"><b>%1</b></font></a>").arg(nick).arg(WSGET(color));
+    output  = time +
+              QString(" <a style=\"text-decoration:none\" href=\"user://%1\"><font color=\"%2\"><b>%3</b></font></a>")
+              .arg(nick).arg(WSGET(color)).arg(nick.replace("\"", "&quot;"));
     output  += message;
-
-    //WulforUtil::getInstance()->textToHtml(output, false);
 
     addOutput(output);
 
     if (!isVisible()){
+        if (msg_color == WS_CHAT_SAY_NICK)
+            hasHighlightMessages = true;
+
         hasMessages = true;
+
         MainLayoutWrapper::getInstance()->redrawToolPanel();
     }
 }
@@ -1584,12 +1690,14 @@ void HubFrame::newPm(VarMap map){
 
     nick = map["3RD"].toBool()? ("* " + nick + " ") : ("<" + nick + "> ");
 
-    message = LinkParser::parseForLinks(message);
+    message = LinkParser::parseForLinks(message, true);
 
-    WulforUtil::getInstance()->textToHtml(nick);
+    WulforUtil::getInstance()->textToHtml(nick, true);
 
     message       = "<font color=\"" + WSGET(WS_CHAT_MSG_COLOR) + "\">" + message + "</font>";
-    full_message  = time + QString(" <a style=\"text-decoration:none\" href=\"user://%1\"><font color=\"%2\"><b>%1</b></font></a>").arg(nick).arg(WSGET(color));
+    full_message  = time +
+                    QString(" <a style=\"text-decoration:none\" href=\"user://%1\"><font color=\"%2\"><b>%3</b></font></a>")
+                    .arg(nick).arg(WSGET(color)).arg(nick.replace("\"", "&quot;"));
     full_message += message;
 
     WulforUtil::getInstance()->textToHtml(full_message, false);
@@ -1607,6 +1715,10 @@ void HubFrame::createPMWindow(const dcpp::CID &cid){
 
 bool HubFrame::hasCID(const dcpp::CID &cid, const QString &nick){
     return (model->CIDforNick(nick) == _q(cid.toBase32()));
+}
+
+bool HubFrame::isFindFrameActivated(){
+    return lineEdit_FIND->hasFocus();
 }
 
 void HubFrame::clearUsers(){
@@ -1634,7 +1746,7 @@ void HubFrame::pmUserEvent(QString cid, QString e){
         return;
 
     QString output = "";
-    QString nick    = " * DC-CORE";
+    QString nick    = " * ";
 
     QString msg     = "<font color=\"" + WSGET(WS_CHAT_MSG_COLOR) + "\">" + e + "</font>";
     QString time    = "<font color=\"" + WSGET(WS_CHAT_TIME_COLOR)+ "\">[" +QDateTime::currentDateTime().toString("hh:mm:ss") + "]</font>";
@@ -1715,69 +1827,15 @@ void HubFrame::findText(QTextDocument::FindFlags flag){
     slotFindAll();
 }
 
-void HubFrame::nickCompletion() {
-    int cpos =  plainTextEdit_INPUT->textCursor().position();
-    QString input = plainTextEdit_INPUT->textCursor().block().text().left(cpos);
-
-    if (cpos == 0 || cpos == input.lastIndexOf(QRegExp("\\s")))
-        return;
-
-    int from = input.lastIndexOf(QRegExp("\\s"));
-
-    if (from < 0)
-        from = 0;
-
-    QString matchExp = input.mid(from, cpos - from);
-    matchExp = matchExp.trimmed();
-
-    if (matchExp.isEmpty())
-        return;
-
-    QStringList nicks = model->matchNicksAny(matchExp.toLower());
-
-    if (nicks.size() == 1){
-        QString nick = nicks.at(0);
-
-        int i = matchExp.length();
-
-        while (i > 0){
-            plainTextEdit_INPUT->textCursor().deletePreviousChar();
-            i--;
-        }
-
-        plainTextEdit_INPUT->textCursor().insertText(nick + ": ");
-    }
-    else if (!nicks.isEmpty() && nicks.size() < 15){
-        QMenu *m = new QMenu();
-
-        foreach (QString nick, nicks)
-            m->addAction(nick);
-
-        QAction *ret = m->exec(plainTextEdit_INPUT->cursor().pos());
-
-        if (ret){
-            QString nick = ret->text();
-            //QString insertion = nick.right(nick.length()-matchExp.length()) + ": ";
-
-            int i = matchExp.length();
-
-            while (i > 0){
-                plainTextEdit_INPUT->textCursor().deletePreviousChar();
-                i--;
-            }
-
-            if (plainTextEdit_INPUT->textCursor().position() == 0)
-                plainTextEdit_INPUT->textCursor().insertText(nick+ ": ");
-            else
-                plainTextEdit_INPUT->textCursor().insertText(nick+ " ");
-        }
-
-        delete m;
-    }
+void HubFrame::slotActivate(){
+    plainTextEdit_INPUT->setFocus();
 }
 
 void HubFrame::slotUsersUpdated(){
-    label_USERSTATE->setText(QString(tr("Users count: %1 | Total share: %2")).arg(model->rowCount()).arg(_q(Util::formatBytes(total_shared))));
+    label_USERSTATE->setText(QString(tr("Users count: %1 | Total share: %2"))
+                             .arg(model->rowCount())
+                             .arg(WulforUtil::formatBytes(total_shared)));
+    label_LAST_STATUS->setMaximumHeight(label_USERSTATE->height());
 }
 
 void HubFrame::slotReconnect(){
@@ -1865,6 +1923,9 @@ void HubFrame::slotUserListMenu(const QPoint&){
 
                 if (item)
                     addPM(item->cid, "");
+
+                if (pm.contains(cid))
+                    MainLayoutWrapper::getInstance()->mapWidgetOnArena(pm[cid]);
             }
 
             break;
@@ -1877,7 +1938,9 @@ void HubFrame::slotUserListMenu(const QPoint&){
                 item = reinterpret_cast<UserListItem*>(i.internalPointer());
 
                 if (item)
-                    ttip = getUserInfo(item);
+                    ttip += getUserInfo(item) + "\n";
+
+                ttip += "\n";
             }
 
             if (!ttip.isEmpty())
@@ -1921,8 +1984,6 @@ void HubFrame::slotUserListMenu(const QPoint&){
 
                 if (item)
                     addUserToFav(item->cid);
-
-                item->fav = true;
             }
 
             break;
@@ -1934,8 +1995,6 @@ void HubFrame::slotUserListMenu(const QPoint&){
 
                 if (item)
                     delUserFromFav(item->cid);
-
-                item->fav = false;
             }
 
             break;
@@ -2009,7 +2068,7 @@ void HubFrame::slotChatMenu(const QPoint &){
     QString cid = model->CIDforNick(nick);
 
     if (cid.isEmpty()){
-        QMenu *m = textEdit_CHAT->createStandardContextMenu(QCursor::pos());
+        QMenu *m = editor->createStandardContextMenu(QCursor::pos());
         m->exec(QCursor::pos());
 
         delete m;
@@ -2087,6 +2146,9 @@ void HubFrame::slotChatMenu(const QPoint &){
         case Menu::PrivateMessage:
         {
             addPM(cid, "");
+
+            if (pm.contains(cid))
+                MainLayoutWrapper::getInstance()->mapWidgetOnArena(pm[cid]);
 
             break;
         }
@@ -2183,8 +2245,15 @@ void HubFrame::slotShowWnd(){
 }
 
 void HubFrame::slotShellFinished(bool ok, QString output){
-    if (ok)
-        sendChat(output, false, false);
+    if (ok){
+        HubFrame *fr = qobject_cast<HubFrame *>(sender()->parent());
+        PMWindow *pm = qobject_cast<PMWindow *>(sender()->parent());
+
+        if (fr == this)
+            sendChat(output, false, false);
+        else if (pm)
+            pm->sendMessage(output, false, false);
+    }
 
     ShellCommandRunner *runner = reinterpret_cast<ShellCommandRunner*>(sender());
 
@@ -2199,6 +2268,38 @@ void HubFrame::slotShellFinished(bool ok, QString output){
         shell_list.removeAt(shell_list.indexOf(runner));
 
     delete runner;
+}
+
+void HubFrame::nextMsg(){
+    if (!plainTextEdit_INPUT->hasFocus())
+        return;
+
+    if (out_messages_index < 0 ||
+        out_messages.size()-1 < out_messages_index+1 ||
+        out_messages.size() == 0)
+        return;
+
+    plainTextEdit_INPUT->setPlainText(out_messages.at(out_messages_index+1));
+
+    if (out_messages_index < out_messages.size()-1)
+        out_messages_index++;
+    else
+        out_messages_index = out_messages.size()-1;
+}
+
+void HubFrame::prevMsg(){
+    if (!plainTextEdit_INPUT->hasFocus())
+        return;
+
+    if (out_messages_index < 0 ||
+        out_messages.size()-1 < out_messages_index ||
+        out_messages.size() == 0)
+        return;
+
+    plainTextEdit_INPUT->setPlainText(out_messages.at(out_messages_index));
+
+    if (out_messages_index >= 1)
+        out_messages_index--;
 }
 
 void HubFrame::slotHideFindFrame(){
@@ -2230,10 +2331,9 @@ void HubFrame::slotFilterTextChanged(){
 
     if (!text.isEmpty()){
         if (!proxy){
-            proxy = new QSortFilterProxyModel(this);
+            proxy = new UserListProxyModel();
             proxy->setFilterCaseSensitivity(Qt::CaseInsensitive);
             proxy->setDynamicSortFilter(true);
-            proxy->setSortRole(Qt::DisplayRole);
             proxy->setSourceModel(model);
         }
 
@@ -2245,6 +2345,9 @@ void HubFrame::slotFilterTextChanged(){
     }
     else if (treeView_USERS->model() != model)
         treeView_USERS->setModel(model);
+
+    if (comboBox_COLUMNS->hasFocus())
+        lineEdit_FILTER->setFocus();
 }
 
 void HubFrame::slotFindTextEdited(const QString & text){
@@ -2333,6 +2436,11 @@ void HubFrame::slotSmile(){
 
 void HubFrame::slotInputTextChanged(){
 #ifdef USE_ASPELL
+    PMWindow *p = qobject_cast<PMWindow*>(sender());
+    QPlainTextEdit *plainTextEdit_INPUT = (p)? qobject_cast<QPlainTextEdit*>(p->inputWidget()) : this->plainTextEdit_INPUT;
+
+    if (!plainTextEdit_INPUT)
+        return;
     QString line = plainTextEdit_INPUT->toPlainText();
 
     if (line.isEmpty() || !SpellCheck::getInstance())
@@ -2354,7 +2462,11 @@ void HubFrame::slotInputTextChanged(){
     selection.format.setUnderlineStyle(QTextCharFormat::WaveUnderline);
     selection.format.setUnderlineColor(Qt::red);
 
+    bool ok = false;
     foreach (QString s, words){
+        if (s.toLongLong(&ok) && ok)
+            continue;
+
         if (plainTextEdit_INPUT->find(s) && !sp->ok(s)){
             selection.cursor = plainTextEdit_INPUT->textCursor();
             extraSelections.append(selection);
@@ -2367,6 +2479,11 @@ void HubFrame::slotInputTextChanged(){
 }
 
 void HubFrame::slotInputContextMenu(){
+    PMWindow *p = qobject_cast<PMWindow*>(sender());
+    QPlainTextEdit *plainTextEdit_INPUT = (p)? qobject_cast<QPlainTextEdit*>(p->inputWidget()) : this->plainTextEdit_INPUT;
+
+    if (!plainTextEdit_INPUT)
+        return;
 
     QMenu *m = plainTextEdit_INPUT->createStandardContextMenu();
 
@@ -2391,28 +2508,35 @@ void HubFrame::slotInputContextMenu(){
             sp->suggestions(word, list);
 
             m->addSeparator();
-            QMenu *ss = new QMenu(tr("Suggestions"), this);
             QAction *add_to_dict = new QAction(tr("Add to dictionary"), m);
 
             m->addAction(add_to_dict);
 
-            foreach (QString s, list)
-                ss->addAction(s);
+            QMenu *ss = NULL;
+            if (!list.isEmpty()) {
+                ss = new QMenu(tr("Suggestions"), this);
 
-            m->addMenu(ss);
+
+                foreach (QString s, list)
+                    ss->addAction(s);
+
+                m->addMenu(ss);
+            }
 
             QAction *ret = m->exec(QCursor::pos());
 
             if (ret == add_to_dict)
                 sp->addToDict(word);
-            else if (ret){
+            else if (ss && ret && ret->parent() == ss){
                 c.removeSelectedText();
 
                 c.insertText(ret->text());
             }
 
             m->deleteLater();
-            ss->deleteLater();
+
+            if (ss)
+                ss->deleteLater();
 
             slotInputTextChanged();
         }
@@ -2422,6 +2546,50 @@ void HubFrame::slotInputContextMenu(){
         m->deleteLater();
     }
 #endif
+}
+
+void HubFrame::slotStatusLinkOpen(const QString &url){
+    WulforUtil::getInstance()->openUrl(url);
+}
+
+void HubFrame::slotHubMenu(QAction *res){
+    if (res && !res->toolTip().isEmpty()){//User command
+        QString last_user_cmd = res->toolTip();
+        QString cmd_name = res->statusTip();
+        QString hub = res->data().toString();
+
+        int id = FavoriteManager::getInstance()->findUserCommand(cmd_name.toStdString(), client->getHubUrl());
+        UserCommand uc;
+
+        if (id == -1 || !FavoriteManager::getInstance()->getUserCommand(id, uc))
+            return;
+
+        StringMap params;
+
+        if (WulforUtil::getInstance()->getUserCommandParams(last_user_cmd, params)){
+            client->getMyIdentity().getParams(params, "my", true);
+            client->getHubIdentity().getParams(params, "hub", false);
+
+            client->escapeParams(params);
+            client->sendUserCmd(Util::formatParams(uc.getCommand(), params, false));
+        }
+    }
+}
+
+void HubFrame::on(FavoriteManagerListener::UserAdded, const FavoriteUser& aUser) throw() {
+    QString cid = _q(aUser.getUser()->getCID().toBase32());
+    typedef Func1<HubFrame, QString> FUNC;
+    FUNC *func = new FUNC(this, &HubFrame::changeFavStatus, cid);
+
+    QApplication::postEvent(this, new UserCustomEvent(func));
+}
+
+void HubFrame::on(FavoriteManagerListener::UserRemoved, const FavoriteUser& aUser) throw() {
+    QString cid = _q(aUser.getUser()->getCID().toBase32());
+    typedef Func1<HubFrame, QString> FUNC;
+    FUNC *func = new FUNC(this, &HubFrame::changeFavStatus, cid);
+
+    QApplication::postEvent(this, new UserCustomEvent(func));
 }
 
 void HubFrame::on(ClientListener::Connecting, Client *c) throw(){
@@ -2673,6 +2841,9 @@ void HubFrame::on(ClientListener::PrivateMessage, Client*, const OnlineUser &fro
         params["myCID"] = ClientManager::getInstance()->getMe()->getCID().toBase32();
         LOG(LogManager::PM, params);
     }
+
+    if (from.getUser() != ClientManager::getInstance()->getMe() && Util::getAway() && !pm.contains(_q(id.toBase32())))
+        ClientManager::getInstance()->privateMessage(user.getUser(), Util::getAwayMessage(), false, client->getHubUrl());
 }
 
 void HubFrame::on(ClientListener::NickTaken, Client*) throw(){
