@@ -1,3 +1,12 @@
+/***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 3 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************/
+
 #ifndef PUBLICHUBS_H
 #define PUBLICHUBS_H
 
@@ -5,6 +14,7 @@
 #include <QCloseEvent>
 #include <QMenu>
 #include <QPixmap>
+#include <QSortFilterProxyModel>
 
 #include "dcpp/stdinc.h"
 #include "dcpp/DCPlusPlus.h"
@@ -32,27 +42,29 @@ private:
 };
 
 class PublicHubs :
-        public QWidget,
-        public dcpp::Singleton<PublicHubs>,
-        public ArenaWidget,
-        public dcpp::FavoriteManagerListener,
+        public  QWidget,
+        public  dcpp::Singleton<PublicHubs>,
+        public  ArenaWidget,
+        public  dcpp::FavoriteManagerListener,
         private Ui::UIPublicHubs
 {
 Q_OBJECT
-Q_INTERFACES(ArenaWidget IMultiTabsWidget)
-
+Q_INTERFACES(ArenaWidget)
 friend class dcpp::Singleton<PublicHubs>;
 
 public:
-    // Arena Widget interface
     QString  getArenaTitle(){ return tr("Public Hubs"); }
     QString  getArenaShortTitle(){ return getArenaTitle(); }
     QWidget *getWidget(){ return this; }
     QMenu   *getMenu(){ return NULL; }
     const QPixmap &getPixmap(){ return WulforUtil::getInstance()->getPixmap(WulforUtil::eiSERVER); }
+    void CTRL_F_pressed() { slotFilter(); }
+    ArenaWidget::Role role() const { return ArenaWidget::PublicHubs; }
 
-    // IMultiTabsWidget interface
-    void Remove() { close(); }
+    bool isFindFrameActivated();
+
+public slots:
+    void slotFilter();
 
 protected:
     virtual void closeEvent(QCloseEvent *);
@@ -66,6 +78,9 @@ protected:
 private slots:
     void slotContextMenu();
     void slotHeaderMenu();
+    void slotHubChanged(int);
+    void slotFilterColumnChanged();
+    void slotDoubleClicked(const QModelIndex&);
 
 private:
     PublicHubs(QWidget *parent = NULL);
@@ -78,6 +93,7 @@ private:
 
     dcpp::HubEntryList entries;
     PublicHubModel *model;
+    PublicHubProxyModel *proxy;
 };
 
 #endif // PUBLICHUBS_H

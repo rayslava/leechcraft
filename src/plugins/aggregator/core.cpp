@@ -571,6 +571,11 @@ namespace LeechCraft
 					GetChannel (channel.Title_, channel.ParentURL_);
 				ci.Description_ = rc->Description_;
 				ci.Author_ = rc->Author_;
+
+				items_shorts_t items;
+				StorageBackend_->GetItems (items, channel.ParentURL_ + channel.Title_);
+				ci.NumItems_ = items.size ();
+
 				return ci;
 			}
 			
@@ -1448,14 +1453,7 @@ namespace LeechCraft
 						QString str = tr ("Added channel \"%1\" (%n item(s))",
 								"", channel->Items_.size ())
 							.arg (channel->Title_);
-						Notification n =
-						{
-							"Aggregator",
-							str,
-							false,
-							Notification::PInformation_
-						};
-						emit notify (n);
+						emit gotEntity (Util::MakeNotification ("Aggregator", str, PInfo_));
 						continue;
 					}
 
@@ -1519,19 +1517,24 @@ namespace LeechCraft
 						++updatedItems;
 					}
 
-					if (newItems + updatedItems)
+					QString method = XmlSettingsManager::Instance ()->
+							property ("NotificationsFeedUpdateBehavior").toString ();
+					bool shouldShow = true;
+					if (method == "ShowNo")
+						shouldShow = false;
+					else if (method == "ShowNew")
+						shouldShow = newItems;
+					else if (method == "ShowAll")
+						shouldShow = newItems + updatedItems;
+
+					qDebug () << Q_FUNC_INFO << shouldShow << newItems << updatedItems << method;
+
+					if (shouldShow)
 					{
 						QString str = tr ("Updated channel \"%1\" (%2, %3)").arg (channel->Title_)
 							.arg (tr ("%n new item(s)", "Channel update", newItems))
 							.arg (tr ("%n updated item(s)", "Channel update", updatedItems));
-						Notification n =
-						{
-							"Aggregator",
-							str,
-							false,
-							Notification::PInformation_
-						};
-						emit notify (n);
+						emit gotEntity (Util::MakeNotification ("Aggregator", str, PInfo_));
 					}
 
 					StorageBackend_->TrimChannel (channel->Title_, channel->ParentURL_,
@@ -1641,14 +1644,9 @@ namespace LeechCraft
 			
 			void Core::ErrorNotification (const QString& h, const QString& body, bool wait) const
 			{
-				Notification n =
-				{
-					h,
-					body,
-					wait,
-					Notification::PCritical_
-				};
-				emit notify (n);
+				DownloadEntity e = Util::MakeNotification (h, body, PCritical_);
+				e.Additional_ ["UntilUserSees"] = wait;
+				emit const_cast<Core*> (this)->gotEntity (e);
 			}
 		};
 	};

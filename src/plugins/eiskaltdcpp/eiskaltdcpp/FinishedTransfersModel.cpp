@@ -112,17 +112,17 @@ QVariant FinishedTransfersModel::data(const QModelIndex &index, int role) const
                 if (index.column() == COLUMN_FINISHED_ELAPS)
                     return _q(Util::formatSeconds(item->data(COLUMN_FINISHED_ELAPS).toLongLong()/1000L));
                 else if (index.column() == COLUMN_FINISHED_SPEED)
-                    return _q(Util::formatBytes(item->data(COLUMN_FINISHED_SPEED).toLongLong()))+tr("/s");
+                    return WulforUtil::formatBytes(item->data(COLUMN_FINISHED_SPEED).toLongLong())+tr("/s");
                 else if (index.column() == COLUMN_FINISHED_TR)
-                    return _q(Util::formatBytes(item->data(COLUMN_FINISHED_TR).toLongLong()));
+                    return WulforUtil::formatBytes(item->data(COLUMN_FINISHED_TR).toLongLong());
             }
             else {
                 if (index.column() == COLUMN_FINISHED_SPEED)
                     return _q(Util::formatSeconds(item->data(COLUMN_FINISHED_SPEED).toLongLong()/1000L));
                 else if (index.column() == COLUMN_FINISHED_TR)
-                    return _q(Util::formatBytes(item->data(COLUMN_FINISHED_TR).toLongLong()))+tr("/s");
+                    return WulforUtil::formatBytes(item->data(COLUMN_FINISHED_TR).toLongLong())+tr("/s");
                 else if (index.column() == COLUMN_FINISHED_USER)
-                    return _q(Util::formatBytes(item->data(COLUMN_FINISHED_USER).toLongLong()));
+                    return WulforUtil::formatBytes(item->data(COLUMN_FINISHED_USER).toLongLong());
             }
 
             return item->data(index.column());
@@ -183,16 +183,7 @@ QModelIndex FinishedTransfersModel::index(int row, int column, const QModelIndex
 
 QModelIndex FinishedTransfersModel::parent(const QModelIndex &index) const
 {
-    if (!index.isValid())
-        return QModelIndex();
-
-    FinishedTransfersItem *childItem = static_cast<FinishedTransfersItem*>(index.internalPointer());
-    FinishedTransfersItem *parentItem = childItem->parent();
-
-    if (parentItem == rootItem)
-        return QModelIndex();
-
-    return createIndex(parentItem->row(), 0, parentItem);
+    return QModelIndex();
 }
 
 int FinishedTransfersModel::rowCount(const QModelIndex &parent) const
@@ -512,7 +503,7 @@ void FinishedTransfersItem::appendChild(FinishedTransfersItem *item) {
 }
 
 FinishedTransfersItem *FinishedTransfersItem::child(int row) {
-    return childItems.value(row);
+    return ((row >= 0 && row <= childItems.count()-1)? childItems.value(row) : NULL);
 }
 
 int FinishedTransfersItem::childCount() const {

@@ -237,6 +237,16 @@ namespace LeechCraft
 				if (url == "localhost")
 					return QUrl ("http://localhost");
 
+				QHostAddress testAddress;
+				bool success = testAddress.setAddress (url);
+				if (success)
+				{
+					QUrl result;
+					result.setHost (url);
+					result.setScheme ("http://");
+					return result;
+				}
+
 				// If the url without percent signs and two following characters is
 				// a valid url (it should not be percent-encoded), then treat source
 				// url as percent-encoded, otherwise treat as not percent-encoded.
@@ -350,6 +360,10 @@ namespace LeechCraft
 						SIGNAL (invalidateSettings ()),
 						this,
 						SLOT (saveSingleSession ()));
+				connect (widget,
+						SIGNAL (raiseTab (QWidget*)),
+						this,
+						SIGNAL (raiseTab (QWidget*)));
 			}
 
 			void Core::CheckFavorites ()
@@ -713,10 +727,6 @@ namespace LeechCraft
 						SIGNAL (couldHandle (const LeechCraft::DownloadEntity&, bool*)),
 						this,
 						SIGNAL (couldHandle (const LeechCraft::DownloadEntity&, bool*)));
-				connect (widget,
-						SIGNAL (notify (const LeechCraft::Notification&)),
-						this,
-						SIGNAL (notify (const LeechCraft::Notification&)));
 				connect (widget,
 						SIGNAL (urlChanged (const QString&)),
 						this,

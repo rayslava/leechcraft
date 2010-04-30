@@ -681,6 +681,21 @@ namespace LeechCraft
 				ReloadTimer_->start (msecs);
 			}
 			
+			void BrowserWidget::notificationActionTriggered (int idx)
+			{
+				qDebug () << Q_FUNC_INFO << idx;
+				switch (idx)
+				{
+					case 0:
+						emit raiseTab (this);
+						break;
+					default:
+						qWarning () << Q_FUNC_INFO
+							<< "unhandled"
+							<< idx;
+				}
+			}
+
 			void BrowserWidget::handleIconChanged ()
 			{
 				QIcon icon = Ui_.WebView_->icon ();
@@ -894,15 +909,15 @@ namespace LeechCraft
 						property ("GenerateTooltips").toBool ())
 					return;
 			
-				const int previewWidth = 200;
+				const int previewWidth = 400;
 				if (!Ui_.WebView_->size ().isValid ())
 					return;
 			
 				QSize contentsSize = Ui_.WebView_->page ()->mainFrame ()->contentsSize ();
 				if (contentsSize.width () < 800)
-					contentsSize.setWidth (800);
+					contentsSize.scale (800, 1, Qt::KeepAspectRatioByExpanding);
 				int maxHeight = 0.8 * QApplication::desktop ()->
-					screenGeometry (this).height () * static_cast<double> (contentsSize.width ()) / 200.0;
+					screenGeometry (this).height () * static_cast<double> (contentsSize.width ()) / previewWidth;
 				contentsSize.setHeight (std::min (contentsSize.height (), 3000));
 				QPoint scroll = Ui_.WebView_->page ()->mainFrame ()->scrollPosition ();
 				QSize oldSize = Ui_.WebView_->page ()->viewportSize ();
@@ -911,6 +926,9 @@ namespace LeechCraft
 				QPixmap pixmap (contentsSize);
 				if (pixmap.isNull ())
 					return;
+
+				pixmap.fill (QColor (0, 0, 0, 0));
+
 				QPainter painter (&pixmap);
 				Ui_.WebView_->page ()->setViewportSize (contentsSize);
 				Ui_.WebView_->page ()->mainFrame ()->render (&painter, clip);
@@ -926,7 +944,7 @@ namespace LeechCraft
 				pixmap = pixmap.scaledToWidth (previewWidth, Qt::SmoothTransformation);
 				maxHeight = 0.8 * QApplication::desktop ()->screenGeometry (this).height ();
 				if (pixmap.height () > maxHeight)
-					pixmap = pixmap.copy (0, 0, 200, maxHeight);
+					pixmap = pixmap.copy (0, 0, previewWidth, maxHeight);
 				widget->setPixmap (pixmap);
 				widget->setFixedSize (pixmap.width (), pixmap.height ());
 			
@@ -1075,25 +1093,23 @@ namespace LeechCraft
 				if (h.isEmpty ())
 					return;
 
-				LeechCraft::Notification n =
-				{
-					"Poshuku",
-					QString (),
-					false,
-					LeechCraft::Notification::PInformation_
-				};
+				QString text;
+				Priority prio = PInfo_;
 
 				if (ok)
-					n.Text_ = tr ("Page load finished: %1")
+					text = tr ("Page load finished: %1")
 						.arg (Qt::escape (Ui_.WebView_->title ()));
 				else
 				{
-					n.Text_ = tr ("Page load failed: %1")
+					text = tr ("Page load failed: %1")
 						.arg (Qt::escape (Ui_.WebView_->title ()));
-					n.Priority_ = LeechCraft::Notification::PWarning_;
+					prio = PWarning_;
 				}
 
-				emit notify (n);
+				DownloadEntity e = Util::MakeNotification ("Poshuku", text, prio);
+				e.Additional_ ["HandlingObject"] = QVariant::fromValue<QObject*> (this);
+				e.Additional_ ["NotificationActions"] = QStringList (tr ("Open"));
+				emit gotEntity (e);
 			}
 
 			void BrowserWidget::handleChangeEncodingAboutToShow ()

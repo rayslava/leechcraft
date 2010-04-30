@@ -5,6 +5,8 @@
 
 #include "ArenaWidget.h"
 #include "MainLayoutWrapper.h"
+#include "PMWindow.h"
+#include "WulforSettings.h"
 
 ToolBar::ToolBar(QWidget *parent):
     QToolBar(parent),
@@ -13,6 +15,8 @@ ToolBar::ToolBar(QWidget *parent):
 }
 
 ToolBar::~ToolBar(){
+    foreach (QShortcut *s, shortcuts)
+        s->deleteLater();
 }
 
 bool ToolBar::eventFilter(QObject *obj, QEvent *e){
@@ -43,13 +47,34 @@ void ToolBar::showEvent(QShowEvent *e){
 void ToolBar::initTabs(){
     tabbar = new QTabBar(parentWidget());
     tabbar->setObjectName("arenaTabbar");
+#if QT_VERSION >= 0x040500
     tabbar->setTabsClosable(true);
     tabbar->setDocumentMode(true);
     tabbar->setMovable(true);
-    tabbar->setContextMenuPolicy(Qt::CustomContextMenu);
     tabbar->setSelectionBehaviorOnRemove(QTabBar::SelectPreviousTab);
+    tabbar->setExpanding(false);
+#endif
+    tabbar->setContextMenuPolicy(Qt::CustomContextMenu);
+    tabbar->setSizePolicy(QSizePolicy::Expanding, tabbar->sizePolicy().verticalPolicy());
 
     tabbar->installEventFilter(this);
+
+    shortcuts << (new QShortcut(QKeySequence(Qt::ALT + Qt::Key_1), parentWidget()))
+              << (new QShortcut(QKeySequence(Qt::ALT + Qt::Key_2), parentWidget()))
+              << (new QShortcut(QKeySequence(Qt::ALT + Qt::Key_3), parentWidget()))
+              << (new QShortcut(QKeySequence(Qt::ALT + Qt::Key_4), parentWidget()))
+              << (new QShortcut(QKeySequence(Qt::ALT + Qt::Key_5), parentWidget()))
+              << (new QShortcut(QKeySequence(Qt::ALT + Qt::Key_6), parentWidget()))
+              << (new QShortcut(QKeySequence(Qt::ALT + Qt::Key_7), parentWidget()))
+              << (new QShortcut(QKeySequence(Qt::ALT + Qt::Key_8), parentWidget()))
+              << (new QShortcut(QKeySequence(Qt::ALT + Qt::Key_9), parentWidget()))
+              << (new QShortcut(QKeySequence(Qt::ALT + Qt::Key_0), parentWidget()));
+
+    foreach (QShortcut *s, shortcuts){
+        s->setContext(Qt::ApplicationShortcut);
+
+        connect(s, SIGNAL(activated()), this, SLOT(slotShorcuts()));
+    }
 
     connect(tabbar, SIGNAL(currentChanged(int)), this, SLOT(slotIndexChanged(int)));
     connect(tabbar, SIGNAL(tabMoved(int,int)), this, SLOT(slotTabMoved(int,int)));
@@ -59,7 +84,7 @@ void ToolBar::initTabs(){
     addWidget(tabbar);
 }
 
-void ToolBar::insertWidget(ArenaWidget *awgt, bool keepFocus){
+void ToolBar::insertWidget(ArenaWidget *awgt){
     if (!awgt || !awgt->getWidget() || map.contains(awgt))
         return;
 
@@ -71,7 +96,7 @@ void ToolBar::insertWidget(ArenaWidget *awgt, bool keepFocus){
         if (tabbar->isHidden())
             tabbar->show();
 
-        if (!keepFocus)
+        if (!(typeid(*awgt) == typeid(PMWindow) && WBGET(WB_CHAT_KEEPFOCUS)))
             tabbar->setCurrentIndex(index);
     }
 }
@@ -159,6 +184,18 @@ void ToolBar::slotContextMenu(const QPoint &p){
         m->exec(QCursor::pos());
 }
 
+void ToolBar::slotShorcuts(){
+    QShortcut *sh = qobject_cast<QShortcut*>(sender());
+
+    if (!sh)
+        return;
+
+    int index = shortcuts.indexOf(sh);
+
+    if (index >= 0 && tabbar->count() >= (index + 1))
+        tabbar->setCurrentIndex(index);
+}
+
 ArenaWidget *ToolBar::findWidgetForIndex(int index){
     if (index < 0)
         return NULL;
@@ -194,14 +231,20 @@ void ToolBar::nextTab(){
     if (!tabbar)
         return;
 
-    tabbar->setCurrentIndex(tabbar->currentIndex()+1);
+    if (tabbar->currentIndex()+1 < tabbar->count())
+        tabbar->setCurrentIndex(tabbar->currentIndex()+1);
+    else
+        tabbar->setCurrentIndex(0);
 }
 
 void ToolBar::prevTab(){
     if (!tabbar)
         return;
 
-    tabbar->setCurrentIndex(tabbar->currentIndex()-1);
+    if (tabbar->currentIndex()-1 >= 0)
+        tabbar->setCurrentIndex(tabbar->currentIndex()-1);
+    else
+        tabbar->setCurrentIndex(tabbar->count()-1);
 }
 
 QString ToolBar::compactToolTipText(QString text)
@@ -256,7 +299,7 @@ void ToolBar::mapped(ArenaWidget *awgt){
     blockSignals(false);
 }
 
-bool ToolBar::hasWidget(ArenaWidget *w){
+bool ToolBar::hasWidget(ArenaWidget *w) const{
     return map.contains(w);
 }
 

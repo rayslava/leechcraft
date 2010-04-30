@@ -1,9 +1,19 @@
+/***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 3 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************/
+
 #ifndef SETTINGSSHARING_H
 #define SETTINGSSHARING_H
 
 #include <QWidget>
 #include <QDirModel>
 #include <QShowEvent>
+#include <QHeaderView>
 
 #include "ui_UISettingsSharing.h"
 
@@ -47,6 +57,13 @@ private slots:
     void slotShareHidden(bool);
     void slotGetName(QModelIndex);
     void slotHeaderMenu();
+    void slotRestrictMenu();
+    void slotAddExeption();
+    void slotEditExeption();
+    void slotDeleteExeption();
+    void slotAddDirExeption();
+    void slotSimpleShareModeChanged();
+    void slotContextMenu(const QPoint&);
 
 private:
     void init();

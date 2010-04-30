@@ -127,11 +127,15 @@ namespace LeechCraft
 				void trayIconActivated ();
 				void handleGroupChannels ();
 			signals:
-				void notify (const LeechCraft::Notification&);
 				void gotEntity (const LeechCraft::DownloadEntity&);
 				void delegateEntity (const LeechCraft::DownloadEntity&,
 						int*, QObject**);
 				void bringToFront ();
+				void changeTabName (QWidget*, const QString&);
+				void changeTabIcon (QWidget*, const QIcon&);
+				void changeTooltip (QWidget*, QWidget*);
+				void statusBarChanged (QWidget*, const QString&);
+				void raiseTab (QWidget*);
 			};
 		};
 	};

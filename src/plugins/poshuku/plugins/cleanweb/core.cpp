@@ -349,13 +349,8 @@ bool Core::Exists (const QUrl& url) const
 void Core::Handle (DownloadEntity subscr)
 {
 	QUrl subscrUrl = subscr.Entity_.toUrl ();
-	QUrl url (subscrUrl.queryItemValue ("location"));
-	QString subscrName = subscrUrl.queryItemValue ("title");
-	
-	if (Exists (subscrName) || Exists (url))
-		return;
 
-	Load (url, subscrName);
+	Add (subscrUrl);
 }
 
 QAbstractItemModel* Core::GetModel ()
@@ -670,6 +665,29 @@ void Core::Parse (const QString& filePath)
 	endInsertRows ();
 }
 
+bool Core::Add (const QUrl& subscrUrl)
+{
+	QUrl url;
+	if (subscrUrl.queryItemValue ("location").contains ("%"))
+		url.setUrl (QUrl::fromPercentEncoding (subscrUrl.queryItemValue ("location").toAscii ()));
+	else
+		url.setUrl (subscrUrl.queryItemValue ("location"));
+	QString subscrName = subscrUrl.queryItemValue ("title");
+
+	if (Exists (subscrName) || Exists (url))
+		return false;
+
+	bool result = Load (url, subscrName);
+	if (result)
+	{
+		QString str = tr ("The subscription %1 was successfully added.")
+				.arg (subscrName);
+		emit gotEntity (Util::MakeNotification ("Poshuku CleanWeb",
+				str, PInfo_));
+	}
+	return result;
+}
+
 bool Core::Load (const QUrl& url, const QString& subscrName)
 {
 	QDir home = QDir::home ();
@@ -693,16 +711,14 @@ bool Core::Load (const QUrl& url, const QString& subscrName)
 	emit delegateEntity (e, &id, &pr);
 	if (id == -1)
 	{
-		Notification n =
-		{
-			"Poshuku CleanWeb",
-			tr ("The subscription wasn't delegated."),
-			false,
-			Notification::PCritical_
-		};
 		qWarning () << Q_FUNC_INFO
+			<< "unable to delegate"
+			<< subscrName
 			<< url.toString ().toUtf8 ();
-		emit notify (n);
+		QString str = tr ("The subscription %1 wasn't delegated.")
+				.arg (subscrName);
+		emit gotEntity (Util::MakeNotification ("Poshuku CleanWeb",
+				str, PCritical_));
 		return false;
 	}
 

@@ -20,6 +20,7 @@
 #include <QtDebug>
 #include "itemsfiltermodel.h"
 #include "itemswidget.h"
+#include "xmlsettingsmanager.h"
 
 namespace LeechCraft
 {
@@ -31,8 +32,13 @@ namespace LeechCraft
 			: QSortFilterProxyModel (parent)
 			, HideRead_ (false)
 			, ItemsWidget_ (0)
+			, UnreadOnTop_ (XmlSettingsManager::Instance ()->
+					property ("UnreadOnTop").toBool ())
 			{
 				setDynamicSortFilter (true);
+
+				XmlSettingsManager::Instance ()->RegisterObject ("UnreadOnTop",
+						this, "handleUnreadOnTopChanged");
 			}
 			
 			ItemsFilterModel::~ItemsFilterModel ()
@@ -54,8 +60,7 @@ namespace LeechCraft
 					const QModelIndex& sourceParent) const
 			{
 				if (HideRead_ &&
-						ItemsWidget_->IsItemRead (sourceRow) &&
-						!ItemsWidget_->IsItemCurrent (sourceRow))
+						ItemsWidget_->IsItemReadNotCurrent (sourceRow))
 					return false;
 
 				if (!ItemCategories_.isEmpty ())
@@ -67,9 +72,8 @@ namespace LeechCraft
 					if (!itemCategories.size ())
 						categoryFound = true;
 					else
-						for (QStringList::const_iterator i = itemCategories.begin (),
-								end = itemCategories.end (); i != end; ++i)
-							if (ItemCategories_.contains (*i))
+						Q_FOREACH (QString cat, itemCategories)
+							if (ItemCategories_.contains (cat))
 							{
 								categoryFound = true;
 								break;
@@ -83,9 +87,35 @@ namespace LeechCraft
 						sourceParent);
 			}
 			
+			bool ItemsFilterModel::lessThan (const QModelIndex& left,
+					const QModelIndex& right) const
+			{
+				if (left.column () == 1 &&
+						right.column () == 1 &&
+						UnreadOnTop_)
+				{
+					bool lr = ItemsWidget_->IsItemRead (left.row ());
+					bool rr = ItemsWidget_->IsItemRead (right.row ());
+					if (lr && !rr)
+						return true;
+					else if ((lr && rr) || (!lr && !rr))
+						return QSortFilterProxyModel::lessThan (left, right);
+					else
+						return false;
+				}
+				return QSortFilterProxyModel::lessThan (left, right);
+			}
+
 			void ItemsFilterModel::categorySelectionChanged (const QStringList& categories)
 			{
 				ItemCategories_ = QSet<QString>::fromList (categories);
+				invalidateFilter ();
+			}
+
+			void ItemsFilterModel::handleUnreadOnTopChanged ()
+			{
+				UnreadOnTop_ = XmlSettingsManager::Instance ()->
+						property ("UnreadOnTop").toBool ();
 				invalidateFilter ();
 			}
 		};

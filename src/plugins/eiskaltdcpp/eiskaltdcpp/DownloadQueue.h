@@ -1,3 +1,12 @@
+/***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 3 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************/
+
 #ifndef DOWNLOADQUEUE_H
 #define DOWNLOADQUEUE_H
 
@@ -44,7 +53,7 @@ class DownloadQueue :
         public dcpp::Singleton<DownloadQueue>
 {
     Q_OBJECT
-    Q_INTERFACES(ArenaWidget IMultiTabsWidget)
+    Q_INTERFACES(ArenaWidget)
 
 typedef QMap<QString, QVariant> VarMap;
 typedef QMap<QString, QMap<QString, QString> > SourceMap;
@@ -72,8 +81,7 @@ public:
     Menu();
     virtual ~Menu();
 
-    Action exec(const SourceMap&, const QString&);
-    Action execForDir();
+    Action exec(const SourceMap&, const QString&, bool multiselect);
     QVariant getArg();
 
 private:
@@ -91,15 +99,14 @@ private:
 };
 
 public:
-    // ArenaWidget Interface
     QString  getArenaTitle(){ return tr("Download Queue"); }
     QString  getArenaShortTitle(){ return getArenaTitle(); }
     QWidget *getWidget(){ return this; }
     QMenu   *getMenu(){ return NULL; }
     const QPixmap &getPixmap(){ return WulforUtil::getInstance()->getPixmap(WulforUtil::eiDOWNLOAD); }
+    void DEL_pressed();
 
-    // IMultiTabsWidget interface
-    void Remove();
+    ArenaWidget::Role role() const { return ArenaWidget::Downloads; }
 
 protected:
     virtual void closeEvent(QCloseEvent*);
@@ -131,10 +138,7 @@ private:
     void remFile(VarMap);
     void updateFile(VarMap);
 
-    void menuForDir(DownloadQueueItem *);
-    void removeFromDir(DownloadQueueItem*);
     void getChilds(DownloadQueueItem *i, QList<DownloadQueueItem*>&);
-    void setPrioDir(DownloadQueueItem*, int);
 
     QString getCID(const VarMap&);
 

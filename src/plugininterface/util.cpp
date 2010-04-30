@@ -128,13 +128,17 @@ QTranslator* LeechCraft::Util::InstallTranslator (const QString& baseName,
 #ifdef Q_WS_WIN
 	if (transl->load (filename, ":/") ||
 			transl->load (filename,
-				QCoreApplication::applicationDirPath () + "/translations"))
+					QCoreApplication::applicationDirPath () + "/translations"))
+#elif Q_WS_MAC
+	if (transl->load (filename, ":/") ||
+			transl->load (filename,
+					QCoreApplication::applicationDirPath () + "../Resources/translations"))
 #else
 	if (transl->load (filename, ":/") ||
 			transl->load (filename,
-				QString ("/usr/local/share/%1/translations").arg (appName)) ||
+					QString ("/usr/local/share/%1/translations").arg (appName)) ||
 			transl->load (filename,
-				QString ("/usr/share/%1/translations").arg (appName)))
+					QString ("/usr/share/%1/translations").arg (appName)))
 #endif
 	{
 		qApp->installTranslator (transl);
@@ -219,11 +223,23 @@ LeechCraft::DownloadEntity LeechCraft::Util::MakeEntity (const QVariant& entity,
 		LeechCraft::TaskParameters tp,
 		const QString& mime)
 {
-	LeechCraft::DownloadEntity result;
+	DownloadEntity result;
 	result.Entity_ = entity;
 	result.Location_ = location;
 	result.Parameters_ = tp;
 	result.Mime_ = mime;
+	return result;
+}
+
+LeechCraft::DownloadEntity LeechCraft::Util::MakeNotification (const QString& header,
+		const QString& text, Priority priority)
+{
+	DownloadEntity result = MakeEntity (header,
+			QString (),
+			AutoAccept | OnlyHandle,
+			"x-leechcraft/notification");
+	result.Additional_ ["Text"] = text;
+	result.Additional_ ["Priority"] = priority;
 	return result;
 }
 

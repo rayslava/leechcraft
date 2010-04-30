@@ -120,6 +120,7 @@ LeechCraft::MainWindow::MainWindow (QWidget *parent, Qt::WFlags flags)
 				addToolBar (area, PluginsActionsBar_);
 				PluginsActionsBar_->setVisible (settings
 						.value ("PluginsBarVisible", true).toBool ());
+				settings.endGroup ();
 			}
 			PluginsActionsBar_->addActions (list);
 			PluginsActionsBar_->addSeparator ();
@@ -176,14 +177,13 @@ LeechCraft::FancyPopupManager* LeechCraft::MainWindow::GetFancyPopupManager () c
 
 void LeechCraft::MainWindow::catchError (QString message)
 {
-	Notification n =
-	{
-		"LeechCraft",
-		message,
-		false,
-		Notification::PWarning_
-	};
-	Core::Instance ().handleNotify (n);
+	DownloadEntity e = Util::MakeEntity ("LeechCraft",
+			QString (),
+			AutoAccept | OnlyHandle,
+			"x-leechcraft/notification");
+	e.Additional_ ["Text"] = message;
+	e.Additional_ ["Priority"] = PWarning_;
+	Core::Instance ().handleGotEntity (e);
 }
 
 void LeechCraft::MainWindow::closeEvent (QCloseEvent *e)
@@ -402,6 +402,12 @@ void LeechCraft::MainWindow::on_ActionGlance__triggered ()
 {
 	Glance_ = new GlanceShower;
 	Glance_->SetTabWidget (Ui_.MainTabWidget_);
+	connect (Glance_,
+			SIGNAL (finished (bool)),
+			Ui_.ActionGlance_,
+			SLOT (setEnabled (bool)));
+
+	Ui_.ActionGlance_->setEnabled (false);
 	Glance_->Start ();
 }
 
@@ -444,6 +450,7 @@ void LeechCraft::MainWindow::on_ActionMenu__triggered ()
 void LeechCraft::MainWindow::handleQuit ()
 {
 	WriteSettings ();
+	hide ();
 	Core::Instance ().Release ();
 
 	TrayIcon_->hide ();

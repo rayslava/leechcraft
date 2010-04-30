@@ -1,3 +1,12 @@
+/***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 3 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************/
+
 #ifndef WULFORUTIL_H
 #define WULFORUTIL_H
 
@@ -43,7 +52,8 @@ friend class dcpp::Singleton<WulforUtil>;
 
 public:
     enum Icons {
-        eiBALL_GREEN = 0,
+        eiAWAY = 0,
+        eiBALL_GREEN,
         eiBOOKMARK_ADD,
         eiCHAT,
         eiCLEAR,
@@ -58,7 +68,9 @@ public:
         eiEDITADD,
         eiEDITCOPY,
         eiEDITDELETE,
+        eiEDITCLEAR,
         eiEMOTICON,
+        eiERASER,
         eiEXIT,
         eiFAV,
         eiFAVADD,
@@ -75,12 +87,14 @@ public:
         eiGV,
         eiHASHING,
         eiHIDEWINDOW,
+        eiHUBMSG,
         eiICON_APPL,
         eiMESSAGE,
         eiMESSAGE_TRAY_ICON,
         eiOPENLIST,
         eiOPEN_LOG_FILE,
         eiOWN_FILELIST,
+        eiPMMSG,
         eiRECONNECT,
         eiREFRLIST,
         eiRELOAD,
@@ -88,6 +102,7 @@ public:
         eiSPAM,
         eiSPY,
         eiSPLASH,
+        eiSTATUS,
         eiTRANSFER,
         eiUP,
         eiUPLIST,
@@ -135,9 +150,12 @@ public:
     QStringList getLocalIPs();
 
     QString makeMagnet(const QString&, const int64_t, const QString&);
+    static void splitMagnet(const QString &magnet, int64_t &size, QString &tth, QString &name);
 
     int sortOrderToInt(Qt::SortOrder);
     Qt::SortOrder intToSortOrder(int);
+
+    static QString formatBytes(int64_t bytes);
 
     static void headerMenu(QTreeView*);
 
@@ -151,6 +169,7 @@ public:
 
 private slots:
     void slotHttpDone(bool);
+    void slotHttpTimer();
 
 private:
 
@@ -181,6 +200,7 @@ private:
     static const QString magnetSignature;
 
     QHttp *http;
+    QTimer *http_timer;
     QString internetIP;
 };
 

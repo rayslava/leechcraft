@@ -20,6 +20,7 @@
 
 #include "dcpp/stdinc.h"
 #include "dcpp/DCPlusPlus.h"
+#include "dcpp/ShareManager.h"
 #include "dcpp/Util.h"
 
 #define _DEBUG_ 1
@@ -87,9 +88,9 @@ QVariant TransferViewModel::data(const QModelIndex &index, int role) const
         case Qt::DisplayRole:
         {
             if (index.column() == COLUMN_TRANSFER_SPEED)
-                return _q(Util::formatBytes(item->data(COLUMN_TRANSFER_SPEED).toDouble())) + tr("/s");
+                return WulforUtil::formatBytes(item->data(COLUMN_TRANSFER_SPEED).toDouble()) + tr("/s");
             else if (index.column() == COLUMN_TRANSFER_SIZE)
-                return _q(Util::formatBytes(item->data(COLUMN_TRANSFER_SIZE).toLongLong()));
+                return WulforUtil::formatBytes(item->data(COLUMN_TRANSFER_SIZE).toLongLong());
             else if (index.column() == COLUMN_TRANSFER_TLEFT){
                 int time = item->data(COLUMN_TRANSFER_TLEFT).toInt();
 
@@ -116,6 +117,9 @@ QVariant TransferViewModel::data(const QModelIndex &index, int role) const
             break;
         case Qt::ToolTipRole:
         {
+            if (index.column() == COLUMN_TRANSFER_FNAME)
+                return item->target;
+
             break;
         }
     }
@@ -315,21 +319,36 @@ void TransferViewModel::addConnection(VarMap params){
     if (params.empty())
         return;
 
+    bool bGroup = false;
     TransferViewItem *i;
-    if (findTransfer(vstr(params["CID"]), vbol(params["DOWN"]), &i))
+    TransferViewItem *to = NULL;
+    bool bDownload = vbol(params["DOWN"]);
+
+    if (findTransfer(vstr(params["CID"]), vbol(params["DOWN"]), &i)) {
         return;
+    } else if (bDownload) {
+        bGroup = vbol(params["BGROUP"]);
+        if (bGroup)
+            to = getParent(vstr(params["TARGET"]), params);
+    }
 
     QList<QVariant> data;
 
-    data << params["USER"] << "" << params["STAT"] << "" << "" << "" << params["HOST"] << "";
-    TransferViewItem *item = new TransferViewItem(data, rootItem);
+    data << params["USER"] << "" << params["STAT"] << "" << "" << params["FNAME"] << params["HOST"] << "";
+    TransferViewItem *item = new TransferViewItem(data, (to && bGroup) ? to : rootItem);
 
     item->download = vbol(params["DOWN"]);
     item->cid = vstr(params["CID"]);
 
+    if (item->download && bGroup)
+        item->target = vstr(params["TARGET"]);
+
     transfer_hash.insertMulti(item->cid, item);
 
-    rootItem->appendChild(item);
+    if (!to)
+        rootItem->appendChild(item);
+    else
+        to->appendChild(item);
 
     emit layoutChanged();
 }
@@ -522,7 +541,7 @@ void TransferViewModel::updateParent(TransferViewItem *p){
     else
         p->updateColumn(COLUMN_TRANSFER_STATS, tr("Waiting for slot "));
 
-    QString stat = vstr(p->data(COLUMN_TRANSFER_STATS)) + _q(Util::formatBytes(p->dpos))
+    QString stat = vstr(p->data(COLUMN_TRANSFER_STATS)) + WulforUtil::formatBytes(p->dpos)
                    + QString(" (%1%)").arg(progress, 0, 'f', 1)  + QString(tr(" from %1/%2 user(s)")).arg(active).arg(p->childCount());
 
     QString hubs_str = "";

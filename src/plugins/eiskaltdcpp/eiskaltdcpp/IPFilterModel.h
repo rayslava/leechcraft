@@ -1,7 +1,17 @@
+/***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 3 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************/
+
 #ifndef IPFILTERMODEL_H
 #define IPFILTERMODEL_H
 
 #include <QAbstractItemModel>
+#include <QHash>
 
 #define COLUMN_RULE_NAME        0
 #define COLUMN_RULE_DIRECTION   1

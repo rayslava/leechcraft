@@ -119,6 +119,7 @@ namespace LeechCraft
 					QString Link_;
 					QString Description_;
 					QString Author_;
+					int NumItems_;
 				};
 
 				static Core& Instance ();
@@ -219,7 +220,6 @@ namespace LeechCraft
 				void HandleProvider (QObject*, int);
 				void ErrorNotification (const QString&, const QString&, bool = true) const;
 			signals:
-				void notify (const LeechCraft::Notification&) const;
 				void channelDataUpdated ();
 				void unreadNumberChanged (int) const;
 				void delegateEntity (const LeechCraft::DownloadEntity&, int*, QObject**);

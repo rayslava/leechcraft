@@ -26,6 +26,7 @@
 #include <interfaces/iplugin2.h>
 #include <interfaces/ihavesettings.h>
 #include <interfaces/ientityhandler.h>
+#include <interfaces/istartupwizard.h>
 #include <interfaces/pluginbase.h>
 
 namespace LeechCraft
@@ -42,11 +43,12 @@ namespace LeechCraft
 								   , public IInfo
 								   , public IHaveSettings
 								   , public IEntityHandler
+								   , public IStartupWizard
 								   , public IPlugin2
 								   , public PluginBase
 					{
 						Q_OBJECT
-						Q_INTERFACES (IInfo IHaveSettings IEntityHandler IPlugin2 LeechCraft::Plugins::Poshuku::PluginBase)
+						Q_INTERFACES (IInfo IHaveSettings IEntityHandler IStartupWizard IPlugin2 LeechCraft::Plugins::Poshuku::PluginBase)
 
 						boost::shared_ptr<Util::XmlSettingsDialog> SettingsDialog_;
 						std::auto_ptr<QTranslator> Translator_;
@@ -67,6 +69,8 @@ namespace LeechCraft
 						bool CouldHandle (const DownloadEntity&) const;
 						void Handle (DownloadEntity);
 
+						QList<QWizardPage*> GetWizardPages () const;
+
 						QSet<QByteArray> GetPluginClasses () const;
 
 						void Init (IProxyObject*);
@@ -78,7 +82,7 @@ namespace LeechCraft
 					signals:
 						void delegateEntity (const LeechCraft::DownloadEntity&,
 								int*, QObject**);
-						void notify (const LeechCraft::Notification&);
+						void gotEntity (const LeechCraft::DownloadEntity&);
 					};
 				};
 			};

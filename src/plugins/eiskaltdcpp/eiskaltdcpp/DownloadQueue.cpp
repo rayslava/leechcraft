@@ -6,6 +6,7 @@
 #include <QItemSelectionModel>
 #include <QFileDialog>
 #include <QClipboard>
+#include <QHeaderView>
 
 #include "DownloadQueueModel.h"
 #include "MainLayoutWrapper.h"
@@ -104,13 +105,18 @@ void DownloadQueue::Menu::clearMenu(QMenu *m){
    qDeleteAll(actions);
 }
 
-DownloadQueue::Menu::Action DownloadQueue::Menu::exec(const DownloadQueue::SourceMap &sources, const QString &target){
+DownloadQueue::Menu::Action DownloadQueue::Menu::exec(const DownloadQueue::SourceMap &sources, const QString &target, bool multiselect){
     if (target.isEmpty() || sources.isEmpty() || !sources.contains(target))
         return None;
 
     arg = QVariant();
 
     clearMenu(browse), clearMenu(send_pm), clearMenu(rem_src), clearMenu(rem_usr);
+
+    browse->setDisabled(multiselect);
+    send_pm->setDisabled(multiselect);
+    rem_src->setDisabled(multiselect);
+    rem_usr->setDisabled(multiselect);
 
     QMap<QString, QString>  users = sources[target];
     QMap<QString, QString>::const_iterator it = users.constBegin();
@@ -153,32 +159,6 @@ DownloadQueue::Menu::Action DownloadQueue::Menu::exec(const DownloadQueue::Sourc
         arg = QVariant();
 
     return None;
-}
-
-DownloadQueue::Menu::Action DownloadQueue::Menu::execForDir(){
-    QMenu *m = new QMenu();
-    m->setAttribute(Qt::WA_DeleteOnClose);
-
-    QAction *rem = new QAction(tr("Remove"), m);
-    rem->setIcon(WulforUtil::getInstance()->getPixmap(WulforUtil::eiEDITDELETE));
-
-    m->addAction(rem);
-    m->addMenu(set_prio);
-
-    arg = QVariant();
-
-    QAction *ret = m->exec(QCursor::pos());
-
-    if (set_prio->actions().contains(ret)){
-        arg = ret->data();
-        set_prio->setParent(menu);
-
-        return SetPriority;
-    }
-    else if (ret == rem)
-        return Remove;
-    else
-        return None;
 }
 
 QVariant DownloadQueue::Menu::getArg(){
@@ -235,6 +215,40 @@ void DownloadQueue::customEvent(QEvent *e){
     }
 
     e->accept();
+}
+
+void DownloadQueue::DEL_pressed(){
+    if (!treeView_TARGET->hasFocus())
+        return;
+    
+    QModelIndexList list = treeView_TARGET->selectionModel()->selectedRows(0);
+    
+    if (list.isEmpty())
+        return;
+    
+    QList<DownloadQueueItem*> items;
+    
+    foreach (QModelIndex i, list){
+        DownloadQueueItem *item = reinterpret_cast<DownloadQueueItem*>(i.internalPointer());
+        
+        if (!item)
+            continue;
+        
+        if (item->dir)
+            getChilds(item, items);
+        else if (!items.contains(item))
+            items.push_front(item);
+    }
+
+    QueueManager *QM = QueueManager::getInstance();
+    foreach (DownloadQueueItem *i, items){
+        QString target = i->data(COLUMN_DOWNLOADQUEUE_PATH).toString() + i->data(COLUMN_DOWNLOADQUEUE_NAME).toString();
+
+        try {
+            QM->remove(target.toStdString());
+        }
+        catch (const Exception &){}
+    }
 }
 
 void DownloadQueue::init(){
@@ -416,84 +430,21 @@ QString DownloadQueue::getCID(const VarMap &map){
     return ((++it).value()).toString();
 }
 
-void DownloadQueue::menuForDir(DownloadQueueItem *item){
-    if (!item || item->childCount() < 1)
-        return;
-
-    Menu::Action act = menu->execForDir();
-
-    switch (act){
-        case Menu::None:
-        {
-            break;
-        }
-        case Menu::Remove:
-        {
-            foreach(DownloadQueueItem *i, item->childItems)
-                removeFromDir(i);
-
-            break;
-        }
-        case Menu::SetPriority:
-        {
-            int prio = menu->getArg().toInt();
-
-            foreach(DownloadQueueItem *i, item->childItems)
-                setPrioDir(i, prio);
-
-            break;
-        }
-    }
-}
-
 void DownloadQueue::getChilds(DownloadQueueItem *i, QList<DownloadQueueItem *> &list){
-    if (!i || i->childCount() < 1)
-        return;
-
-    foreach(DownloadQueueItem *ii, i->childItems){
-        if (ii->dir)
-            getChilds(ii, list);
-        else
-            list.push_front(ii);
-    }
-}
-
-void DownloadQueue::removeFromDir(DownloadQueueItem *i){
     if (!i)
         return;
 
-    QList<DownloadQueueItem*> list;
+    if (!i->dir && !list.contains(i)){
+        list.push_back(i);
 
-    getChilds(i, list);
-
-    foreach(DownloadQueueItem *ii, list){
-        QString target = ii->data(COLUMN_DOWNLOADQUEUE_PATH).toString() + ii->data(COLUMN_DOWNLOADQUEUE_NAME).toString();
-
-        if (target.isEmpty())
-            continue;
-
-        QueueManager *QM = QueueManager::getInstance();
-        QM->remove(_tq(target));
+        return;
     }
-}
 
-void DownloadQueue::setPrioDir(DownloadQueueItem *i, int prio){
-    if (!i)
+    if (i->childCount() < 1)
         return;
 
-    if (i->childCount() == 0){
-        QString target = i->data(COLUMN_DOWNLOADQUEUE_PATH).toString() + i->data(COLUMN_DOWNLOADQUEUE_NAME).toString();
-
-        if (target.isEmpty())
-            return;
-
-        QueueManager *QM = QueueManager::getInstance();
-        QM->setPriority(target.toStdString(), static_cast<QueueItem::Priority>(prio));
-    }
-    else {
-        foreach(DownloadQueueItem *ii, i->childItems)
-            setPrioDir(ii, prio);;
-    }
+    foreach(DownloadQueueItem *ii, i->childItems)
+        getChilds(ii, list);
 }
 
 void DownloadQueue::slotContextMenu(const QPoint &){
@@ -502,46 +453,47 @@ void DownloadQueue::slotContextMenu(const QPoint &){
     if (list.isEmpty())
         return;
 
-    DownloadQueueItem *item = reinterpret_cast<DownloadQueueItem*>(list.at(0).internalPointer());
+    QList<DownloadQueueItem*> items;
 
-    if (!item)
-        return;
+    foreach (QModelIndex i, list){
+        DownloadQueueItem *item = reinterpret_cast<DownloadQueueItem*>(i.internalPointer());
 
-    if (item->childCount() > 0){
-        menuForDir(item);
-
-        return;
+        getChilds(item, items);
     }
 
-    DownloadQueueItem *par = item->parent();
+    if (items.isEmpty())
+        return;
+
+    DownloadQueueItem *item = reinterpret_cast<DownloadQueueItem*>(items.at(0));
 
     QString target = item->data(COLUMN_DOWNLOADQUEUE_PATH).toString() + item->data(COLUMN_DOWNLOADQUEUE_NAME).toString();
 
     if (target.isEmpty())
         return;
 
-    Menu::Action act = menu->exec(sources, target);
+    Menu::Action act = menu->exec(sources, target, items.size() > 1);
     QueueManager *QM = QueueManager::getInstance();
     QVariant arg = menu->getArg();
     VarMap rmap;
-    QueueItem::Priority prio;
-
-    if (!par->childItems.contains(item))
-        return;
 
     switch (act){
         case Menu::Alternates:
         {
             SearchFrame *sf = new SearchFrame();
-            sf->searchAlternates(item->data(COLUMN_DOWNLOADQUEUE_TTH).toString());
+
+            foreach (DownloadQueueItem *i, items)
+                sf->searchAlternates(i->data(COLUMN_DOWNLOADQUEUE_TTH).toString());
 
             break;
         }
         case Menu::Magnet:
         {
-            QString magnet = WulforUtil::getInstance()->makeMagnet(item->data(COLUMN_DOWNLOADQUEUE_NAME).toString(),
-                                                                   item->data(COLUMN_DOWNLOADQUEUE_ESIZE).toLongLong(),
-                                                                   item->data(COLUMN_DOWNLOADQUEUE_TTH).toString());
+            QString magnet = "";
+
+            foreach (DownloadQueueItem *i, items)
+                magnet += WulforUtil::getInstance()->makeMagnet(i->data(COLUMN_DOWNLOADQUEUE_NAME).toString(),
+                                                                i->data(COLUMN_DOWNLOADQUEUE_ESIZE).toLongLong(),
+                                                                i->data(COLUMN_DOWNLOADQUEUE_TTH).toString()) + "\n";
 
             if (!magnet.isEmpty())
                 qApp->clipboard()->setText(magnet, QClipboard::Clipboard);
@@ -550,23 +502,30 @@ void DownloadQueue::slotContextMenu(const QPoint &){
         }
         case Menu::RenameMove:
         {
-            QString new_target = QFileDialog::getSaveFileName(this, tr("Choose filename"), QDir::homePath(), tr("All files (*.*)"));
+            foreach (DownloadQueueItem *i, items){
+                QString target = i->data(COLUMN_DOWNLOADQUEUE_PATH).toString() + i->data(COLUMN_DOWNLOADQUEUE_NAME).toString();
+                QString new_target = QFileDialog::getSaveFileName(this, tr("Choose filename"), QDir::homePath(), tr("All files (*.*)"));
 
-            if (!new_target.isEmpty()){
-                try {
-                    QM->move(target.toStdString(), new_target.toStdString());
+                if (!new_target.isEmpty()){
+                    try {
+                        QM->move(target.toStdString(), new_target.toStdString());
+                    }
+                    catch (const Exception &){}
                 }
-                catch (const Exception &){}
             }
 
             break;
         }
         case Menu::SetPriority:
         {
-            try {
-                QM->setPriority(target.toStdString(), static_cast<QueueItem::Priority>(arg.toInt()));
+            foreach (DownloadQueueItem *i, items){
+                QString target = i->data(COLUMN_DOWNLOADQUEUE_PATH).toString() + i->data(COLUMN_DOWNLOADQUEUE_NAME).toString();
+
+                try {
+                    QM->setPriority(target.toStdString(), static_cast<QueueItem::Priority>(arg.toInt()));
+                }
+                catch (const Exception&) {}
             }
-            catch (const Exception&) {}
 
             break;
         }
@@ -644,10 +603,14 @@ void DownloadQueue::slotContextMenu(const QPoint &){
         }
         case Menu::Remove:
         {
-            try {
-                QM->remove(target.toStdString());
+            foreach (DownloadQueueItem *i, items){
+                QString target = i->data(COLUMN_DOWNLOADQUEUE_PATH).toString() + i->data(COLUMN_DOWNLOADQUEUE_NAME).toString();
+
+                try {
+                    QM->remove(target.toStdString());
+                }
+                catch (const Exception &){}
             }
-            catch (const Exception &){}
 
             break;
         }

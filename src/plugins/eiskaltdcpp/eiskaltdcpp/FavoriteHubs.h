@@ -1,3 +1,12 @@
+/***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 3 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************/
+
 #ifndef FAVORITEHUBS_H
 #define FAVORITEHUBS_H
 
@@ -41,28 +50,34 @@ class FavoriteHubs :
         public dcpp::Singleton<FavoriteHubs>
 {
     Q_OBJECT
-    Q_INTERFACES(ArenaWidget IMultiTabsWidget)
+    Q_INTERFACES(ArenaWidget)
 
     friend class dcpp::Singleton<FavoriteHubs>;
 
     typedef QMap<QString,QVariant> StrMap;
 public:
-    // Arena Widget interface
     QWidget *getWidget();
     QString getArenaTitle();
     QString getArenaShortTitle();
     QMenu *getMenu();
     const QPixmap &getPixmap(){ return WulforUtil::getInstance()->getPixmap(WulforUtil::eiFAVSERVER); }
+    ArenaWidget::Role role() const { return ArenaWidget::FavoriteHubs; }
 
-    // IMultiTabsWidget interface
-    void Remove() { close(); }
 protected:
     virtual void closeEvent(QCloseEvent *);
 
 private slots:
     void slotContexMenu(const QPoint&);
     void slotClicked(const QModelIndex&);
+    void slotDblClicked();
     void slotHeaderMenu();
+
+    void slotAdd_newButtonClicked();
+    void slotChangeButtonClicked();
+    void slotRemoveButtonClicked();
+    void slotConnectButtonClicked();
+    void slotUpButtonClicked();
+    void slotDownButtonClicked();
 
 private:
     FavoriteHubs(QWidget* = NULL);
@@ -80,6 +95,8 @@ private:
     void getParams(const FavoriteHubEditor&, StrMap&);
     void updateEntry(FavoriteHubEntry&, StrMap&);
     void updateItem(FavoriteHubItem*, StrMap&);
+
+    FavoriteHubItem *getItem();
 
     FavoriteHubModel *model;
 

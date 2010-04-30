@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2001-2009 Jacek Sieka, arnetheduck on gmail point com
+ * Copyright (C) 2001-2010 Jacek Sieka, arnetheduck on gmail point com
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
  */
 
 #define APPNAME "EiskaltDC++"
-#define VERSIONSTRING "2.0"
+#define VERSIONSTRING "2.0.2"
 #define VERSIONFLOAT 2.0
 #define DCVERSIONSTRING "0.75"
 

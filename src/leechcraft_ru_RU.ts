@@ -8,14 +8,6 @@
         <translation>О LeechCraft</translation>
     </message>
     <message>
-        <source>LeechCraft</source>
-        <translation>LeechCraft</translation>
-    </message>
-    <message>
-        <source>&lt;a href=&quot;http://leechcraft.org&quot;&gt;http://leechcraft.org&lt;/a&gt;</source>
-        <translation>&lt;a href=&quot;http://leechcraft.org&quot;&gt;http://leechcraft.org&lt;/a&gt;</translation>
-    </message>
-    <message>
         <source>Authors</source>
         <translation>Авторы</translation>
     </message>
@@ -30,22 +22,6 @@
     <message>
         <source>Licensing</source>
         <translation>Лицензии</translation>
-    </message>
-    <message>
-        <source>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:&apos;DejaVu Sans&apos;; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;BitTorrent plugin uses the Rasterbar Software&apos;s libtorrent:&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Copyright (c) 2003 - 2007, Arvid Norberg&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;All rights reserved.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="obsolete">&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:&apos;DejaVu Sans&apos;; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;BitTorrent plugin uses the Rasterbar Software&apos;s libtorrent:&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Copyright (c) 2003 - 2007, Arvid Norberg&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;All rights reserved.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message utf8="true">
         <source>LeechCraft — a crossplatform modular internet-client, featuring plugins for a web browser, news feed reader, BitTorrent, FTP and lots of others.</source>
@@ -95,11 +71,11 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <source>Synchronous:</source>
-        <translation>Синхронная работа:</translation>
+        <translation>Синхронный режим:</translation>
     </message>
     <message>
         <source>VACUUM on exit</source>
-        <translation>Оптимизация при выходе</translation>
+        <translation>VACUUM при выходе</translation>
     </message>
     <message>
         <source>Hostname:</source>
@@ -111,7 +87,7 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <source>Username:</source>
-        <translation>Логин:</translation>
+        <translation>Имя пользователя:</translation>
     </message>
     <message>
         <source>Password:</source>
@@ -119,7 +95,7 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <source>Database name:</source>
-        <translation>Имя БД:</translation>
+        <translation>База данных:</translation>
     </message>
 </context>
 <context>
@@ -300,17 +276,6 @@ p, li { white-space: pre-wrap; }
         <source>Show a quick overview of tabs</source>
         <translation>Показать миниатюры вкладок</translation>
     </message>
-    <message>
-        <source>Actions</source>
-        <translation type="unfinished">Действия</translation>
-    </message>
-</context>
-<context>
-    <name>LeechCraft::AboutDialog</name>
-    <message>
-        <source>LeechCraft %1</source>
-        <translation>LeechCraft %1</translation>
-    </message>
 </context>
 <context>
     <name>LeechCraft::Application</name>
@@ -327,7 +292,7 @@ p, li { white-space: pre-wrap; }
     <name>LeechCraft::ColorPicker</name>
     <message>
         <source>Choose color</source>
-        <translation>Выберите цвет</translation>
+        <translation>Выбрать цвет</translation>
     </message>
     <message>
         <source>Choose...</source>
@@ -364,20 +329,12 @@ p, li { white-space: pre-wrap; }
         <translation>Невозможно обработать задачу выбранным обработчиком, хотите попробовать другой?</translation>
     </message>
     <message>
-        <source>LeechCraft</source>
-        <translation>LeechCraft</translation>
-    </message>
-    <message>
         <source>Do you really want to clear the network cache?</source>
         <translation>Вы действительно хотите очистить кэш?</translation>
     </message>
     <message>
         <source>Do you really want to clear cookies?</source>
         <translation>Вы действительно хотите удалить куки?</translation>
-    </message>
-    <message>
-        <source>%1: %2</source>
-        <translation>%1: %2</translation>
     </message>
 </context>
 <context>
@@ -430,7 +387,7 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <source>, striken out</source>
-        <translation>, перечеркнутый</translation>
+        <translation>, зачеркнутый</translation>
     </message>
 </context>
 <context>
@@ -648,7 +605,7 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <source>Select none</source>
-        <translation>Снять отметку со всех</translation>
+        <translation>Не выбрать ни один</translation>
     </message>
 </context>
 <context>
@@ -688,19 +645,19 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <source>Binary entity</source>
-        <translation>Двоичный объект</translation>
+        <translation>Бинарная сущность</translation>
     </message>
     <message>
         <source>&lt;br /&gt;&lt;br /&gt;of type &lt;code&gt;%1&lt;/code&gt;</source>
-        <translation>&lt;br /&gt;&lt;br /&gt;типа &lt;code&gt;%1&lt;/code&gt;</translation>
+        <translation>&lt;br /&gt;&lt;br /&gt;типа&lt;code&gt;%1&lt;/code&gt;</translation>
     </message>
     <message>
         <source>&lt;br /&gt;from %1</source>
-        <translation>&lt;br /&gt;от %1</translation>
+        <translation>&lt;br /&gt;из %1</translation>
     </message>
     <message>
         <source> b</source>
-        <translation>б</translation>
+        <translation> b</translation>
     </message>
     <message>
         <source> KiB</source>
@@ -724,7 +681,7 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <source>Could not cd into %1</source>
-        <translation>Невозможно перейти в директорию %1</translation>
+        <translation>Невозможно перейти в %1</translation>
     </message>
     <message>
         <source>Could not create %1</source>

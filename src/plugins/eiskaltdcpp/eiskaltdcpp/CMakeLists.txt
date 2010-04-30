@@ -1,8 +1,5 @@
 project (leechcraft_eiskaltdcpp)
 cmake_minimum_required (VERSION 2.6)
-if (FREE_SPACE_BAR_C)
-add_subdirectory(gnulib)
-endif (FREE_SPACE_BAR_C)
 
 set (QT_USE_QTNETWORK TRUE)
 set (QT_USE_QTXML TRUE)
@@ -25,6 +22,7 @@ set (HDRS   ArenaWidget.h
 set (SRCS   Antispam.cpp
             AntiSpamFrame.cpp
             ArenaWidget.cpp
+            ChatEdit.cpp
             DownloadQueue.cpp
             DownloadQueueModel.cpp
             EmoticonDialog.cpp
@@ -42,11 +40,13 @@ set (SRCS   Antispam.cpp
             IPFilter.cpp
             IPFilterFrame.cpp
             IPFilterModel.cpp
+            LineEdit.cpp
             Magnet.cpp
             MainLayoutWrapper.cpp
             Notification.cpp
             PMWindow.cpp
             PublicHubs.cpp
+            PublicHubsList.cpp
             PublicHubModel.cpp
             QuickConnect.cpp
             SearchFrame.cpp
@@ -73,6 +73,7 @@ set (SRCS   Antispam.cpp
             WulforUtil.cpp)
 set (MOC_HDRS Antispam.h
             AntiSpamFrame.h
+            ChatEdit.h
             DownloadQueue.h
             DownloadQueueModel.h
             EmoticonDialog.h
@@ -90,11 +91,13 @@ set (MOC_HDRS Antispam.h
             IPFilter.h
             IPFilterFrame.h
             IPFilterModel.h
+            LineEdit.h
             Magnet.h
             MainLayoutWrapper.h
             Notification.h
             PMWindow.h
             PublicHubs.h
+            PublicHubsList.h
             PublicHubModel.h
             Settings.h
             SettingsConnection.h
@@ -132,6 +135,7 @@ set (UI_FORMS ui/UIAbout.ui
             ui/UIIPFilter.ui
             ui/UIMagnet.ui
             ui/UIPublicHubs.ui
+            ui/UIPublicHubsList.ui
             ui/UIQuickConnect.ui
             ui/UISearchFrame.ui
             ui/UISettings.ui
@@ -204,14 +208,10 @@ endif (UNIX)
 
 set (LIBS ${LIBS} ${QT_LIBRARIES} ${UPNP_LIBRARY} ${Boost_LIBRARIES} ${ICONV_LIBRARIES})
 
-if (FREE_SPACE_BAR AND NOT FREE_SPACE_BAR_C)
+if (FREE_SPACE_BAR)
   add_definitions (-DFREE_SPACE_BAR)
   set (LIBS ${LIBS} ${Boost_LIBRARIES})
-endif (FREE_SPACE_BAR AND NOT FREE_SPACE_BAR_C)
-if (FREE_SPACE_BAR_C AND NOT FREE_SPACE_BAR)
-  add_definitions (-DFREE_SPACE_BAR_C)
-  set (LIBS ${LIBS} gnu)
-endif (FREE_SPACE_BAR_C AND NOT FREE_SPACE_BAR)
+endif (FREE_SPACE_BAR)
 
 if (USE_ASPELL)
   add_definitions (-DUSE_ASPELL ${ASPELL_DEFINITIONS})

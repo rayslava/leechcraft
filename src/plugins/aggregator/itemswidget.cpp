@@ -88,17 +88,13 @@ namespace LeechCraft
 			
 				Impl_->Ui_.Items_->setAcceptDrops (false);
 			
-				Impl_->Ui_.Items_->sortByColumn (1, Qt::DescendingOrder);
 				Impl_->ItemsFilterModel_.reset (new ItemsFilterModel (this));
 				Impl_->ItemsFilterModel_->SetItemsWidget (this);
 				Impl_->ItemsFilterModel_->setSourceModel (Impl_->ItemLists_.get ());
-				connect (Impl_->ItemLists_.get (),
-						SIGNAL (dataChanged (const QModelIndex&, const QModelIndex&)),
-						Impl_->ItemsFilterModel_.get (),
-						SLOT (invalidate ()));
-				Impl_->ItemsFilterModel_->setFilterKeyColumn (0);
+				Impl_->ItemsFilterModel_->setFilterKeyColumn (1);
 				Impl_->ItemsFilterModel_->setFilterCaseSensitivity (Qt::CaseInsensitive);
 				Impl_->Ui_.Items_->setModel (Impl_->ItemsFilterModel_.get ());
+				Impl_->Ui_.Items_->sortByColumn (1, Qt::DescendingOrder);
 			
 				Impl_->Ui_.Items_->addAction (Impl_->ActionMarkItemAsUnread_);
 				Impl_->Ui_.Items_->addAction (Impl_->ActionAddToItemBucket_);
@@ -248,6 +244,8 @@ namespace LeechCraft
 			void ItemsWidget::SetMergeMode (bool merge)
 			{
 				Impl_->MergeMode_ = merge;
+				ClearSupplementaryModels ();
+
 				if (Impl_->MergeMode_)
 				{
 					QSortFilterProxyModel *f = Impl_->ChannelsFilter_;
@@ -272,26 +270,55 @@ namespace LeechCraft
 								<< e.what ();
 							continue;
 						}
-						QPair<QString, QString> hash = qMakePair (cs.ParentURL_, cs.Title_);
-			
-						if (hash == Impl_->CurrentItemsModel_->GetHash ())
-							continue;
-			
-						boost::shared_ptr<ItemsListModel> ilm (new ItemsListModel);
-						ilm->Reset (hash);
-						Impl_->SupplementaryModels_ << ilm;
-						Impl_->ItemLists_->AddModel (ilm.get ());
+						AddSupplementaryModelFor (cs);
 					}
 				}
-				else
-					while (Impl_->SupplementaryModels_.size ())
-					{
-						Impl_->ItemLists_->
-							RemoveModel (Impl_->SupplementaryModels_.at (0).get ());
-						Impl_->SupplementaryModels_.removeAt (0);
-					}
 			}
 			
+			void ItemsWidget::SetMergeModeTags (const QStringList& tags)
+			{
+				if (Impl_->MergeMode_)
+					return;
+
+				ClearSupplementaryModels ();
+
+				QSet<QString> tagsSet = QSet<QString>::fromList (tags);
+
+				ChannelsModel *cm = Core::Instance ().GetRawChannelsModel ();
+				bool added = false;
+
+				for (int i = 0, size = cm->rowCount (); i < size; ++i)
+				{
+					QModelIndex index = cm->index (i, 0);
+					QSet<QString> thisSet = QSet<QString>::fromList (index
+							.data (RoleTags).toStringList ());
+					if (!thisSet.intersect (tagsSet).size ())
+						continue;
+
+					ChannelShort cs;
+					try
+					{
+						cs = cm-> GetChannelForIndex (index);
+					}
+					catch (const std::exception& e)
+					{
+						qWarning () << Q_FUNC_INFO << e.what ();
+						continue;
+					}
+
+					/** So that first one gets assigned to the
+					 * current items model.
+					 */
+					if (!added)
+					{
+						Impl_->CurrentItemsModel_->Reset (qMakePair (cs.ParentURL_, cs.Title_));
+						added = true;
+					}
+					else
+						AddSupplementaryModelFor (cs);
+				}
+			}
+
 			void ItemsWidget::SetHideRead (bool hide)
 			{
 				Impl_->ItemsFilterModel_->SetHideRead (hide);
@@ -299,9 +326,9 @@ namespace LeechCraft
 
 			bool ItemsWidget::IsItemCurrent (int item) const
 			{
+				int starting = 0;
 				Util::MergeModel::const_iterator i = Impl_->ItemLists_->
-					GetModelForRow (item);
-				int starting = Impl_->ItemLists_->GetStartingRow (i);
+					GetModelForRow (item, &starting);
 				return static_cast<ItemsListModel*> (i->data ())->
 					GetSelectedRow () == item - starting;
 			}
@@ -322,10 +349,20 @@ namespace LeechCraft
 
 			bool ItemsWidget::IsItemRead (int item) const
 			{
+				int starting = 0;
 				Util::MergeModel::const_iterator i = Impl_->ItemLists_->
-					GetModelForRow (item);
-				int starting = Impl_->ItemLists_->GetStartingRow (i);
+					GetModelForRow (item, &starting);
 				return static_cast<ItemsListModel*> (i->data ())->IsItemRead (item - starting);
+			}
+
+			bool ItemsWidget::IsItemReadNotCurrent (int item) const
+			{
+				int starting = 0;
+				Util::MergeModel::const_iterator i = Impl_->ItemLists_->
+					GetModelForRow (item, &starting);
+				ItemsListModel *m = static_cast<ItemsListModel*> (i->data ());
+				return m->IsItemRead (item - starting) &&
+						m->GetSelectedRow () != item - starting;
 			}
 
 			QStringList ItemsWidget::GetItemCategories (int index) const
@@ -334,9 +371,9 @@ namespace LeechCraft
 					return Impl_->CurrentItemsModel_->GetCategories (index);
 				else
 				{
+					int starting = 0;
 					LeechCraft::Util::MergeModel::const_iterator i = Impl_->ItemLists_->
-						GetModelForRow (index);
-					int starting = Impl_->ItemLists_->GetStartingRow (i);
+						GetModelForRow (index, &starting);
 					return static_cast<ItemsListModel*> (i->data ())->GetCategories (index - starting);
 				}
 			}
@@ -363,6 +400,8 @@ namespace LeechCraft
 			{
 				if (Impl_->MergeMode_)
 					return;
+
+				ClearSupplementaryModels ();
 			
 				QModelIndex index = si;
 				QSortFilterProxyModel *f = Impl_->ChannelsFilter_;
@@ -380,6 +419,29 @@ namespace LeechCraft
 					Impl_->CurrentItemsModel_->Reset (qMakePair (QString (), QString ()));
 				}
 				emit currentChannelChanged (index);
+			}
+
+			void ItemsWidget::ClearSupplementaryModels ()
+			{
+				while (Impl_->SupplementaryModels_.size ())
+				{
+					Impl_->ItemLists_->
+							RemoveModel (Impl_->SupplementaryModels_.at (0).get ());
+					Impl_->SupplementaryModels_.removeAt (0);
+				}
+			}
+
+			void ItemsWidget::AddSupplementaryModelFor (const ChannelShort& cs)
+			{
+				QPair<QString, QString> hash = qMakePair (cs.ParentURL_, cs.Title_);
+
+				if (hash == Impl_->CurrentItemsModel_->GetHash ())
+					return;
+
+				boost::shared_ptr<ItemsListModel> ilm (new ItemsListModel);
+				ilm->Reset (hash);
+				Impl_->SupplementaryModels_ << ilm;
+				Impl_->ItemLists_->AddModel (ilm.get ());
 			}
 
 			void ItemsWidget::SetupActions ()
@@ -427,29 +489,39 @@ namespace LeechCraft
 			
 			QString ItemsWidget::ToHtml (const Item_ptr& item)
 			{
-				QPalette palette = QApplication::palette ();
-			
 				QString headerBg = GetHex (QPalette::Window);
+				QString borderColor = headerBg;
 				QString headerText = GetHex (QPalette::WindowText);
 				QString alternateBg = GetHex (QPalette::AlternateBase);
-			
-				QString startBox = "<div style='background: %1; "
+
+				QString firstStartBox = "<div style='background: %1; "
 					"color: COLOR; "
-					"margin-left: -1em;"
-					"margin-right: -1em; "
 					"padding-left: 2em; "
-					"padding-right: 2em;'>";
-				startBox.replace ("COLOR", headerText);
+					"padding-right: 2em; "
+					"padding-bottom: 0.5em;"
+					"border: 2px none green; "
+					"margin: 0px; "
+					"-webkit-border-top-left-radius: 1em; "
+					"-webkit-border-top-right-radius: 1em;'>";
+				firstStartBox.replace ("COLOR", headerText);
 			
 				bool linw = XmlSettingsManager::Instance ()->
 						property ("AlwaysUseExternalBrowser").toBool ();
 			
-				QString result = QString ("<div style='background: %1; "
-						"margin-left: 0px; "
-						"margin-right: 0px; "
-						"padding-left: 1em; "
-						"padding-right: 1em'>")
-					.arg (GetHex (QPalette::Base));
+				QString result = QString (
+						"<style>a { color: %2; } a.visited { color: %3 }</style>"
+						"<div style='background: %1; "
+						"margin-top: 0em; "
+						"margin-left: 0em; "
+						"margin-right: 0em; "
+						"margin-bottom: 0.5 em; "
+						"padding: 0px; "
+						"border: 2px solid %4; "
+						"-webkit-border-radius: 1em;'>")
+					.arg (GetHex (QPalette::Base))
+					.arg (GetHex (QPalette::Link))
+					.arg (GetHex (QPalette::LinkVisited))
+					.arg (borderColor);
 
 				QString inpad = QString ("<div style='background: %1; "
 						"color: %2; "
@@ -458,10 +530,11 @@ namespace LeechCraft
 						"padding-bottom: 1em; "
 						"padding-left: 2em; "
 						"padding-right: 2em;'>");
+
+				result += firstStartBox.arg (headerBg);
 			
 				// Link
-				result += (startBox.arg (headerBg) +
-						"<a href='" +
+				result += ("<a href='" +
 						item->Link_ +
 						"'");
 				if (linw)
@@ -470,47 +543,41 @@ namespace LeechCraft
 				result += (QString ("<strong>") +
 						item->Title_ +
 						"</strong>" + 
-						"</a></div>");
+						"</a><br />");
 			
 				// Publication date and author
 				if (item->PubDate_.isValid () && !item->Author_.isEmpty ())
-					result += (startBox.arg (headerBg) +
-							tr ("Published on %1 by %2")
-						   		.arg (item->PubDate_.toString ())
-								.arg (item->Author_) +
-							"</div>");
+					result += tr ("Published on %1 by %2")
+						   	.arg (item->PubDate_.toString ())
+							.arg (item->Author_) +
+						"<br />";
 				else if (item->PubDate_.isValid ())
-					result += (startBox.arg (headerBg) +
-							tr ("Published on %1")
-						   		.arg (item->PubDate_.toString ()) +
-							"</div>");
+					result += tr ("Published on %1")
+						   	.arg (item->PubDate_.toString ()) +
+					   	"<br />";
 				else if (!item->Author_.isEmpty ())
-					result += (startBox.arg (headerBg) +
-							tr ("Published by %1")
-								.arg (item->Author_) +
-							"</div>");
+					result += tr ("Published by %1")
+							.arg (item->Author_) +
+						"<br />";
 			
 				// Categories
 				if (item->Categories_.size ())
-					result += (startBox.arg (headerBg) +
-							item->Categories_.join ("; ") +
-							"</div>");
+					result += item->Categories_.join ("; ") +
+						"<br />";
 			
 				// Comments stuff
 				if (item->NumComments_ >= 0 && !item->CommentsPageLink_.isEmpty ())
-					result += (startBox.arg (headerBg) + 
-							tr ("%n comment(s), <a href='%1'%2>view them</a></div>",
-								"", item->NumComments_)
-								.arg (item->CommentsPageLink_)
-								.arg (linw ? " target='_blank'" : ""));
+					result += tr ("%n comment(s), <a href='%1'%2>view them</a><br />",
+							"", item->NumComments_)
+							.arg (item->CommentsPageLink_)
+							.arg (linw ? " target='_blank'" : "");
 				else if (item->NumComments_ >= 0)
-					result += (startBox.arg (headerBg) + 
-							tr ("%n comment(s)", "", item->NumComments_) + "</div>");
+					result += tr ("%n comment(s)", "", item->NumComments_) +
+						"<br />";
 				else if (!item->CommentsPageLink_.isEmpty ())
-					result += (startBox.arg (headerBg) + 
-							tr ("<a href='%1'%2>View comments</a></div>")
-								.arg (item->CommentsPageLink_)
-								.arg (linw ? " target='_blank'" : ""));
+					result += tr ("<a href='%1'%2>View comments</a><br />")
+							.arg (item->CommentsPageLink_)
+							.arg (linw ? " target='_blank'" : "");
 
 				if (item->Latitude_ ||
 						item->Longitude_)
@@ -519,19 +586,19 @@ namespace LeechCraft
 							"?f=q&source=s_q&hl=en&geocode=&q=%1+%2")
 						.arg (item->Latitude_)
 						.arg (item->Longitude_);
-					result += (startBox.arg (headerBg) +
-							tr ("Geoposition: <a href='%3'%4 title='Google Maps'>%1 %2</a></div>")
-								.arg (item->Latitude_)
-								.arg (item->Longitude_)
-								.arg (link)
-								.arg (linw ? " target='_blank'" : ""));
+					result += tr ("Geoposition: <a href='%3'%4 title='Google Maps'>%1 %2</a><br />")
+							.arg (item->Latitude_)
+							.arg (item->Longitude_)
+							.arg (link)
+							.arg (linw ? " target='_blank'" : "");
 				}
 			
-				result += "<br />";
-				result += QString ("<div style='color: %2'>")
-					.arg (GetHex (QPalette::Text));
-			
 				// Description
+				result += QString ("</div><div style='color: %1;"
+						"padding-top: 0.5em; "
+						"padding-left: 1em; "
+						"padding-right: 1em;'>")
+					.arg (GetHex (QPalette::Text));
 				result += item->Description_;
 
 				for (QList<Enclosure>::const_iterator i = item->Enclosures_.begin (),
@@ -964,7 +1031,6 @@ namespace LeechCraft
 						Item_ptr item = GetItem (mapped);
 			
 						html += ToHtml (item);
-						html += "<hr />";
 					}
 			
 					Impl_->Ui_.ItemView_->SetHtml (html);

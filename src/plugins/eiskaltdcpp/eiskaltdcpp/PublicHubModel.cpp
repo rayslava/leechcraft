@@ -6,6 +6,11 @@
 #include <QList>
 #include <QStringList>
 
+void PublicHubProxyModel::sort(int column, Qt::SortOrder order){
+    if (sourceModel())
+        sourceModel()->sort(column, order);
+}
+
 PublicHubModel::PublicHubModel(QObject *parent)
     : QAbstractItemModel(parent), sortColumn(-1), sortOrder(Qt::AscendingOrder)
 {
@@ -45,7 +50,7 @@ QVariant PublicHubModel::data(const QModelIndex &index, int role) const
             break;
         case Qt::DisplayRole:
             if (index.column() == COLUMN_PHUB_SHARED || index.column() == COLUMN_PHUB_MINSHARE)
-                return _q(dcpp::Util::formatBytes(item->data(index.column()).toULongLong()));
+                return WulforUtil::formatBytes(item->data(index.column()).toULongLong());
 
             return item->data(index.column());
         case Qt::TextAlignmentRole:
@@ -100,7 +105,8 @@ QModelIndex PublicHubModel::index(int row, int column, const QModelIndex &parent
         parentItem = static_cast<PublicHubItem*>(parent.internalPointer());
 
     PublicHubItem *childItem = parentItem->child(row);
-    if (childItem)
+
+    if (childItem && rootItem->childItems.contains(childItem))
         return createIndex(row, column, childItem);
     else
         return QModelIndex();
@@ -108,16 +114,7 @@ QModelIndex PublicHubModel::index(int row, int column, const QModelIndex &parent
 
 QModelIndex PublicHubModel::parent(const QModelIndex &index) const
 {
-    if (!index.isValid())
-        return QModelIndex();
-
-    PublicHubItem *childItem = static_cast<PublicHubItem*>(index.internalPointer());
-    PublicHubItem *parentItem = childItem->parent();
-
-    if (parentItem == rootItem)
-        return QModelIndex();
-
-    return createIndex(parentItem->row(), 0, parentItem);
+    return QModelIndex();
 }
 
 int PublicHubModel::rowCount(const QModelIndex &parent) const
@@ -162,7 +159,7 @@ struct Compare {
                 case COLUMN_PHUB_REL:
                      return DblCmp<COLUMN_PHUB_REL>;
                 case COLUMN_PHUB_SHARED:
-                     return AttrCmp<COLUMN_PHUB_SHARED>;
+                     return NumCmp<COLUMN_PHUB_SHARED>;
                 case COLUMN_PHUB_ADDRESS:
                      return AttrCmp<COLUMN_PHUB_ADDRESS>;
                 case COLUMN_PHUB_COUNTRY:
@@ -227,12 +224,12 @@ void PublicHubModel::sort(int column, Qt::SortOrder order) {
 }
 
 void PublicHubModel::clearModel(){
-    QList<PublicHubItem*> childs = rootItem->childItems;   //Copying list in another place
-    rootItem->childItems.clear();                             //Cleaning root of the model. Do not delete items directly from the root item
+    emit layoutAboutToBeChanged();
 
-    qDeleteAll(childs);
-
+    beginRemoveRows(QModelIndex(), 0, rootItem->childCount()-1);
+    qDeleteAll(rootItem->childItems);
     rootItem->childItems.clear();
+    endRemoveRows();
 
     emit layoutChanged();
 }
@@ -242,7 +239,9 @@ void PublicHubModel::addResult(const QList<QVariant> &data, dcpp::HubEntry *entr
     PublicHubItem *item = new PublicHubItem(data, rootItem);
     item->entry = entry;
 
+    beginInsertRows(QModelIndex(), rootItem->childCount(), rootItem->childCount());
     rootItem->appendChild(item);
+    endInsertRows();
 
     emit layoutChanged();
 }

@@ -30,6 +30,7 @@
 #include "flashonclickplugin.h"
 #include "flashonclickwhitelist.h"
 #include "userfilters.h"
+#include "wizardgenerator.h"
 
 using namespace LeechCraft;
 using namespace LeechCraft::Util;
@@ -45,9 +46,9 @@ void CleanWeb::Init (ICoreProxy_ptr proxy)
 			SIGNAL (delegateEntity (const LeechCraft::DownloadEntity&,
 					int*, QObject**)));
 	connect (&Core::Instance (),
-			SIGNAL (notify (const LeechCraft::Notification&)),
+			SIGNAL (gotEntity (const LeechCraft::DownloadEntity&)),
 			this,
-			SIGNAL (notify (const LeechCraft::Notification&)));
+			SIGNAL (gotEntity (const LeechCraft::DownloadEntity&)));
 
 	Core::Instance ().SetProxy (proxy);
 
@@ -126,6 +127,12 @@ bool CleanWeb::CouldHandle (const DownloadEntity& e) const
 void CleanWeb::Handle (DownloadEntity e)
 {
 	Core::Instance ().Handle (e);
+}
+
+QList<QWizardPage*> CleanWeb::GetWizardPages () const
+{
+	std::auto_ptr<WizardGenerator> wg (new WizardGenerator);
+	return wg->GetPages ();
 }
 
 QSet<QByteArray> CleanWeb::GetPluginClasses () const

@@ -142,6 +142,8 @@ namespace LeechCraft
 			private:
 				void PrintImpl (bool, QWebFrame*);
 				void SetActualReloadInterval (const QTime&);
+			public slots:
+				void notificationActionTriggered (int);
 			private slots:
 				void handleIconChanged ();
 				void handleStatusBarMessage (const QString&);
@@ -180,8 +182,8 @@ namespace LeechCraft
 				void statusBarChanged (const QString&);
 				void gotEntity (const LeechCraft::DownloadEntity&);
 				void couldHandle (const LeechCraft::DownloadEntity&, bool*);
-				void notify (const LeechCraft::Notification&);
 				void invalidateSettings ();
+				void raiseTab (QWidget*);
 			};
 		};
 	};

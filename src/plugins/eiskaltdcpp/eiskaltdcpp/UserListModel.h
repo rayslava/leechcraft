@@ -2,7 +2,7 @@
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
+ *   the Free Software Foundation; either version 3 of the License, or     *
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
@@ -11,11 +11,17 @@
 #define USERLISTMODEL_H
 
 #include <QAbstractItemModel>
+#include <QSortFilterProxyModel>
 #include <QString>
 #include <QPixmap>
 #include <QList>
 #include <QStringList>
 #include <QRegExp>
+#include <QTimer>
+
+#ifndef _WIN32
+#include <limits.h>
+#endif
 
 #include "dcpp/stdinc.h"
 #include "dcpp/DCPlusPlus.h"
@@ -28,17 +34,31 @@ class WulforUtil;
 
 namespace dcpp{
     inline uint qHash(const boost::intrusive_ptr<dcpp::User> &ptr){
-        ulong key = (unsigned long)(void*)ptr.get();
+        ulong key = (ulong)(void*)ptr.get();
 
-        if (sizeof(ulong) > sizeof(uint)) {
-            return uint((key >> (8 * sizeof(uint) - 1)) ^ key);
-        } else {
-            return uint(key);
-        }
+#if ULONG_MAX >= 18446744073709551615UL
+        //hash a 64 bit virtual address to a hash table index
+        key = (~key) + (key << 18); // key = (key << 18) - key - 1;
+        key = key ^ (key >> 31);
+        key = key + (key << 2) + (key << 4);
+        key = key ^ (key >> 11);
+        key = key + (key << 6);
+        key = key ^ (key >> 22);
+        return uint(key);
+#else
+        return uint(key);
+#endif
     }
 }
 
 #include <QHash>
+
+class UserListProxyModel: public QSortFilterProxyModel {
+    Q_OBJECT
+
+public:
+    virtual void sort(int column, Qt::SortOrder order);
+};
 
 #define COLUMN_NICK     0
 #define COLUMN_SHARE    1
@@ -135,8 +155,14 @@ public:
     QStringList matchNicksStartingWith(const QString & part, bool stripTags = false) const;
     QStringList matchNicksAny(const QString &part, bool stripTags = false) const;
 
+    QStringList findItems(const QString &part, Qt::MatchFlags flags, int column) const;
+
     void repaint() { emit layoutChanged(); }
     void repaintData(const QModelIndex &left, const QModelIndex &right){ emit dataChanged(left, right); }
+    void needResort();
+
+private slots:
+    void slotResort(){ sort(sortColumn, sortOrder); _needResort = false; }
 
 private:
     UserListItem *rootItem;
@@ -150,6 +176,9 @@ private:
     int sortColumn;
     Qt::SortOrder sortOrder;
     QRegExp stripper;
+
+    QTimer *t;
+    bool _needResort;
 
     WulforUtil *WU;
 };

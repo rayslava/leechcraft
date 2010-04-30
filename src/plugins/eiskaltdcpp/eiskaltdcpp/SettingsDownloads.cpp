@@ -1,5 +1,6 @@
 #include "SettingsDownloads.h"
 #include "WulforUtil.h"
+#include "PublicHubsList.h"
 
 #include "dcpp/stdinc.h"
 #include "dcpp/DCPlusPlus.h"
@@ -28,6 +29,7 @@ SettingsDownloads::SettingsDownloads(QWidget *parent):
     other_settings.insert(SettingsManager::SKIP_ZERO_BYTE, 6);
     other_settings.insert(SettingsManager::DONT_DL_ALREADY_SHARED, 7);
     other_settings.insert(SettingsManager::DONT_DL_ALREADY_QUEUED, 8);
+    other_settings.insert(SettingsManager::SFV_CHECK, 9);
 
     init();
 }
@@ -47,7 +49,7 @@ void SettingsDownloads::ok(){
         udl_dir += PATH_SEPARATOR_STR;
 
     SM->set(SettingsManager::NO_USE_TEMP_DIR, !checkBox_NO_USE_TEMP_DIR->isChecked());
-
+    SM->set(SettingsManager::AUTO_SEARCH_TIME, spinBox_AUTO_SEARCH_TIME->value());
     SM->set(SettingsManager::DOWNLOAD_DIRECTORY, CQST(dl_dir));
     SM->set(SettingsManager::TEMP_DOWNLOAD_DIRECTORY, CQST(udl_dir));
     SM->set(SettingsManager::DOWNLOAD_SLOTS, spinBox_MAXDL->value());
@@ -72,8 +74,6 @@ void SettingsDownloads::ok(){
 
     for (; it != other_settings.constEnd(); ++it)
         SM->set(it.key(), listWidget->item(it.value())->checkState() == Qt::Checked);
-
-    SM->save();
 }
 
 void SettingsDownloads::init(){
@@ -83,7 +83,7 @@ void SettingsDownloads::init(){
         lineEdit_PROXY->setText(CSTD(SETTING(HTTP_PROXY)));
 
         checkBox_NO_USE_TEMP_DIR->setChecked(!(((bool)SettingsManager::getInstance()->get(SettingsManager::NO_USE_TEMP_DIR))? Qt::Checked : Qt::Unchecked));
-
+        spinBox_AUTO_SEARCH_TIME->setValue(SETTING(AUTO_SEARCH_TIME));
         spinBox_MAXDL->setValue(SETTING(DOWNLOAD_SLOTS));
         spinBox_NONEWDL->setValue(SETTING(MAX_DOWNLOAD_SPEED));
 
@@ -92,6 +92,7 @@ void SettingsDownloads::init(){
 
         connect(pushButton_BROWSE, SIGNAL(clicked()), SLOT(slotBrowse()));
         connect(pushButton_BROWSE1, SIGNAL(clicked()), SLOT(slotBrowse()));
+        connect(pushButton_CFGLISTS, SIGNAL(clicked()), SLOT(slotCfgPublic()));
     }
     {//Download to
         QString aliases, paths;
@@ -209,5 +210,11 @@ void SettingsDownloads::slotDownloadTo(){
         WSSET(WS_DOWNLOADTO_ALIASES, aliases.toAscii().toBase64());
         WSSET(WS_DOWNLOADTO_PATHS, paths.toAscii().toBase64());
     }
+}
+
+void SettingsDownloads::slotCfgPublic(){
+    PublicHubsList h;
+
+    h.exec();
 }
 

@@ -226,11 +226,9 @@ namespace LeechCraft
 
 			QStringList Core::GetTagsForIndex (int index, QAbstractItemModel *model) const
 			{
+				int starting = 0;
 				Util::MergeModel::const_iterator modIter =
-					dynamic_cast<Util::MergeModel*> (model)->GetModelForRow (index);
-
-				int starting = dynamic_cast<Util::MergeModel*> (model)->
-					GetStartingRow (modIter);
+					dynamic_cast<Util::MergeModel*> (model)->GetModelForRow (index, &starting);
 
 				QStringList ids = (*modIter)->data ((*modIter)->
 						index (index - starting, 0), RoleTags).toStringList ();
@@ -267,6 +265,10 @@ namespace LeechCraft
 			{
 				SummaryWidget *result = new SummaryWidget ();
 				connect (result,
+						SIGNAL (changeTabName (const QString&)),
+						this,
+						SLOT (handleChangeTabName (const QString&)));
+				connect (result,
 						SIGNAL (newTabRequested ()),
 						this,
 						SLOT (handleNewTabRequested ()));
@@ -280,6 +282,11 @@ namespace LeechCraft
 						SLOT (handleFilterUpdated ()));
 				Reemitter_->Connect (result);
 				return result;
+			}
+
+			void Core::handleChangeTabName (const QString& name)
+			{
+				emit changeTabName (qobject_cast<QWidget*> (sender ()), name);
 			}
 
 			void Core::handleCurrentTabChanged (int newIndex)

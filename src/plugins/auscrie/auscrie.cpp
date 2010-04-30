@@ -1,8 +1,7 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
  * Copyright (C) 2010  Georg Rudoy
- *
- * This program is free software: you can redistribute it and/or modify
+ * * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
@@ -27,6 +26,7 @@
 #include <QUrl>
 #include <QClipboard>
 #include <xmlsettingsdialog/basesettingsmanager.h>
+#include <plugininterface/util.h>
 #include "shooterdialog.h"
 #include "poster.h"
 
@@ -39,6 +39,8 @@ namespace LeechCraft
 			void Plugin::Init (ICoreProxy_ptr proxy)
 			{
 				Proxy_ = proxy;
+
+				Translator_.reset (Util::InstallTranslator ("auscrie"));
 
 				Dialog_ = new ShooterDialog (Proxy_->GetMainWindow ());
 
@@ -171,34 +173,19 @@ namespace LeechCraft
 				QRegExp re ("<p>You can find this at <a href='([^<]+)'>([^<]+)</a></p>");
 				if (!re.exactMatch (result))
 				{
-					LeechCraft::Notification n =
-					{
-						tr ("Auscrie"),
-						tr ("Page parse failed"),
-						false,
-						LeechCraft::Notification::PWarning_
-					};
-
-					emit notify (n);
+					emit gotEntity (Util::MakeNotification ("Auscrie", tr ("Page parse failed"), PCritical_));
 					return;
 				}
 
 				QString pasteUrl = re.cap (1);
 				pasteUrl.replace ("html", "jpg").replace ("view", "img");
 
-				LeechCraft::Notification n =
-				{
-					tr ("Auscrie"),
-					tr ("Image pasted: %1, the URL was copied to the clipboard")
-						.arg (pasteUrl),
-					false,
-					LeechCraft::Notification::PInformation_
-				};
-
 				QApplication::clipboard ()->setText (pasteUrl, QClipboard::Clipboard);
 				QApplication::clipboard ()->setText (pasteUrl, QClipboard::Selection);
 
-				emit notify (n);
+				QString text = tr ("Image pasted: %1, the URL was copied to the clipboard")
+					.arg (pasteUrl);
+				emit gotEntity (Util::MakeNotification ("Auscrie", text, PInfo_));
 
 				sender ()->deleteLater ();
 			}
@@ -208,16 +195,9 @@ namespace LeechCraft
 				qWarning () << Q_FUNC_INFO
 					<< reply->errorString ();
 
-				LeechCraft::Notification n =
-				{
-					tr ("Auscrie"),
-					tr ("Upload of screenshot failed: %1")
-						.arg (reply->errorString ()),
-					false,
-					LeechCraft::Notification::PWarning_
-				};
-
-				emit notify (n);
+				QString text = tr ("Upload of screenshot failed: %1")
+									.arg (reply->errorString ());
+				emit gotEntity (Util::MakeNotification ("Auscrie", text, PCritical_));
 
 				sender ()->deleteLater ();
 			}

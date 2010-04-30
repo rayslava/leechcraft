@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2009  Georg Rudoy
+ * Copyright (C) 2006-2010  Georg Rudoy
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,32 +16,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef INTERFACES_ICUSTOMPROVIDER_H
-#define INTERFACES_ICUSTOMPROVIDER_H
-#include <QString>
+#include "itemhandlerspinboxdouble.h"
+#include <boost/bind.hpp>
 
-/** @brief Interface for plugins providing custom facilities.
- *
- * This interface should be used by plugins which provide custom
- * abilities not related to LeechCraft and not accounted by other
- * interfaces. All communication goes via signal/slot connections.
- */
-class ICustomProvider
+namespace LeechCraft
 {
-public:
-	/** @brief Queries the plugin whether it implements a given feature.
-	 *
-	 * @param[in] feature Queried feature.
-	 * @return Query result.
-	 */
-	virtual bool ImplementsFeature (const QString& feature) const = 0;
+	ItemHandlerSpinboxDouble::ItemHandlerSpinboxDouble ()
+	: ItemHandlerSpinboxBase<QDoubleSpinBox, double> (Converter_t (boost::bind (&QString::toDouble,
+					_1, static_cast<bool*> (0))),
+			"doublespinbox",
+			SIGNAL (valueChanged (double)))
+	{
+	}
 
-	/** @brief Virtual destructor.
-	 */
-	virtual ~ICustomProvider () {}
+	ItemHandlerSpinboxDouble::~ItemHandlerSpinboxDouble ()
+	{
+	}
 };
-
-Q_DECLARE_INTERFACE (ICustomProvider, "org.Deviant.LeechCraft.ICustomProvider/1.0");
-
-#endif
-

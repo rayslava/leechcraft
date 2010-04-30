@@ -55,17 +55,38 @@ namespace LeechCraft
 				Item_ptr GetItem (const QModelIndex&) const;
 				QToolBar* GetToolBar () const;
 				void SetTapeMode (bool);
-				void SetMergeMode (bool);
+
+				/** Merge all that channels that are currently shown.
+				 *
+				 * @param[in] on Whether the merge mode should be enabled.
+				 */
+				void SetMergeMode (bool on);
+
+				/** Merge only those channels that match given tags.
+				 *
+				 * To disable the merge mode enabled by this, either enable
+				 * "usual" merge mode via SetMergeMode() or do a
+				 * CurrentChannelChanged().
+				 *
+				 * If "usual" merge mode (as activated by SetMergeMode())
+				 * is currently active, this function does nothing.
+				 *
+				 * @param[in] tags The list of tags to merge.
+				 */
+				void SetMergeModeTags (const QStringList& tags);
 				void SetHideRead (bool);
 				bool IsItemCurrent (int) const;
 				void Selected (const QModelIndex&);
 				void MarkItemAsUnread (const QModelIndex&);
 				bool IsItemRead (int) const;
+				bool IsItemReadNotCurrent (int) const;
 				QStringList GetItemCategories (int) const;
 				void AddToItemBucket (const QModelIndex&) const;
 				void SubscribeToComments (const QModelIndex&) const;
 				void CurrentChannelChanged (const QModelIndex&);
 			private:
+				void ClearSupplementaryModels ();
+				void AddSupplementaryModelFor (const ChannelShort&);
 				void SetupActions ();
 				QToolBar* SetupToolBar ();
 				QString GetHex (QPalette::ColorRole,

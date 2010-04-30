@@ -51,8 +51,11 @@ namespace LeechCraft
 				virtual void mousePressEvent (QMouseEvent*);
 				virtual void wheelEvent (QWheelEvent*);
 				virtual void contextMenuEvent (QContextMenuEvent*);
+				virtual void keyReleaseEvent (QKeyEvent*);
 			private:
 				int LevelForZoom (qreal);
+				void NavigatePlugins ();
+				void NavigateHome ();
 			public slots:
 				void zoomIn ();
 				void zoomOut ();

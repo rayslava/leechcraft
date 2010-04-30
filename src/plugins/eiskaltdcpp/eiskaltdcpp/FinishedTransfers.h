@@ -1,3 +1,12 @@
+/***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 3 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************/
+
 #ifndef FINISHEDTRANSFERS_H
 #define FINISHEDTRANSFERS_H
 
@@ -8,6 +17,7 @@
 #include <QComboBox>
 #include <QItemSelectionModel>
 #include <QDesktopServices>
+#include <QHeaderView>
 
 #include "dcpp/stdinc.h"
 #include "dcpp/DCPlusPlus.h"
@@ -42,20 +52,17 @@ private:
 
 class FinishedTransferProxy: public QWidget{
 Q_OBJECT
-
 public:
     FinishedTransferProxy(QWidget *parent):QWidget(parent){}
     ~FinishedTransferProxy(){}
 
     QString uploadTitle();
     QString downloadTitle();
-
 public slots:
     virtual void slotTypeChanged(int) = 0;
     virtual void slotClear() = 0;
     virtual void slotContextMenu() = 0;
     virtual void slotHeaderMenu() = 0;
-
 };
 
 template <bool isUpload>
@@ -66,7 +73,7 @@ class FinishedTransfers :
         public ArenaWidget,
         public FinishedTransferProxy
 {
-Q_INTERFACES(ArenaWidget IMultiTabsWidget)
+Q_INTERFACES(ArenaWidget)
 
 typedef QMap<QString, QVariant> VarMap;
 friend class dcpp::Singleton< FinishedTransfers<isUpload> >;
@@ -76,14 +83,14 @@ public:
     QString getArenaTitle(){ return (isUpload? uploadTitle() : downloadTitle()); }
     QString getArenaShortTitle(){ return getArenaTitle(); }
     QMenu *getMenu() { return NULL; }
+    ArenaWidget::Role role() const;
+
     const QPixmap &getPixmap(){
         if (isUpload)
-            return WulforUtil::getInstance()->getPixmap(WulforUtil::eiUP);
+            return WulforUtil::getInstance()->getPixmap(WulforUtil::eiUPLIST);
         else
-            return WulforUtil::getInstance()->getPixmap(WulforUtil::eiDOWN);
+            return WulforUtil::getInstance()->getPixmap(WulforUtil::eiDOWNLIST);
     }
-
-    void Remove(){ close(); }
 
 protected:
     virtual void customEvent(QEvent *e){
@@ -269,8 +276,16 @@ private:
                 item = reinterpret_cast<FinishedTransfersItem*>(i.internalPointer());
                 file_list = item->data(COLUMN_FINISHED_PATH).toString();
 
-                if (!file_list.isEmpty())
+                if (!file_list.isEmpty()){
+#if QT_VERSION >= 0x040500
                     files.append(file_list.split("; ", QString::SkipEmptyParts));
+#else
+                    QStringList s = file_list.split("; ", QString::SkipEmptyParts);
+                    foreach (QString i, s)
+                        files.push_back(i);
+#endif
+                }
+                    
             }
         }
 
@@ -393,6 +408,12 @@ private:
 
     FinishedTransfersModel *model;
 };
+
+template <>
+inline ArenaWidget::Role FinishedTransfers<false>::role() const { return ArenaWidget::FinishedDownloads; }
+
+template <>
+inline ArenaWidget::Role FinishedTransfers<true>::role() const { return ArenaWidget::FinishedUploads; }
 
 typedef FinishedTransfers<true>  FinishedUploads;
 typedef FinishedTransfers<false> FinishedDownloads;
