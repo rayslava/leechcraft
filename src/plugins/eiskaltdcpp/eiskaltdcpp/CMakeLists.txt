@@ -63,7 +63,6 @@ set (SRCS   Antispam.cpp
             ShellCommandRunner.cpp
             SpyFrame.cpp
             SpyModel.cpp
-            ToolBar.cpp
             TransferView.cpp
             TransferViewModel.cpp
             UPnP.cpp
@@ -114,7 +113,6 @@ set (MOC_HDRS Antispam.h
             ShellCommandRunner.h
             SpyFrame.h
             SpyModel.h
-            ToolBar.h
             TransferView.h
             TransferViewModel.h
             UPnP.h
