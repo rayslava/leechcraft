@@ -35,7 +35,6 @@
 #include "FinishedTransfers.h"
 #include "AntiSpamFrame.h"
 #include "IPFilterFrame.h"
-#include "ToolBar.h"
 #include "Magnet.h"
 #include "SpyFrame.h"
 #include "Notification.h"
@@ -302,8 +301,8 @@ void MainLayoutWrapper::ReleaseAsDestructor ()
 
     //delete arena;
 
-    delete fBar;
-    delete tBar;
+    //delete fBar;
+    //delete tBar;
 }
 
 MainLayoutWrapper* MainLayoutWrapper::getInstance ()
@@ -699,8 +698,8 @@ void MainLayoutWrapper::initHotkeys(){
     ctrl_pgup->setContext(Qt::WindowShortcut);
     ctrl_w->setContext(Qt::WindowShortcut);
 
-    connect(ctrl_pgdown, SIGNAL(activated()), tBar, SLOT(nextTab()));
-    connect(ctrl_pgup,   SIGNAL(activated()), tBar, SLOT(prevTab()));
+/*    connect(ctrl_pgdown, SIGNAL(activated()), tBar, SLOT(nextTab()));
+    connect(ctrl_pgup,   SIGNAL(activated()), tBar, SLOT(prevTab()));*/
     connect(ctrl_w,      SIGNAL(activated()), this, SLOT(slotCloseCurrentWidget()));
 }
 
@@ -863,7 +862,7 @@ void MainLayoutWrapper::retranslateUi(){
 }
 
 void MainLayoutWrapper::initToolbar(){
-    fBar = new ToolBar(this);
+/*    fBar = new ToolBar(this);
     fBar->setObjectName("fBar");
     fBar->addActions(toolBarActions);
     fBar->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -877,7 +876,7 @@ void MainLayoutWrapper::initToolbar(){
     tBar->setContextMenuPolicy(Qt::CustomContextMenu);
     tBar->setMovable(true);
     tBar->setFloatable(true);
-    tBar->setAllowedAreas(Qt::AllToolBarAreas);
+    tBar->setAllowedAreas(Qt::AllToolBarAreas);*/
 
     /*addToolBar(fBar);
     addToolBar(tBar);*/
@@ -1025,7 +1024,7 @@ void MainLayoutWrapper::slotFileBrowseFilelist(){
 }
 
 void MainLayoutWrapper::redrawToolPanel(){
-    tBar->redraw();
+  /*  tBar->redraw();
 
     QHash<QAction*, ArenaWidget*>::iterator it = menuWidgetsHash.begin();
     QHash<QAction*, ArenaWidget*>::iterator end = menuWidgetsHash.end();
@@ -1033,7 +1032,7 @@ void MainLayoutWrapper::redrawToolPanel(){
     for(; it != end; ++it){//also redraw all widget menu items
         it.key()->setText(it.value()->getArenaShortTitle());
         it.key()->setIcon(it.value()->getPixmap());
-    }
+    }*/
 }
 
 void MainLayoutWrapper::addArenaWidget(ArenaWidget *wgt){

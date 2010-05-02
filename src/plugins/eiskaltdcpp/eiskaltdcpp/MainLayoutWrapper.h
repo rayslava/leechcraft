@@ -48,7 +48,6 @@ using namespace dcpp;
 
 class FavoriteHubs;
 class DownloadQueue;
-class ToolBar;
 class MainLayoutWrapper;
 
 class QProgressBar;
@@ -237,9 +236,6 @@ signals:
         // Widgets
         //QDockWidget *arena;
         QDockWidget *transfer_dock;
-
-        ToolBar *tBar;//for tabs
-        ToolBar *fBar;//for actions
 
         QLabel *statusLabel;
         QLabel *statusDSPLabel;
