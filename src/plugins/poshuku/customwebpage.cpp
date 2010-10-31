@@ -17,6 +17,8 @@
  **********************************************************************/
 
 #include "customwebpage.h"
+#include <boost/bind.hpp>
+#include <boost/function.hpp>
 #include <QtDebug>
 #include <QFile>
 #include <QBuffer>
@@ -25,6 +27,7 @@
 #include <QNetworkReply>
 #include <QDesktopServices>
 #include <QSysInfo>
+#include <qwebelement.h>
 #include <qwebhistory.h>
 #include <plugininterface/util.h>
 #include <plugininterface/defaulthookproxy.h>
@@ -36,6 +39,8 @@
 #include "externalproxy.h"
 #include "webpluginfactory.h"
 #include "browserwidget.h"
+
+Q_DECLARE_METATYPE (QVariant*);
 
 namespace LeechCraft
 {
@@ -726,78 +731,167 @@ namespace LeechCraft
 							<< request.url ();
 						return false;
 					}
-					if (data.size () > 1)
-					{
-						qWarning () << Q_FUNC_INFO
-							<< "too much form data for"
-							<< frame
-							<< data.size ()
-							<< request.url ();
-					}
 					return true;
+				}
+
+				QPair<PageFormsData_t, QMap<ElementData, QWebElement> > HarvestForms (QWebFrame *frame, const QUrl& reqUrl = QUrl ())
+				{
+					PageFormsData_t formsData;
+					QMap<ElementData, QWebElement> ed2element;
+
+					QUrl pageUrl = frame->url ();
+					QWebElementCollection forms = frame->findAllElements ("form");
+					Q_FOREACH (const QWebElement& form, forms)
+					{
+						QUrl relUrl = QUrl::fromEncoded (form.attribute ("action").toUtf8 ());
+						QUrl actionUrl = pageUrl.resolved (relUrl);
+						if (reqUrl.isValid () && actionUrl != reqUrl)
+							continue;
+
+						QString url = actionUrl.toEncoded ();
+						QString formId = QString ("%1<>%2<>%3")
+								.arg (url)
+								.arg (form.attribute ("id"))
+								.arg (form.attribute ("name"));
+
+						QWebElementCollection children = form.findAll ("input");
+						Q_FOREACH (QWebElement child, children)
+						{
+							if (child.attribute ("hidden") == "true")
+								continue;
+
+							QString name = child.attribute ("name");
+							// Ugly workaround for https://bugs.webkit.org/show_bug.cgi?id=32865
+							QString value = child.evaluateJavaScript ("this.value").toString ();
+
+							if (name.isEmpty () ||
+									(reqUrl.isValid () && value.isEmpty ()))
+								continue;
+
+							ElementData ed =
+							{
+								url,
+								formId,
+								name,
+								child.attribute ("type"),
+								value
+							};
+
+							formsData [name] << ed;
+							ed2element [ed] = child;
+						}
+					}
+
+					return qMakePair (formsData, ed2element);
 				}
 			};
 
 			void CustomWebPage::HandleForms (QWebFrame *frame,
 					const QNetworkRequest& request, QWebPage::NavigationType type)
 			{
-				// TODO rewrite in QWebElement API with SecMan in mind.
-				/*
-				JSProxy_->ClearForms ();
+				if (type != NavigationTypeFormSubmitted)
+					return;
 
-				QWebFrame *formFrame = frame ? frame : mainFrame ();
-				QFile file (":/resources/scripts/formquery.js");
-				if (file.open (QIODevice::ReadOnly))
-					formFrame->evaluateJavaScript (file.readAll ());
-				else
-					qWarning () << Q_FUNC_INFO
-						<< "could not open internal file"
-						<< file.fileName ()
-						<< file.errorString ();
-				if (type == NavigationTypeFormSubmitted)
+				PageFormsData_t formsData =
+						HarvestForms (frame ? frame : mainFrame (),
+								request.url ()).first;
+
+				if (!CheckData (formsData, frame, request))
+					return;
+
+				QUrl pageUrl = frame->url ();
+
+				// Check if this should be emitted at all
+				if (Core::Instance ().GetStorageBackend ()->
+						GetFormsIgnored (pageUrl.toString ()))
+					return;
+
+				emit storeFormData (formsData);
+			}
+
+			namespace
+			{
+				ElementData FindElement (const ElementData& filled, const ElementsData_t& list)
 				{
-					PageFormsData_t data = JSProxy_->GetForms ();
-#ifdef QT_DEBUG
-					qDebug () << frame << request.url () << data;
-#endif
-					if (!CheckData (data, frame, request))
-						return;
+					boost::function<bool (const ElementData&, const ElementData&)> urlChecker =
+							boost::bind (&ElementData::PageURL_, _1) == boost::bind (&ElementData::PageURL_, _2);
+					boost::function<bool (const ElementData&, const ElementData&)> formIdChecker =
+							boost::bind (&ElementData::FormID_, _1) == boost::bind (&ElementData::FormID_, _2);
 
-					QString url = frame->url ().toString ();
+					ElementsData_t::const_iterator pos = std::find_if (list.begin (), list.end (),
+							boost::bind (std::logical_and<bool> (),
+									boost::bind (urlChecker, _1, filled),
+									boost::bind (formIdChecker, _1, filled)));
+					if (pos == list.end ())
+						pos = std::find_if (list.begin (), list.end (),
+								boost::bind (formIdChecker, _1, filled));
+					if (pos == list.end ())
+						pos = std::find_if (list.begin (), list.end (),
+								boost::bind (urlChecker, _1, filled));
+					if (pos == list.end ())
+						pos = list.begin ();
 
-					// Check if this should be emitted at all
-					if (Core::Instance ().GetStorageBackend ()->GetFormsIgnored (url))
-						return;
-
-					emit storeFormData (data);
+					return *pos;
 				}
-				*/
 			}
 
 			void CustomWebPage::fillForms (QWebFrame *frame)
 			{
-				// TODO rewrite in QWebElement API with SecMan in mind.
-				/*
-				JSProxy_->ClearForms ();
+				qDebug () << Q_FUNC_INFO;
+				PageFormsData_t formsData;
 
-				QString url = frame->url ().toString ();
+				QPair<PageFormsData_t, QMap<ElementData, QWebElement> > pair =
+						HarvestForms (frame ? frame : mainFrame ());
 
-				PageFormsData_t data;
-				Core::Instance ().GetStorageBackend ()->GetFormsData (url, data [url]);
+				qDebug () << pair.first;
 
-				JSProxy_->SetForms (data);
-				QFile sfile (":/resources/scripts/formsetter.js");
-				if (sfile.open (QIODevice::ReadOnly))
-					frame->evaluateJavaScript (sfile.readAll ());
-				else
-					qWarning () << Q_FUNC_INFO
-						<< "could not open internal file"
-						<< sfile.fileName ()
-						<< sfile.errorString ();
+				if (pair.first.isEmpty ())
+					return;
+
+				QList<QVariant> keys;
+				QStringList pairFirstKeys = pair.first.keys ();
+				Q_FOREACH (QString name, pairFirstKeys)
+					keys << "org.LeechCraft.Poshuku.Forms.InputByName/" + name.toUtf8 ();
+
+				Entity e = Util::MakeEntity (keys,
+						QString (),
+						Internal,
+						"x-leechcraft/data-persistent-load");
+				QVariant valuesList;
+				e.Additional_ ["Values"] = QVariant::fromValue<QVariant*> (&valuesList);
+
+				emit delegateEntity (e, 0, 0);
+
+				QList<QVariant> values = valuesList.toList ();
+
+				int size = keys.size ();
+				if (values.size () != size)
+					return;
+
+				for (int i = 0; i < size; ++i)
+				{
+					QString inputName = QString (keys.at (i).toByteArray ());
+					if (inputName.isEmpty ())
+					{
+						qWarning () << Q_FUNC_INFO
+								<< "empty input.name for"
+								<< keys.at (i);
+						continue;
+					}
+
+					ElementsData_t eds = values.at (i).value<ElementsData_t> ();
+					if (!eds.size ())
+						continue;
+
+					// TODO take into account all the possibilities.
+					ElementData ed = eds.at (0);
+
+					ElementData source = FindElement (ed, pair.first [pairFirstKeys.at (i)]);
+					pair.second [source].setAttribute ("value", ed.Value_);
+				}
 
 				Q_FOREACH (QWebFrame *childFrame, frame->childFrames ())
 					fillForms (childFrame);
-					*/
 			}
 		};
 	};
