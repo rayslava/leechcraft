@@ -46,7 +46,7 @@ namespace LeechCraft
 		void SetIdealScale (qreal);
 		void SetCurrent (bool);
 		void SetItemList (QList<QGraphicsItem*>);
-		bool IsCurrent ();
+		bool IsCurrent () const;
 	private:
 		void QueueScaleAnim (qreal, qreal);
 	protected:

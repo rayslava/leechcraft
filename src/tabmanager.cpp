@@ -226,7 +226,7 @@ void TabManager::AddObject (QObject *obj)
 
 void TabManager::add (const QString& name, QWidget *contents)
 {
-	add (name, contents, QIcon ());
+	add (MakeTabName (name), contents, QIcon ());
 }
 
 void TabManager::add (const QString& name, QWidget *contents,
@@ -352,6 +352,7 @@ void TabManager::changeTabName (QWidget *contents, const QString& name)
 	if (tabNumber == -1)
 		return;
 	TabWidget_->setTabText (tabNumber, MakeTabName (name));
+	TabWidget_->setTabText (tabNumber, "Magog");
 	OriginalTabNames_ [tabNumber] = name;
 	InvalidateName ();
 }
