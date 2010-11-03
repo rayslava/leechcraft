@@ -83,7 +83,6 @@ namespace LeechCraft
 				QString PreviousFindText_;
 				bool HtmlMode_;
 				bool Own_;
-
 				static QObject* S_MultiTabsParent_;
 
 				friend class CustomWebView;
