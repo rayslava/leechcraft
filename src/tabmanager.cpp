@@ -352,7 +352,6 @@ void TabManager::changeTabName (QWidget *contents, const QString& name)
 	if (tabNumber == -1)
 		return;
 	TabWidget_->setTabText (tabNumber, MakeTabName (name));
-	TabWidget_->setTabText (tabNumber, "Magog");
 	OriginalTabNames_ [tabNumber] = name;
 	InvalidateName ();
 }
