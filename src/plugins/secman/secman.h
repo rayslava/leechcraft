@@ -20,6 +20,8 @@
 #define PLUGINS_SECMAN_SECMAN_H
 #include <QObject>
 #include <interfaces/iinfo.h>
+#include <interfaces/ientityhandler.h>
+#include <interfaces/ipluginready.h>
 
 namespace LeechCraft
 {
@@ -29,9 +31,11 @@ namespace LeechCraft
 		{
 			class Plugin : public QObject
 						 , public IInfo
+						 , public IEntityHandler
+						 , public IPluginReady
 			{
 				Q_OBJECT
-				Q_INTERFACES (IInfo)
+				Q_INTERFACES (IInfo IEntityHandler IPluginReady)
 			public:
 				void Init (ICoreProxy_ptr);
 				void SecondInit ();
@@ -44,6 +48,12 @@ namespace LeechCraft
 				QStringList Needs () const;
 				QStringList Uses () const;
 				void SetProvider (QObject*, const QString&);
+
+				bool CouldHandle (const Entity&) const;
+				void Handle (Entity);
+
+				QSet<QByteArray> GetExpectedPluginClasses () const;
+				void AddPlugin (QObject*);
 			};
 		};
 	};

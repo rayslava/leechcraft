@@ -52,6 +52,7 @@ namespace LeechCraft
 
 				QtMsgHandler DefaultMsgHandler_;
 				QObject *WrappedObject_;
+				bool TemporaryDocument_;
 			public:
 				static void SetParentMultiTabs (QObject*);
 
@@ -67,6 +68,9 @@ namespace LeechCraft
 
 				void SetText (const QString&);
 				void SetLanguage (const QString&);
+				
+				void SetTemporaryDocument (bool);
+				QsciScintilla* GetTextEditor () const;
 			private slots:
 				void selectDoctype (QAction*);
 				void on_ActionNew__triggered ();

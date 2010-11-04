@@ -83,7 +83,6 @@ namespace LeechCraft
 				QString PreviousFindText_;
 				bool HtmlMode_;
 				bool Own_;
-
 				static QObject* S_MultiTabsParent_;
 
 				friend class CustomWebView;
@@ -192,6 +191,7 @@ namespace LeechCraft
 				void addToFavorites (const QString&, const QString&);
 				void statusBarChanged (const QString&);
 				void gotEntity (const LeechCraft::Entity&);
+				void delegateEntity (const LeechCraft::Entity&, int*, QObject**);
 				void couldHandle (const LeechCraft::Entity&, bool*);
 				void invalidateSettings ();
 				void raiseTab (QWidget*);

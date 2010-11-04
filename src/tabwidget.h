@@ -40,7 +40,6 @@ namespace LeechCraft
 		virtual void mouseDoubleClickEvent (QMouseEvent*);
 		virtual void mouseReleaseEvent (QMouseEvent*);
 		virtual void tabRemoved (int);
-		virtual void mouseMoveEvent(QMouseEvent *);
 	private slots:
 		void handleTabBarLocationChanged ();
 		void handleTabBarContextMenu (const QPoint&);

@@ -335,6 +335,10 @@ namespace LeechCraft
 						this,
 						SIGNAL (gotEntity (const LeechCraft::Entity&)));
 				connect (Ui_.WebView_,
+						SIGNAL (delegateEntity (const LeechCraft::Entity&, int*, QObject**)),
+						this,
+						SIGNAL (delegateEntity (const LeechCraft::Entity&, int*, QObject**)));
+				connect (Ui_.WebView_,
 						SIGNAL (couldHandle (const LeechCraft::Entity&, bool*)),
 						this,
 						SIGNAL (couldHandle (const LeechCraft::Entity&, bool*)));
@@ -918,7 +922,7 @@ namespace LeechCraft
 						FromUserInitiated,
 						"x-leechcraft/plain-text-document");
 				e.Additional_ ["Language"] = "HTML";
-
+				e.Additional_ ["IsTemporaryDocument"] = true;
 				bool ch = false;
 				emit couldHandle (e, &ch);
 				if (ch)

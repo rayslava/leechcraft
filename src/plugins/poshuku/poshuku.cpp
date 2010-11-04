@@ -233,22 +233,12 @@ namespace LeechCraft
 
 			bool Poshuku::CouldHandle (const LeechCraft::Entity& e) const
 			{
-				if (!(e.Parameters_ & FromUserInitiated) ||
-						e.Parameters_ & Internal)
-					return false;
-
-				if (!e.Entity_.canConvert<QUrl> ())
-					return false;
-
-				QUrl url = e.Entity_.toUrl ();
-				return (url.isValid () &&
-					(url.scheme () == "http" || url.scheme () == "https"));
+				return Core::Instance ().CouldHandle (e);
 			}
 
 			void Poshuku::Handle (LeechCraft::Entity e)
 			{
-				QUrl url = e.Entity_.toUrl ();
-				Core::Instance ().NewURL (url, true);
+				Core::Instance ().Handle (e);
 			}
 
 			void Poshuku::Open (const QString& link)
@@ -361,6 +351,10 @@ namespace LeechCraft
 						SIGNAL (gotEntity (const LeechCraft::Entity&)),
 						this,
 						SIGNAL (gotEntity (const LeechCraft::Entity&)));
+				connect (&Core::Instance (),
+						SIGNAL (delegateEntity (const LeechCraft::Entity&, int*, QObject**)),
+						this,
+						SIGNAL (delegateEntity (const LeechCraft::Entity&, int*, QObject**)));
 				connect (&Core::Instance (),
 						SIGNAL (couldHandle (const LeechCraft::Entity&, bool*)),
 						this,

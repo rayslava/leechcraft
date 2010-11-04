@@ -61,8 +61,10 @@ namespace LeechCraft
 				page->SetText (e.Entity_.toString ());
 
 				QString language = e.Additional_ ["Language"].toString ();
+				bool isTempDocumnet = e.Additional_ ["IsTemporaryDocument"].toBool ();
 				if (!language.isEmpty ())
 					page->SetLanguage (language);
+				page->SetTemporaryDocument (isTempDocumnet);
 			}
 
 			EditorPage* Core::MakeEditorPage ()

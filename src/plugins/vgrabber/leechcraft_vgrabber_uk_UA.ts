@@ -70,12 +70,12 @@
     <message>
         <location filename="findproxy.cpp" line="55"/>
         <source>Copy URL to clipboard</source>
-        <translation type="unfinished"></translation>
+        <translation>Скопіювати URL в буфер</translation>
     </message>
     <message>
         <location filename="findproxy.cpp" line="63"/>
         <source>vGrabber menu</source>
-        <translation type="unfinished"></translation>
+        <translation>Меню vGrabber</translation>
     </message>
     <message>
         <location filename="findproxy.cpp" line="80"/>
@@ -131,7 +131,7 @@
     <message>
         <location filename="vgrabber.cpp" line="88"/>
         <source>vkontakte.ru audio/video grabber.</source>
-        <translation>Завантаження та програванная аудіо та відео з В Контакте.</translation>
+        <translation>Завантаження та програвання аудіо та відео з ВКонтакте.</translation>
     </message>
 </context>
 <context>
@@ -154,7 +154,7 @@
     <message>
         <location filename="dummy.cpp" line="5"/>
         <source>Filter files with same title and length</source>
-        <translation>Фільтрувати файли з однаковми назвами і довжиною</translation>
+        <translation>Фільтрувати файли з однаковими назвами і довжиною</translation>
     </message>
     <message>
         <location filename="dummy.cpp" line="6"/>

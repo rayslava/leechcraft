@@ -56,6 +56,7 @@ namespace LeechCraft
 			, Modified_ (false)
 			, DefaultMsgHandler_ (0)
 			, WrappedObject_ (0)
+			, TemporaryDocument_ (false)
 			{
 #define DEFPAIR(l,e) Extension2Lang_ [#e] = #l;
 				DEFPAIR (Bash, sh);
@@ -209,12 +210,12 @@ namespace LeechCraft
 
 			void EditorPage::Remove ()
 			{
-				if (Modified_)
+				if (Modified_ && !TemporaryDocument_)
 				{
 					QString name = QFileInfo (Filename_).fileName ();
 					if (name.isEmpty ())
 						name = tr ("Untitled");
-
+											
 					QMessageBox::StandardButton res =
 							QMessageBox::question (this,
 									"LeechCraft",
@@ -624,7 +625,7 @@ namespace LeechCraft
 							tr ("Select file to save"));
 					if (Filename_.isEmpty ())
 						return false;
-
+					
 					emit changeTabName (this, QString ("%1 - Popishu")
 							.arg (Filename_));
 				}
@@ -645,6 +646,8 @@ namespace LeechCraft
 				emit languageChanged (GetLanguage (Filename_));
 
 				Modified_ = false;
+				
+				TemporaryDocument_ = false;
 
 				return true;
 			}
@@ -790,6 +793,16 @@ namespace LeechCraft
 					XmlSettingsManager::Instance ()->
 							setProperty ("RecentlyOpenedFiles", recent);
 				}
+			}
+			
+			void EditorPage::SetTemporaryDocument (bool tempDocument)
+			{ 
+				TemporaryDocument_ = tempDocument;
+			}
+
+			QsciScintilla* EditorPage::GetTextEditor () const
+			{
+				return Ui_.TextEditor_;
 			}
 		};
 	};

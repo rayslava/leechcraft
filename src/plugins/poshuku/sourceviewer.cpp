@@ -19,7 +19,7 @@
 #include "sourceviewer.h"
 #include "htmlhighlighter.h"
 #include <QDesktopWidget>
-
+#include <QtDebug>
 namespace LeechCraft
 {
 	namespace Plugins
@@ -33,7 +33,7 @@ namespace LeechCraft
 				QRect frect = frameGeometry ();
 				frect.moveCenter (QDesktopWidget ().availableGeometry ().center ());
 				move (frect.topLeft ());
-				new HtmlHighlighter (Ui_.HtmlEdit_);
+				new HtmlHighlighter (Ui_.HtmlEdit_);				
 			}
 			
 			void SourceViewer::SetHtml (const QString& html)

@@ -25,9 +25,57 @@ namespace LeechCraft
 	{
 		namespace Poshuku
 		{
+			bool operator< (const ElementData& left, const ElementData& right)
+			{
+				if (left.PageURL_ != right.PageURL_)
+					return left.PageURL_ < right.PageURL_;
+
+				if (left.FormID_ != right.FormID_)
+					return left.FormID_ < right.FormID_;
+
+				if (left.Name_ != right.Name_)
+					return left.Name_ < right.Name_;
+
+				if (left.Type_ != right.Type_)
+					return left.Type_ < right.Type_;
+
+				return left.Value_ < right.Value_;
+			}
+
+			QDataStream& operator<< (QDataStream& out, const ElementData& ed)
+			{
+				out << static_cast<quint8> (1)
+					<< ed.PageURL_
+					<< ed.FormID_
+					<< ed.Name_
+					<< ed.Type_
+					<< ed.Value_;
+				return out;
+			}
+
+			QDataStream& operator>> (QDataStream& in, ElementData& ed)
+			{
+				quint8 version = 0;
+				in >> version;
+				if (version == 1)
+					in >> ed.PageURL_
+						>> ed.FormID_
+						>> ed.Name_
+						>> ed.Type_
+						>> ed.Value_;
+				else
+					qWarning () << Q_FUNC_INFO
+						<< "unable to deserialize ElementType of version"
+						<< version;
+
+				return in;
+			}
+
 			QDebug& operator<< (QDebug& dbg, const ElementData& ed)
 			{
 				dbg << "Element: {"
+					<< ed.PageURL_
+					<< ed.FormID_
 					<< ed.Name_
 					<< ed.Type_
 					<< ed.Value_

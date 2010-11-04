@@ -1,4 +1,4 @@
-CMAKE_MINIMUM_REQUIRED (VERSION 2.6)
+cmake_minimum_required(VERSION 2.6)
 IF (COMMAND cmake_policy)
 	cmake_policy (SET CMP0003 NEW)
 ENDIF (COMMAND cmake_policy)
@@ -92,7 +92,7 @@ OPTION (ENABLE_CHATTER "Build Chatter, simple IRC client" ON)
 OPTION (ENABLE_YASD "Build YASD, Yet Another Site Downloader" OFF)
 OPTION (ENABLE_REMOTER "Build Remoter, the remote access manager" OFF)
 OPTION (ENABLE_NEWLIFE "Build NewLife, the settings importer" ON)
-OPTION (ENABLE_ANHERO "Build AnHero, the crash handler" ON)
+OPTION (ENABLE_ANHERO "Build AnHero, the crash handler" OFF)
 OPTION (ENABLE_VGRABBER "Build vGrabber, the vkontakte.ru music/video getter" ON)
 OPTION (ENABLE_POC "Build PoC, text editor" OFF)
 OPTION (ENABLE_KINOTIFY "Build Kinotify, fancy kinetic notifications" ON)
@@ -106,7 +106,6 @@ OPTION (ENABLE_POPISHU "Build Qrosp, the scripting support plugin" OFF)
 OPTION (ENABLE_LACKMAN "Build LackMan, the package manager for LeechCraft" OFF)
 OPTION (ENABLE_SYNCER "Build Syncer, the synchronization plugin for LeechCraft" OFF)
 OPTION (ENABLE_SHELLOPEN "Build ShellOpen, the plugin supporting handling entities via external applications" ON)
-
 ENABLE_TESTING ()
 
 IF (ENABLE_SUMMARY)
@@ -287,6 +286,7 @@ SET (SRCS
 	tabbar.cpp
 	wizardtypechoicepage.cpp
 	3dparty/qxttooltip.cpp
+	fullscreenspacerlabel.cpp
 	)
 SET (HEADERS
 	mainwindow.h
@@ -328,6 +328,7 @@ SET (HEADERS
 	glanceshower.h
 	glanceitem.h
 	tabbar.h
+	fullscreenspacerlabel.h
 	wizardtypechoicepage.h
 	3dparty/qxttooltip.h
 	3dparty/qxttooltip_p.h

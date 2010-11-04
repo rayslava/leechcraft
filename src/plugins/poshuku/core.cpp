@@ -57,6 +57,7 @@
 #include "config.h"
 #include "favoriteschecker.h"
 #include "webpluginfactory.h"
+#include "importentityhandler.h"
 
 namespace LeechCraft
 {
@@ -76,6 +77,12 @@ namespace LeechCraft
 			{
 				qRegisterMetaType<BrowserWidgetSettings> ("LeechCraft::Plugins::Poshuku::BrowserWidgetSettings");
 				qRegisterMetaTypeStreamOperators<BrowserWidgetSettings> ("LeechCraft::Plugins::Poshuku::BrowserWidgetSettings");
+
+				qRegisterMetaType<ElementData> ("LeechCraft::Plugins::Poshuku::ElementData");
+				qRegisterMetaTypeStreamOperators<ElementData> ("LeechCraft::Plugins::Poshuku::ElementData");
+				qRegisterMetaType<ElementsData_t> ("LeechCraft::Plugins::Poshuku::ElementsData_t");
+				qRegisterMetaTypeStreamOperators<ElementsData_t> ("LeechCraft::Plugins::Poshuku::ElementsData_t");
+
 				QSettings settings (QCoreApplication::organizationName (),
 						QCoreApplication::applicationName () + "_Poshuku");
 				int size = settings.beginReadArray ("Saved session");
@@ -207,6 +214,38 @@ namespace LeechCraft
 			ICoreProxy_ptr Core::GetProxy () const
 			{
 				return Proxy_;
+			}
+
+			bool Core::CouldHandle (const Entity& e) const
+			{
+				if (!(e.Parameters_ & FromUserInitiated) ||
+						e.Parameters_ & Internal)
+					return false;
+
+				if (e.Mime_ == "x-leechcraft/browser-import-data")
+					return true;
+				else if (e.Entity_.canConvert<QUrl> ())
+				{
+					QUrl url = e.Entity_.toUrl ();
+					return (url.isValid () &&
+						(url.scheme () == "http" || url.scheme () == "https"));
+				}
+
+				return false;
+			}
+
+			void Core::Handle (Entity e)
+			{
+				if (e.Mime_ == "x-leechcraft/browser-import-data")
+				{
+					std::auto_ptr<ImportEntityHandler> eh (new ImportEntityHandler (this));
+					eh->Import (e);
+				}
+				else if (e.Entity_.canConvert<QUrl> ())
+				{
+					QUrl url = e.Entity_.toUrl ();
+					NewURL (url, true);
+				}
 			}
 
 			WebPluginFactory* Core::GetWebPluginFactory ()
@@ -727,6 +766,10 @@ namespace LeechCraft
 						SIGNAL (gotEntity (const LeechCraft::Entity&)),
 						this,
 						SIGNAL (gotEntity (const LeechCraft::Entity&)));
+				connect (widget,
+						SIGNAL (delegateEntity (const LeechCraft::Entity&, int*, QObject**)),
+						this,
+						SIGNAL (delegateEntity (const LeechCraft::Entity&, int*, QObject**)));
 				connect (widget,
 						SIGNAL (couldHandle (const LeechCraft::Entity&, bool*)),
 						this,

@@ -109,6 +109,9 @@ namespace LeechCraft
 				void SetProxy (ICoreProxy_ptr);
 				ICoreProxy_ptr GetProxy () const;
 
+				bool CouldHandle (const Entity&) const;
+				void Handle (Entity);
+
 				WebPluginFactory* GetWebPluginFactory ();
 
 				void SetProvider (QObject*, const QString&);
@@ -176,6 +179,7 @@ namespace LeechCraft
 				void error (const QString&) const;
 				void statusBarChanged (QWidget*, const QString&);
 				void gotEntity (const LeechCraft::Entity&);
+				void delegateEntity (const LeechCraft::Entity&, int*, QObject**);
 				void couldHandle (const LeechCraft::Entity&, bool*);
 				void newUnclose (QAction*);
 

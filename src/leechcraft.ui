@@ -10,28 +10,49 @@
     <height>418</height>
    </rect>
   </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
   <property name="windowTitle">
    <string>LeechCraft</string>
   </property>
   <property name="windowIcon">
-   <iconset>
+   <iconset resource="mainresources.qrc">
     <normaloff>:/resources/images/leechcraft.svg</normaloff>:/resources/images/leechcraft.svg</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <property name="leftMargin">
-     <number>3</number>
-    </property>
-    <property name="topMargin">
-     <number>0</number>
-    </property>
-    <property name="rightMargin">
-     <number>3</number>
-    </property>
-    <property name="bottomMargin">
-     <number>0</number>
-    </property>
     <item row="0" column="0">
+     <widget class="LeechCraft::FullscreenSpacerLabel" name="Label_">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>6</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+      <property name="textFormat">
+       <enum>Qt::AutoText</enum>
+      </property>
+      <property name="scaledContents">
+       <bool>false</bool>
+      </property>
+      <property name="wordWrap">
+       <bool>false</bool>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="0">
      <widget class="LeechCraft::TabWidget" name="MainTabWidget_">
       <property name="currentIndex">
        <number>-1</number>
@@ -75,7 +96,7 @@
      <x>0</x>
      <y>0</y>
      <width>1045</width>
-     <height>19</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="MenuGeneral_">
@@ -154,9 +175,6 @@
    <property name="toolTip">
     <string>Fullscreen mode</string>
    </property>
-   <property name="shortcut">
-    <string>F11</string>
-   </property>
   </action>
   <action name="ActionLogger_">
    <property name="text">
@@ -227,7 +245,14 @@
    <header>tabwidget.h</header>
    <container>1</container>
   </customwidget>
+  <customwidget>
+   <class>LeechCraft::FullscreenSpacerLabel</class>
+   <extends>QLabel</extends>
+   <header>fullscreenspacerlabel.h</header>
+  </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="mainresources.qrc"/>
+ </resources>
  <connections/>
 </ui>
