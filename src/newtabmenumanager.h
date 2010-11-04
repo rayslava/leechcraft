@@ -16,43 +16,36 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **********************************************************************/
 
-#ifndef PLUGINS_SECMAN_CORE_H
-#define PLUGINS_SECMAN_CORE_H
+#ifndef NEWTABMENUMANAGER_H
+#define NEWTABMENUMANAGER_H
 #include <QObject>
-#include <interfaces/structures.h>
+#include <QMap>
+#include <QString>
+
+class QMenu;
+class QAction;
 
 namespace LeechCraft
 {
-	namespace Plugins
+	class NewTabMenuManager : public QObject
 	{
-		namespace SecMan
-		{
-			class Core : public QObject
-			{
-				Core ();
+		Q_OBJECT
 
-				QObjectList StoragePlugins_;
-			public:
-				static Core& Instance ();
+		QMenu *NewTabMenu_;
+		QList<QObject*> RegisteredMultiTabs_;
+		QMap<QString, QAction*> ReaddOnRestore_;
+	public:
+		NewTabMenuManager (QObject* = 0);
 
-				bool CouldHandle (const Entity&) const;
-				void Handle (Entity);
-				QSet<QByteArray> GetExpectedPluginClasses () const;
-				void AddPlugin (QObject*);
-			private:
-				/** This one is called internally from AddPlugin, so it
-				 * has no need to make sanity checks of the object.
-				 *
-				 * @param[in] object The storage plugin instance object.
-				 */
-				void AddStoragePlugin (QObject *object);
-				void Store (const QList<QByteArray>&, const QList<QVariantList>&, bool);
-				QList<QVariantList> Load (const QList<QByteArray>&, bool);
+		void AddObject (QObject*);
+		void HandleEmbedTabRemoved (QObject*);
 
-				QObject* GetStoragePlugin () const;
-			};
-		}
-	}
+		QMenu* GetNewTabMenu () const;
+	private slots:
+		void restoreEmbedTab ();
+	signals:
+		void restoreEmbedTabRequested (QObject*);
+	};
 }
 
 #endif
