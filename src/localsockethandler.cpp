@@ -72,7 +72,7 @@ namespace LeechCraft
 		if (!socket->bytesAvailable ())
 			socket->waitForReadyRead (1000);
 
-		QByteArray read = socket->readAll ();
+		const QByteArray& read = socket->readAll ();
 		QDataStream in (read);
 		QStringList arguments;
 		in >> arguments;
@@ -127,7 +127,7 @@ namespace LeechCraft
 					<< e.what ();
 		}
 
-		std::vector<std::string> entities = map ["entity"].as<std::vector<std::string> > ();
+		const std::vector<std::string>& entities = map ["entity"].as<std::vector<std::string> > ();
 		Q_FOREACH (const std::string& entity, entities)
 		{
 			QVariant ve;
@@ -139,7 +139,7 @@ namespace LeechCraft
 			else
 				ve = QString::fromUtf8 (entity.c_str ());
 
-			Entity e = Util::MakeEntity (ve,
+			const Entity& e = Util::MakeEntity (ve,
 					QString (),
 					tp);
 			emit gotEntity (e);
