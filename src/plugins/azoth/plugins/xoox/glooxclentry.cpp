@@ -23,6 +23,7 @@
 #include <gloox/rosteritem.h>
 #include <gloox/resource.h>
 #include <interfaces/iaccount.h>
+#include <interfaces/azothcommon.h>
 #include "glooxaccount.h"
 
 namespace LeechCraft
@@ -102,6 +103,10 @@ namespace LeechCraft
 
 						Q_FOREACH (gloox::Resource *res, resources)
 							result << QString::fromUtf8 (res->message ().c_str ());
+
+						if (result.isEmpty ())
+							result << "";
+
 						return result;
 					}
 
@@ -116,6 +121,20 @@ namespace LeechCraft
 					QList<IMessage*> GlooxCLEntry::GetAllMessages() const
 					{
 						return Messages_;
+					}
+
+					EntryStatus GlooxCLEntry::GetStatus () const
+					{
+						return CurrentStatus_;
+					}
+
+					void GlooxCLEntry::SetStatus (const EntryStatus& status)
+					{
+						if (status == CurrentStatus_)
+							return;
+
+						CurrentStatus_ = status;
+						emit statusChanged (CurrentStatus_);
 					}
 
 					void GlooxCLEntry::ReemitMessage (QObject *msg)

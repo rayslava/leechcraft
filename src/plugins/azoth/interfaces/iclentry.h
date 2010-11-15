@@ -19,7 +19,9 @@
 #ifndef PLUGINS_AZOTH_INTERFACES_ICLENTRY_H
 #define PLUGINS_AZOTH_INTERFACES_ICLENTRY_H
 #include <QFlags>
+#include <QMetaType>
 #include "imessage.h"
+#include "azothcommon.h"
 
 namespace LeechCraft
 {
@@ -31,6 +33,29 @@ namespace LeechCraft
 			{
 				class IAccount;
 				class IMessage;
+
+				struct EntryStatus
+				{
+					State State_;
+					QString StatusString_;
+
+					EntryStatus ()
+					: State_ (SOffline)
+					{
+					}
+
+					EntryStatus (State state, const QString& str)
+					: State_ (state)
+					, StatusString_ (str)
+					{
+					}
+				};
+
+				inline bool operator== (const EntryStatus& es1, const EntryStatus& es2)
+				{
+					return es1.State_ == es2.State_ &&
+							es1.StatusString_ == es2.StatusString_;
+				}
 
 				/** @brief Represents a single entry in contact list.
 				 *
@@ -189,8 +214,14 @@ namespace LeechCraft
 					 */
 					virtual QList<IMessage*> GetAllMessages () const = 0;
 
-					/** @brief This signal is emitted when a new message
-					 * was received.
+					/** @brief Returns the current status of the item.
+					 *
+					 * @return The current status.
+					 */
+					virtual EntryStatus GetStatus () const = 0;
+
+					/** @brief This signal is emitted whenever a new
+					 * message is received.
 					 *
 					 * @note This function is expected to be a signal in
 					 * subclasses.
@@ -199,6 +230,27 @@ namespace LeechCraft
 					 * received.
 					 */
 					virtual void gotMessage (QObject *msg) = 0;
+
+					/** @brief This signal is emitted whenever the
+					 * status of this CL entry changes.
+					 *
+					 * @note This function is expected to be a signal in
+					 * subclasses.
+					 *
+					 * @param[out] st The new status of this entry.
+					 */
+					virtual void statusChanged (const EntryStatus&) = 0;
+
+					/** @brief This signal is emitted whenever the
+					 * list of available variants changes.
+					 *
+					 * @note This functions is expected to be a signal in
+					 * subclasses.
+					 *
+					 * @param[out] newVars The list of new variants, as
+					 * returned by GetVariants().
+					 */
+					virtual void availableVariantsChanged (const QStringList& newVars) = 0;
 				};
 
 				Q_DECLARE_OPERATORS_FOR_FLAGS (ICLEntry::Features);
@@ -206,6 +258,8 @@ namespace LeechCraft
 		}
 	}
 }
+
+Q_DECLARE_METATYPE (LeechCraft::Plugins::Azoth::Plugins::EntryStatus);
 
 Q_DECLARE_INTERFACE (LeechCraft::Plugins::Azoth::Plugins::ICLEntry,
 		"org.Deviant.LeechCraft.Plugins.Azoth.Plugins.ICLEntry/1.0");

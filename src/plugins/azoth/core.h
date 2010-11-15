@@ -21,6 +21,7 @@
 #include <QObject>
 #include <QSet>
 #include <interfaces/iinfo.h>
+#include <interfaces/azothcommon.h>
 
 class QStandardItemModel;
 class QStandardItem;
@@ -31,6 +32,12 @@ namespace LeechCraft
 	{
 		namespace Azoth
 		{
+			namespace Plugins
+			{
+				struct EntryStatus;
+				class ICLEntry;
+			}
+
 			class ChatTabsManager;
 
 			class Core : public QObject
@@ -46,9 +53,12 @@ namespace LeechCraft
 				QStandardItemModel *CLModel_;
 				ChatTabsManager *ChatTabsManager_;
 
-				typedef QMap<QString, QStandardItem*> Category2Item_t;
-				typedef QMap<QStandardItem*, Category2Item_t> Account2Category2Item_t;
+				typedef QHash<QString, QStandardItem*> Category2Item_t;
+				typedef QHash<QStandardItem*, Category2Item_t> Account2Category2Item_t;
 				Account2Category2Item_t Account2Category2Item_;
+
+				typedef QHash<Plugins::ICLEntry*, QList<QStandardItem*> > Entry2Items_t;
+				Entry2Items_t Entry2Items_;
 
 				Core ();
 			public:
@@ -105,6 +115,13 @@ namespace LeechCraft
 				 * client and such.
 				 */
 				QList<QStandardItem*> GetCategoriesItems (QStringList categories, QStandardItem *account);
+
+				QStandardItem* GetAccountItem (const QObject *accountObj,
+						QMap<const QObject*, QStandardItem*>& accountItemCache);
+
+				void HandleStatusChanged (const Plugins::EntryStatus&, Plugins::ICLEntry*);
+
+				QIcon GetIconForState (Plugins::State) const;
 			private slots:
 				/** Initiates account registration process.
 				 */
@@ -131,6 +148,8 @@ namespace LeechCraft
 				 * be in the items list.
 				 */
 				void handleGotCLItems (const QList<QObject*>& items);
+
+				void handleStatusChanged (const Plugins::EntryStatus&);
 			signals:
 				void gotEntity (const LeechCraft::Entity&);
 
