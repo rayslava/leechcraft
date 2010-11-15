@@ -40,9 +40,9 @@ namespace LeechCraft
 			IInfo *ii = qobject_cast<IInfo*> (obj);
 			try
 			{
-				QString name = ii->GetName ();
-				QString info = ii->GetInfo ();
-				QIcon icon = ii->GetIcon ();
+				const QString& name = ii->GetName ();
+				const QString& info = ii->GetInfo ();
+				const QIcon& icon = ii->GetIcon ();
 				NewTabMenu_->addAction (icon,
 						name,
 						obj,
@@ -68,8 +68,8 @@ namespace LeechCraft
 
 		try
 		{
-			QString name = ii->GetName ();
-			QIcon icon = ii->GetIcon ();
+			const QString& name = ii->GetName ();
+			const QIcon& icon = ii->GetIcon ();
 
 			QAction *action = 0;
 			Q_FOREACH (QAction *act, NewTabMenu_->actions ())
@@ -107,22 +107,18 @@ namespace LeechCraft
 		}
 	}
 
+	inline bool toolbarActionsLessThan (const QList<QAction*>& l1, const QList<QAction*>& l2)
+	{
+		return l1.size () < l2.size ();
+	}
+
 	void NewTabMenuManager::SetToolbarActions (QList<QList<QAction*> > lists)
 	{
-		QList<QAction*> ones;
-		Q_FOREACH (QList<QAction*> list, lists)
-			if (list.size () == 1)
-			{
-				ones += list;
-				lists.removeAll (list);
-			}
+		qSort (lists.begin (), lists.end (), toolbarActionsLessThan);
 
-		if (ones.size ())
-			lists.prepend (ones);
-
-		Q_FOREACH (QList<QAction*> list, lists)
+		Q_FOREACH (const QList<QAction*>& list, lists)
 		{
-			if (!list.size ())
+			if (list.isEmpty ())
 				continue;
 
 			/*
@@ -161,12 +157,8 @@ namespace LeechCraft
 			return;
 		}
 
-		IInfo *ii = qobject_cast<IInfo*> (obj);
 		try
 		{
-			QString name = ii->GetName ();
-			QIcon icon = ii->GetIcon ();
-
 			if (ReaddOnRestore_.contains (action->text ()))
 			{
 				QAction *readd = ReaddOnRestore_ [action->text ()];
