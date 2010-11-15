@@ -121,7 +121,7 @@ QNetworkReply* NetworkAccessManager::createRequest (QNetworkAccessManager::Opera
 {
 	QNetworkRequest r = req;
 	DefaultHookProxy_ptr proxy (new DefaultHookProxy);
-	Q_FOREACH (HookSignature<HIDNetworkAccessManagerCreateRequest>::Signature_t f,
+	Q_FOREACH (const HookSignature<HIDNetworkAccessManagerCreateRequest>::Signature_t& f,
 			Core::Instance ().GetHooks<HIDNetworkAccessManagerCreateRequest> ())
 	{
 		QNetworkReply *rep = f (proxy, this, &op, &r, &out);
@@ -167,7 +167,7 @@ void LeechCraft::NetworkAccessManager::DoCommonAuth (const QString& msg, QAuthen
 void LeechCraft::NetworkAccessManager::handleAuthentication (QNetworkReply *reply,
 		QAuthenticator *authen)
 {
-	QString msg = tr ("%1<br /><em>%2</em><br />requires authentication.")
+	const QString& msg = tr ("%1<br /><em>%2</em><br />requires authentication.")
 		.arg (authen->realm ())
 		.arg (QApplication::fontMetrics ()
 				.elidedText (reply->url ().toString (),
@@ -179,7 +179,7 @@ void LeechCraft::NetworkAccessManager::handleAuthentication (QNetworkReply *repl
 void LeechCraft::NetworkAccessManager::handleAuthentication (const QNetworkProxy& proxy,
 		QAuthenticator *authen)
 {
-	QString msg = tr ("%1<br /><em>%2</em><br />requires authentication.")
+	const QString& msg = tr ("%1<br /><em>%2</em><br />requires authentication.")
 		.arg (authen->realm ())
 		.arg (proxy.hostName ());
 
@@ -192,7 +192,7 @@ void LeechCraft::NetworkAccessManager::handleSslErrors (QNetworkReply *reply,
 	QSettings settings (QCoreApplication::organizationName (),
 			QCoreApplication::applicationName ());
 	settings.beginGroup ("SSL exceptions");
-	QStringList keys = settings.allKeys ();
+	const QStringList& keys = settings.allKeys ();
 	if (keys.contains (reply->url ().toString ()))
 	{
 		if (settings.value (reply->url ().toString ()).toBool ())
@@ -205,17 +205,17 @@ void LeechCraft::NetworkAccessManager::handleSslErrors (QNetworkReply *reply,
 	}
 	else
 	{
-		QUrl url = reply->url ();
+		const QUrl& url = reply->url ();
 		QPointer<QNetworkReply> repGuarded (reply);
-		QString msg = tr ("<code>%1</code><br />has SSL errors."
+		const QString& msg = tr ("<code>%1</code><br />has SSL errors."
 				" What do you want to do?")
 			.arg (QApplication::fontMetrics ().elidedText(url.toString (), Qt::ElideMiddle, ELIDED_URL_WIDTH));
 
 		std::auto_ptr<SslErrorsDialog> errDialog (new SslErrorsDialog ());
 		errDialog->Update (msg, errors);
 
-		bool ignore = (errDialog->exec () == QDialog::Accepted);
-		SslErrorsDialog::RememberChoice choice = errDialog->GetRememberChoice ();
+		const bool ignore = (errDialog->exec () == QDialog::Accepted);
+		const SslErrorsDialog::RememberChoice choice = errDialog->GetRememberChoice ();
 
 		if (choice != SslErrorsDialog::RCNot)
 		{
@@ -273,8 +273,10 @@ void LeechCraft::NetworkAccessManager::saveCookies () const
 
 void LeechCraft::NetworkAccessManager::handleFilterTrackingCookies ()
 {
-	qobject_cast<CustomCookieJar*> (cookieJar ())->
-		SetFilterTrackingCookies (XmlSettingsManager::Instance ()->
+	CustomCookieJar *jar = qobject_cast<CustomCookieJar*> (cookieJar ());
+
+	if (jar)
+		jar->SetFilterTrackingCookies (XmlSettingsManager::Instance ()->
 				property ("FilterTrackingCookies").toBool ());
 }
 
