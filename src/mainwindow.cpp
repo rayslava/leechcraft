@@ -170,8 +170,8 @@ void LeechCraft::MainWindow::AddMenus (const QMap<QString, QList<QAction*> >& me
 		else if (menuName == "tools")
 			toInsert = Ui_.MenuTools_;
 
-		if (toInsert)
-			toInsert->insertActions (toInsert->actions ().at (0),
+		if (toInsert && !toInsert->actions ().isEmpty ())
+			toInsert->insertActions (toInsert->actions ().first (),
 					menus [menuName]);
 		else
 		{
@@ -336,8 +336,8 @@ void LeechCraft::MainWindow::InitializeInterface ()
 
 void LeechCraft::MainWindow::SetStatusBar ()
 {
-	QFontMetrics fm = fontMetrics ();
-	int minSize = fm.width (Util::MakePrettySize (999) + tr ("/s	"));
+	const QFontMetrics& fm = fontMetrics ();
+	const int minSize = fm.width (Util::MakePrettySize (999) + tr ("/s	"));
 
 	DownloadSpeed_ = new QLabel;
 	DownloadSpeed_->setText (Util::MakePrettySize (0) + tr ("/s"));
@@ -347,7 +347,7 @@ void LeechCraft::MainWindow::SetStatusBar ()
 	UploadSpeed_->setText (Util::MakePrettySize (0) + tr ("/s"));
 	UploadSpeed_->setMinimumWidth (minSize);
 	UploadSpeed_->setAlignment (Qt::AlignRight);
-	QString current = QTime::currentTime ().toString ();
+	const QString& current = QTime::currentTime ().toString ();
 	Clock_ = new QLabel;
 	Clock_->setMinimumWidth (fm.width (current + "___"));
 	Clock_->setText (current);
@@ -399,19 +399,20 @@ void LeechCraft::MainWindow::on_ActionAddTask__triggered ()
 	if (adder.exec () != QDialog::Accepted)
 		return;
 
-	QString name = adder.GetString ();
+	const QString& name = adder.GetString ();
 	if (!name.isEmpty ())
 		Core::Instance ().TryToAddJob (name);
 }
 
 void LeechCraft::MainWindow::on_ActionNewTab__triggered ()
 {
-	QByteArray newTabId = XmlSettingsManager::Instance ()->
+	const QByteArray& newTabId = XmlSettingsManager::Instance ()->
 			property ("DefaultNewTab").toString ().toLatin1 ();
 	if (newTabId != "contextdependent")
 	{
 		QObject *plugin = Core::Instance ()
 				.GetPluginManager ()->GetPluginByID (newTabId);
+
 		IMultiTabs *imtw = qobject_cast<IMultiTabs*> (plugin);
 		if (!imtw)
 			qWarning () << Q_FUNC_INFO
@@ -431,9 +432,7 @@ void LeechCraft::MainWindow::on_ActionNewTab__triggered ()
 		imtw->NewTabRequested ();
 	else
 	{
-		QMenu *menu = Core::Instance ()
-			.GetNewTabMenuManager ()->GetNewTabMenu ();
-		menu->popup (QCursor::pos ());
+		Core::Instance ().GetNewTabMenuManager ()->GetNewTabMenu ()->popup (QCursor::pos ());
 	}
 }
 
@@ -508,8 +507,7 @@ void LeechCraft::MainWindow::on_ActionShowStatusBar__triggered ()
 
 void LeechCraft::MainWindow::on_ActionMenu__triggered ()
 {
-	QMenu *menu = Ui_.ActionMenu_->menu ();
-	menu->exec (QCursor::pos ());
+	Ui_.ActionMenu_->menu ()->exec (QCursor::pos ());
 }
 
 void LeechCraft::MainWindow::handleQuit ()
@@ -538,7 +536,7 @@ void LeechCraft::MainWindow::handleAppStyle ()
 
 	if (style == "Default")
 		style = DefaultSystemStyleName_;
-	
+
 	if (style.isEmpty ())
 	{
 #ifdef Q_WS_WIN
@@ -605,16 +603,19 @@ void LeechCraft::MainWindow::on_ActionLogger__triggered ()
 void LeechCraft::MainWindow::on_MainTabWidget__currentChanged (int index)
 {
 	QToolBar *bar = Core::Instance ().GetToolBar (index);
-	GetGuard ()->AddToolbar (bar);
-	if (bar && isFullScreen ())
-		bar->setVisible (Ui_.MenuBar_->isVisible ());
+	if (bar)
+	{
+		GetGuard ()->AddToolbar (bar);
+		if (isFullScreen ())
+			bar->setVisible (Ui_.MenuBar_->isVisible ());
+	}
 }
 
 namespace
 {
 	Qt::ToolButtonStyle GetToolButtonStyle ()
 	{
-		QString style = XmlSettingsManager::Instance ()->
+		const QString& style = XmlSettingsManager::Instance ()->
 			property ("ToolButtonStyle").toString ();
 		if (style == "iconOnly")
 			return Qt::ToolButtonIconOnly;
@@ -634,7 +635,7 @@ void LeechCraft::MainWindow::handleToolButtonStyleChanged ()
 
 void LeechCraft::MainWindow::handleIconSize ()
 {
-	int size = XmlSettingsManager::Instance ()->
+	const int size = XmlSettingsManager::Instance ()->
 		property ("IconSize").toInt ();
 	if (size)
 		setIconSize (QSize (size, size));
@@ -642,7 +643,7 @@ void LeechCraft::MainWindow::handleIconSize ()
 
 void LeechCraft::MainWindow::handleShowMenuBarAsButton ()
 {
-	bool asButton = XmlSettingsManager::Instance ()->
+	const bool asButton = XmlSettingsManager::Instance ()->
 		property ("ShowMenuBarAsButton").toBool ();
 	if (asButton)
 	{
@@ -658,17 +659,17 @@ void LeechCraft::MainWindow::handleShowMenuBarAsButton ()
 
 void LeechCraft::MainWindow::handleNewTabMenuRequested ()
 {
-	QMenu *ntmenu = Core::Instance ()
-			.GetNewTabMenuManager ()->GetNewTabMenu ();
-	ntmenu->popup (QCursor::pos ());
+	Core::Instance ().GetNewTabMenuManager ()->GetNewTabMenu ()->popup (QCursor::pos ());
 }
 
 void LeechCraft::MainWindow::updateSpeedIndicators ()
 {
 	QPair<qint64, qint64> speeds = Core::Instance ().GetSpeeds ();
 
-	QString down = Util::MakePrettySize (speeds.first) + tr ("/s");
-	QString up = Util::MakePrettySize (speeds.second) + tr ("/s");
+	const QString str = tr ("/s");
+
+	const QString& down = Util::MakePrettySize (speeds.first) + str;
+	const QString& up = Util::MakePrettySize (speeds.second) + str;
 	DownloadSpeed_->setText (down);
 	UploadSpeed_->setText (up);
 	SpeedGraph_->PushSpeed (speeds.first, speeds.second);
@@ -716,12 +717,12 @@ void LeechCraft::MainWindow::doDelayedInit ()
 	PluginManagerDialog *pm = new PluginManagerDialog ();
 	XmlSettingsDialog_->SetCustomWidget ("PluginManager", pm);
 
-	QObjectList settable = Core::Instance ().GetSettables ();
+	const QObjectList& settable = Core::Instance ().GetSettables ();
 	for (QObjectList::const_iterator i = settable.begin (),
 			end = settable.end (); i != end; ++i)
 		SettingsSink_->AddDialog (*i);
 
-	QObjectList shortcuts = Core::Instance ().GetShortcuts ();
+	const QObjectList& shortcuts = Core::Instance ().GetShortcuts ();
 	for (QObjectList::const_iterator i = shortcuts.begin (),
 			end = shortcuts.end (); i != end; ++i)
 		ShortcutManager_->AddObject (*i);
@@ -746,15 +747,18 @@ void LeechCraft::MainWindow::SetNewTabDataSource ()
 	defaultItem->setData ("contextdependent", Qt::UserRole);
 	newTabsModel->appendRow (defaultItem);
 
-	QObjectList multitabs = Core::Instance ()
+	const QObjectList& multitabs = Core::Instance ()
 			.GetPluginManager ()->GetAllCastableRoots<IMultiTabs*> ();
 	Q_FOREACH (QObject *object, multitabs)
 	{
 		IInfo *info = qobject_cast<IInfo*> (object);
 
-		QStandardItem *item = new QStandardItem (info->GetName ());
-		item->setData (info->GetUniqueID (), Qt::UserRole);
-		newTabsModel->appendRow (item);
+		if (info)
+		{
+			QStandardItem *item = new QStandardItem (info->GetName ());
+			item->setData (info->GetUniqueID (), Qt::UserRole);
+			newTabsModel->appendRow (item);
+		}
 	}
 
 	qDebug () << Q_FUNC_INFO
@@ -776,13 +780,13 @@ void LeechCraft::MainWindow::FillTray ()
 	menu->addMenu (Ui_.MenuHelp_);
 	iconMenu->addSeparator ();
 
-	QList<IActionsExporter*> trayMenus = Core::Instance ()
+	const QList<IActionsExporter*>& trayMenus = Core::Instance ()
 			.GetPluginManager ()->GetAllCastableTo<IActionsExporter*> ();
 	Q_FOREACH (IActionsExporter *o, trayMenus)
 	{
-		QList<QAction*> actions = o->GetActions (AEPTrayMenu);
+		const QList<QAction*>& actions = o->GetActions (AEPTrayMenu);
 		iconMenu->addActions (actions);
-		if (actions.size ())
+		if (!actions.isEmpty ())
 			iconMenu->addSeparator ();
 	}
 
@@ -804,11 +808,11 @@ void LeechCraft::MainWindow::FillToolMenu ()
 			Core::Instance ().GetPluginManager ()->
 				GetAllCastableTo<IActionsExporter*> ())
 	{
-		QList<QAction*> acts = e->GetActions (AEPToolsMenu);
+		const QList<QAction*>& acts = e->GetActions (AEPToolsMenu);
 
 		Q_FOREACH (QAction *action, acts)
 			Ui_.MenuTools_->insertAction (Ui_.ActionLogger_, action);
-		if (acts.size ())
+		if (!acts.isEmpty ())
 			Ui_.MenuTools_->insertSeparator (Ui_.ActionLogger_);
 	}
 
@@ -847,7 +851,7 @@ void LeechCraft::MainWindow::InitializeShortcuts ()
 
 	for (int i = 0; i < 10; ++i)
 	{
-		QString seqStr = QString ("Ctrl+\\, %1").arg (i);
+		const QString& seqStr = QString ("Ctrl+\\, %1").arg (i);
 		QShortcut *sc = new QShortcut (QKeySequence (seqStr), this);
 		sc->setProperty ("TabNumber", i);
 		connect (sc,
@@ -876,7 +880,7 @@ namespace
 				.entryList (QStringList ("leechcraft_*.qm"));
 #endif
 
-		int length = QString ("leechcraft_").size ();
+		const int length = QString ("leechcraft_").size ();
 		QMap<QString, QString> languages;
 		Q_FOREACH (QString fname, filenames)
 		{
@@ -892,7 +896,7 @@ namespace
 				if (!part.at (0).isLower ())
 					continue;
 
-				QLocale locale (part);
+				const QLocale locale (part);
 				if (locale.language () == QLocale::C)
 					continue;
 
@@ -911,7 +915,7 @@ namespace
 
 	QAbstractItemModel* GetInstalledLangsModel ()
 	{
-		QMap<QString, QString> languages = GetInstalledLanguages ();
+		const QMap<QString, QString>& languages = GetInstalledLanguages ();
 
 		QStandardItemModel *model = new QStandardItemModel ();
 		QStandardItem *systemItem = new QStandardItem (LeechCraft::MainWindow::tr ("System"));
@@ -938,13 +942,13 @@ namespace
 	QVariant ClipboardToEcontent (QString selection)
 	{
 		QVariant econtent;
-		if (selection=="")
+		if (selection.isEmpty ())
 			return econtent;
 		if (QFile::exists (selection))
 			econtent = QUrl::fromLocalFile (selection);
 		else
 		{
-			QUrl url (selection);
+			const QUrl url (selection);
 			if (url.isValid ())
 				econtent = url;
 			else
@@ -967,7 +971,7 @@ void LeechCraft::NewTabButton::mousePressEvent (QMouseEvent *event)
 				return;
 		}
 
-		Entity e = MakeEntity (econtent,QString (),FromUserInitiated | OnlyHandle,QString ());
+		const Entity& e = MakeEntity (econtent,QString (),FromUserInitiated | OnlyHandle,QString ());
 		Core::Instance ().handleGotEntity (e);
 	}
 	else
@@ -976,16 +980,17 @@ void LeechCraft::NewTabButton::mousePressEvent (QMouseEvent *event)
 
 void LeechCraft::MainWindow::ShowMenuAndBar (bool show)
 {
-	bool asButton = XmlSettingsManager::Instance ()->property ("ShowMenuBarAsButton").toBool ();
+	const bool asButton = XmlSettingsManager::Instance ()->property ("ShowMenuBarAsButton").toBool ();
 
 	if (!asButton)
 		Ui_.MenuBar_->setVisible (show);
 
 	Ui_.MainToolbar_->setVisible (show);
 
-	int cur = Ui_.MainTabWidget_->currentIndex ();
-	if (Core::Instance ().GetToolBar (cur))
-		Core::Instance ().GetToolBar (cur)->setVisible (show);
+	const int cur = Ui_.MainTabWidget_->currentIndex ();
+	QToolBar *bar = Core::Instance ().GetToolBar (cur);
+	if (bar)
+		bar->setVisible (show);
 	Ui_.ActionFullscreenMode_->setChecked (!show);
 }
 
