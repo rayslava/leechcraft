@@ -50,15 +50,15 @@ namespace LeechCraft
 
 	void PluginManager::DepTreeItem::Print (int margin)
 	{
-		QString pre (margin, ' ');
+		const QString pre (margin, ' ');
 		qDebug () << pre << Plugin_ << Initialized_;
 		qDebug () << pre << "Needed:";
 		QList<DepTreeItem_ptr> items = Needed_.values ();
-		Q_FOREACH (DepTreeItem_ptr item, items)
+		Q_FOREACH (const DepTreeItem_ptr& item, items)
 			item->Print (margin + 2);
 		qDebug () << pre << "Used:";
 		items = Used_.values ();
-		Q_FOREACH (DepTreeItem_ptr item, items)
+		Q_FOREACH (const DepTreeItem_ptr& item, items)
 			item->Print (margin + 2);
 	}
 
@@ -119,7 +119,7 @@ namespace LeechCraft
 									QCoreApplication::applicationName () + "-pg");
 							settings.beginGroup ("Plugins");
 							settings.beginGroup (AvailablePlugins_.at (index.row ())->fileName ());
-							QVariant result = settings.value ("Name");
+							const QVariant& result = settings.value ("Name");
 							settings.endGroup ();
 							settings.endGroup ();
 							return result;
@@ -144,7 +144,7 @@ namespace LeechCraft
 									QCoreApplication::applicationName () + "-pg");
 							settings.beginGroup ("Plugins");
 							settings.beginGroup (AvailablePlugins_.at (index.row ())->fileName ());
-							bool result = settings.value ("AllowLoad", true).toBool ();
+							const bool result = settings.value ("AllowLoad", true).toBool ();
 							settings.endGroup ();
 							settings.endGroup ();
 							return result ? Qt::Checked : Qt::Unchecked;
@@ -165,7 +165,7 @@ namespace LeechCraft
 							QCoreApplication::applicationName () + "-pg");
 					settings.beginGroup ("Plugins");
 					settings.beginGroup (AvailablePlugins_.at (index.row ())->fileName ());
-					QVariant result = settings.value ("Info");
+					const QVariant& result = settings.value ("Info");
 					settings.endGroup ();
 					settings.endGroup ();
 					return result;
@@ -212,10 +212,7 @@ namespace LeechCraft
 
 	int PluginManager::rowCount (const QModelIndex& index) const
 	{
-		if (!index.isValid ())
-			return AvailablePlugins_.size ();
-		else
-			return 0;
+		return !index.isValid () ? AvailablePlugins_.size () : 0;
 	}
 
 	bool PluginManager::setData (const QModelIndex& index,
@@ -246,7 +243,7 @@ namespace LeechCraft
 	void PluginManager::Init ()
 	{
 		CheckPlugins ();
-		Q_FOREACH (QPluginLoader_ptr loader, PluginContainers_)
+		Q_FOREACH (const QPluginLoader_ptr& loader, PluginContainers_)
 		{
 			QObject *inst = loader->instance ();
 			Plugins_ << inst;
@@ -307,14 +304,14 @@ namespace LeechCraft
 			}
 		} rc;
 		rc.Result_ = Plugins_;
-		Q_FOREACH (DepTreeItem_ptr item, Roots_)
+		Q_FOREACH (const DepTreeItem_ptr& item, Roots_)
 			rc (item);
 		return rc.Result_;
 	}
 
 	QString PluginManager::GetPluginLibraryPath (const QObject *object) const
 	{
-		Q_FOREACH (QPluginLoader_ptr loader, PluginContainers_)
+		Q_FOREACH (const QPluginLoader_ptr& loader, PluginContainers_)
 			if (loader->instance () == object)
 				return loader->fileName ();
 		return QString ();
@@ -396,7 +393,7 @@ namespace LeechCraft
 		if (depItem->Belongs_.size ())
 		{
 			QList<QObject*> holders;
-			Q_FOREACH (DepTreeItem_ptr dep, depItem->Belongs_)
+			Q_FOREACH (const DepTreeItem_ptr& dep, depItem->Belongs_)
 				holders << dep->Plugin_;
 
 			QString str;
@@ -437,9 +434,7 @@ namespace LeechCraft
 
 	QObject* PluginManager::GetProvider (const QString& feature) const
 	{
-		if (!FeatureProviders_.contains (feature))
-			return 0;
-		return (*FeatureProviders_ [feature])->instance ();
+		return !FeatureProviders_.contains (feature) ? 0 : (*FeatureProviders_ [feature])->instance ();
 	}
 
 	void PluginManager::Unload (QObject *plugin)
@@ -459,7 +454,7 @@ namespace LeechCraft
 #elif defined (Q_WS_MAC)
 		ScanDir (QApplication::applicationDirPath () + "../PlugIns/bin");
 #else
-		QString libdir (PLUGINS_LIBDIR);
+		const QString& libdir (PLUGINS_LIBDIR);
 		ScanDir (QString ("/usr/local/%1/leechcraft/plugins")
 				.arg (libdir));
 		ScanDir (QString ("/usr/%1/leechcraft/plugins")
@@ -474,11 +469,11 @@ namespace LeechCraft
 		settings.beginGroup ("Plugins");
 
 		QDir pluginsDir = QDir (dir);
-		Q_FOREACH (QFileInfo fileinfo,
+		Q_FOREACH (const QFileInfo& fileinfo,
 				pluginsDir.entryInfoList (QStringList ("*leechcraft_*"),
 					QDir::Files))
 		{
-			QString name = fileinfo.canonicalFilePath ();
+			const QString& name = fileinfo.canonicalFilePath ();
 			settings.beginGroup (name);
 
 			QPluginLoader_ptr loader (new QPluginLoader (name));
@@ -505,14 +500,15 @@ namespace LeechCraft
 		{
 			QPluginLoader_ptr loader = PluginContainers_.at (i);
 
-			QString file = loader->fileName ();
+			const QString& file = loader->fileName ();
+			const QFileInfo fi (file);
 
-			if (!QFileInfo (loader->fileName ()).isFile ())
+			if (!fi.isFile ())
 			{
 				qWarning () << "A plugin isn't really a file, aborting load:"
 						<< file;
 				PluginLoadErrors_ << tr ("Refusing to load plugin from %1 because it's not a file.")
-						.arg (QFileInfo (file).fileName ());
+						.arg (fi.fileName ());
 				PluginContainers_.removeAt (i--);
 				continue;
 			}
@@ -525,7 +521,7 @@ namespace LeechCraft
 					<< ";"
 					<< loader->errorString ();
 				PluginLoadErrors_ << tr ("Could not load plugin from %1: %2.")
-						.arg (QFileInfo (file).fileName ())
+						.arg (fi.fileName ())
 						.arg (loader->errorString ());
 				PluginContainers_.removeAt (i--);
 				continue;
@@ -545,7 +541,7 @@ namespace LeechCraft
 					<< file;
 				PluginLoadErrors_ << tr ("Could not load plugin from %1: "
 							"failed to construct plugin instance with exception %2.")
-						.arg (QFileInfo (file).fileName ())
+						.arg (fi.fileName ())
 						.arg (e.what ());
 				PluginContainers_.removeAt (i--);
 				continue;
@@ -557,7 +553,7 @@ namespace LeechCraft
 					<< file;
 				PluginLoadErrors_ << tr ("Could not load plugin from %1: "
 							"failed to construct plugin instance.")
-						.arg (QFileInfo (file).fileName ());
+						.arg (fi.fileName ());
 				PluginContainers_.removeAt (i--);
 				continue;
 			}
@@ -569,7 +565,7 @@ namespace LeechCraft
 						<< file;
 				PluginLoadErrors_ << tr ("Could not load plugin from %1: "
 							"unable to cast plugin instance to IInfo*.")
-						.arg (QFileInfo (file).fileName ());
+						.arg (fi.fileName ());
 				PluginContainers_.removeAt (i--);
 				continue;
 			}
@@ -592,7 +588,7 @@ namespace LeechCraft
 					<< file;
 				PluginLoadErrors_ << tr ("Could not load plugin from %1: "
 							"unable to get name/info/icon with exception %2.")
-						.arg (QFileInfo (file).fileName ())
+						.arg (fi.fileName ())
 						.arg (e.what ());
 				PluginContainers_.removeAt (i--);
 				continue;
@@ -604,7 +600,7 @@ namespace LeechCraft
 					<< file;
 				PluginLoadErrors_ << tr ("Could not load plugin from %1: "
 							"unable to get name/info/icon.")
-						.arg (QFileInfo (file).fileName ());
+						.arg (fi.fileName ());
 				PluginContainers_.removeAt (i--);
 				continue;
 			}
@@ -622,8 +618,8 @@ namespace LeechCraft
 		PluginManager::FindProviders (const QString& feature)
 	{
 		QList<Plugins_t::iterator> result;
-		for (Plugins_t::iterator i = Plugins_.begin ();
-				i != Plugins_.end (); ++i)
+		for (Plugins_t::iterator i = Plugins_.begin (), end = Plugins_.end ();
+				i != end; ++i)
 		{
 			try
 			{
@@ -655,8 +651,8 @@ namespace LeechCraft
 		PluginManager::FindProviders (const QSet<QByteArray>& expecteds)
 	{
 		QList<Plugins_t::iterator> result;
-		for (Plugins_t::iterator i = Plugins_.begin ();
-				i != Plugins_.end (); ++i)
+		for (Plugins_t::iterator i = Plugins_.begin (), end = Plugins_.end ();
+				i != end; ++i)
 		{
 			IPlugin2 *ip2 = qobject_cast<IPlugin2*> (*i);
 			try
@@ -760,8 +756,8 @@ namespace LeechCraft
 
 	void PluginManager::CalculateDependencies ()
 	{
-		for (Plugins_t::iterator i = Plugins_.begin ();
-				i < Plugins_.end (); ++i)
+		for (Plugins_t::iterator i = Plugins_.begin (), end = Plugins_.end ();
+				i < end; ++i)
 		{
 #ifdef QT_DEBUG
 			qDebug () << Q_FUNC_INFO << (*i);
@@ -832,8 +828,8 @@ namespace LeechCraft
 			return possibly;
 
 		IInfo *info = qobject_cast<IInfo*> (entity);
-		QStringList needs = info->Needs ();
-		QStringList uses = info->Uses ();
+		const QStringList& needs = info->Needs ();
+		const QStringList& uses = info->Uses ();
 
 #ifdef QT_DEBUG
 		qDebug () << "new item" << info->GetName ();
@@ -841,11 +837,10 @@ namespace LeechCraft
 		DepTreeItem_ptr newDep (new DepTreeItem ());
 		newDep->Plugin_ = entity;
 
-		Q_FOREACH (QString need, needs)
+		Q_FOREACH (const QString& need, needs)
 		{
-			QList<Plugins_t::iterator> providers = FindProviders (need);
-			Q_FOREACH (Plugins_t::iterator p,
-					providers)
+			Q_FOREACH (const Plugins_t::iterator& p,
+					FindProviders (need))
 			{
 				// It's initialized already.
 				if (p < pos)
@@ -860,11 +855,10 @@ namespace LeechCraft
 			}
 		}
 
-		Q_FOREACH (QString use, uses)
+		Q_FOREACH (const QString& use, uses)
 		{
-			QList<Plugins_t::iterator> providers = FindProviders (use);
-			Q_FOREACH (Plugins_t::iterator p,
-					providers)
+			Q_FOREACH (const Plugins_t::iterator& p,
+					FindProviders (use))
 			{
 				// It's initialized already.
 				if (p < pos)
@@ -881,10 +875,8 @@ namespace LeechCraft
 		IPluginReady *ipr = qobject_cast<IPluginReady*> (entity);
 		if (ipr)
 		{
-			QList<Plugins_t::iterator> providers =
-				FindProviders (ipr->GetExpectedPluginClasses ());
-			Q_FOREACH (Plugins_t::iterator p,
-					providers)
+			Q_FOREACH (const Plugins_t::iterator& p,
+					FindProviders (ipr->GetExpectedPluginClasses ()))
 			{
 				// It's initialized already.
 				if (p < pos)
@@ -903,7 +895,7 @@ namespace LeechCraft
 
 	void PluginManager::InitializePlugins ()
 	{
-		Q_FOREACH (DepTreeItem_ptr item, Roots_)
+		Q_FOREACH (const DepTreeItem_ptr& item, Roots_)
 			InitializeSingle (item);
 
 		struct InitSecond
@@ -943,8 +935,8 @@ namespace LeechCraft
 		} init (this);
 
 
-		for (Plugins_t::iterator i = Plugins_.begin ();
-				i < Plugins_.end (); ++i)
+		for (Plugins_t::iterator i = Plugins_.begin (), end = Plugins_.end ();
+				i < end; ++i)
 		{
 			if (!init (FindTreeItem (*i)))
 				continue;
@@ -964,9 +956,9 @@ namespace LeechCraft
 	bool PluginManager::InitializeSingle (PluginManager::DepTreeItem_ptr item)
 	{
 		QList<QString> keys = item->Needed_.uniqueKeys ();
-		Q_FOREACH (QString key, keys)
+		Q_FOREACH (const QString& key, keys)
 		{
-			QList<DepTreeItem_ptr> providers = item->Needed_.values (key);
+			const QList<DepTreeItem_ptr>& providers = item->Needed_.values (key);
 			bool wasSuccessful = false;
 			for (QList<DepTreeItem_ptr>::const_iterator i = providers.begin (),
 					end = providers.end (); i != end; ++i)
@@ -990,9 +982,9 @@ namespace LeechCraft
 		}
 
 		keys = item->Used_.uniqueKeys ();
-		Q_FOREACH (QString key, keys)
+		Q_FOREACH (const QString& key, keys)
 		{
-			QList<DepTreeItem_ptr> providers = item->Used_.values (key);
+			const QList<DepTreeItem_ptr>& providers = item->Used_.values (key);
 			for (QList<DepTreeItem_ptr>::const_iterator i = providers.begin (),
 					end = providers.end (); i != end; ++i)
 			{
