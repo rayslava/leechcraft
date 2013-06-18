@@ -348,7 +348,7 @@ namespace Woodpecker
 				param.insert ("max_id", QString ("%1").arg ((*(ScreenTwits_.begin ()))->GetId ()));
 				param.insert ("count", QString ("%1").arg (30));
 				
-				Interface_->request (param, FeedMode::UserTimeline);
+				Interface_->request (param, FeedMode::HomeTimeline);
 			}
 		}
 	}
