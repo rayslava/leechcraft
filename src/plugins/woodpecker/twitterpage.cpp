@@ -44,11 +44,15 @@ namespace LeechCraft
 {
 namespace Woodpecker
 {
-	TwitterPage::TwitterPage (const TabClassInfo& tc, QObject *plugin)
+	TwitterPage::TwitterPage (const TabClassInfo& tc, QObject *plugin, 
+							  const FeedMode mode,
+							  const KQOAuthParameters& params)
 	: TC_ (tc)
 	, ParentPlugin_ (plugin)
 	, Toolbar_ (new QToolBar (this))
-	, EntityManager_(Core::Instance ().GetCoreProxy ()->GetEntityManager ())
+	, EntityManager_ (Core::Instance ().GetCoreProxy ()->GetEntityManager ())
+	, PageMode_ (mode)
+	, PageDefaultParam_ (params)
 	{
 		Ui_.setupUi (this);
 		Delegate_ = new TwitDelegate (Ui_.TwitList_);
@@ -64,8 +68,8 @@ namespace Woodpecker
 		TwitterTimer_->setInterval (XmlSettingsManager::Instance ()->property ("timer").toInt () * 1000); // Update twits every 1.5 minutes by default
 		connect (TwitterTimer_,
 				SIGNAL (timeout ()),
-				Interface_,
-				SLOT (requestHomeFeed ()));
+				this,
+				SLOT (requestUpdate ()));
 		qDebug () << "Timer " << TwitterTimer_->timerId () << "started";
 		tryToLogin ();
 
@@ -127,7 +131,7 @@ namespace Woodpecker
 		{
 			qDebug () << "Have an authorized" << Settings_->value ("token") << ":" << Settings_->value ("tokenSecret");
 			Interface_->Login (Settings_->value ("token").toString (), Settings_->value ("tokenSecret").toString ());
-			Interface_->requestHomeFeed ();
+			requestUpdate ();
 			TwitterTimer_->start ();
 		}
 
@@ -271,7 +275,7 @@ namespace Woodpecker
 	{
 		Settings_->setValue ("token", token);
 		Settings_->setValue ("tokenSecret", tokenSecret);
-		Interface_->requestHomeFeed ();
+		requestUpdate ();
 		TwitterTimer_->start ();
 	}
 
@@ -410,6 +414,11 @@ namespace Woodpecker
 	QString TwitterPage::GetTabRecoverName () const
 	{
 		return GetTabClassInfo ().VisibleName_;
+	}
+	
+	void TwitterPage::requestUpdate ()
+	{
+		Interface_->request (PageDefaultParam_, PageMode_);
 	}
 }
 }

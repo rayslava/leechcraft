@@ -82,9 +82,14 @@ namespace Woodpecker
 		QAction *ActionReply_;
 		QAction *ActionSPAM_;
 		QAction *ActionOpenWeb_;
+		
+		KQOAuthParameters PageDefaultParam_; /**< Default API request parameter set for page */
+		FeedMode PageMode_;			/**< API request mode for the page */
 
 	public:
-		explicit TwitterPage (const TabClassInfo&, QObject*);
+		explicit TwitterPage (const TabClassInfo&, QObject*,
+							  const FeedMode mode = FeedMode::HomeTimeline,
+							  const KQOAuthParameters& params = KQOAuthParameters ());
 		~TwitterPage();
 
 		void Remove ();
@@ -115,6 +120,7 @@ namespace Woodpecker
 	private slots:
 		void on_TwitList__customContextMenuRequested (const QPoint&);
 		void updateTweetList ();
+		void requestUpdate ();
 		
 	signals:
 		void removeTab (QWidget*);
