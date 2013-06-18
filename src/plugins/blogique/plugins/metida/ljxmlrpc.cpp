@@ -656,7 +656,7 @@ namespace Metida
 		element.appendChild (propsStruct.first);
 		propsStruct.second.appendChild (GetSimpleMemberElement ("current_location",
 				"string", event.Props_.CurrentLocation_, document));
-		if (!event.Props_.CurrentMood_.isEmpty ())
+		if (event.Props_.CurrentMoodId_ == -1)
 			propsStruct.second.appendChild (GetSimpleMemberElement ("current_mood",
 					"string", event.Props_.CurrentMood_, document));
 		else
@@ -752,7 +752,9 @@ namespace Metida
 				QString::number (count), document));
 		element.appendChild (GetSimpleMemberElement ("usejournal", "string",
 				Account_->GetOurLogin (), document));
-
+		// for debug lj-tags
+// 		element.appendChild (GetSimpleMemberElement ("parseljtags", "boolean",
+// 				"1", document));
 		QNetworkReply *reply = Core::Instance ().GetCoreProxy ()->
 				GetNetworkAccessManager ()->post (CreateNetworkRequest (),
 						document.toByteArray ());
@@ -1007,7 +1009,8 @@ namespace Metida
 		query.setQuery ("/methodResponse/fault/value/struct/member[name='faultString']/value/string/text()");
 		if (!query.evaluateTo (&errorString))
 			return;
-		emit error (errorCode.toInt (), errorString);
+		emit error (errorCode.toInt (), errorString,
+				MetidaUtils::GetLocalizedErrorMessage (errorCode.toInt ()));
 	}
 
 	namespace
@@ -1147,14 +1150,21 @@ namespace Metida
 					props.AdultContent_ = MetidaUtils::GetAdultContentFromString (propsFieldEntry.ValueToString ());
 				else if (propsFieldEntry.Name () == "opt_nocomments")
 					props.CommentsManagement_ = MetidaUtils::GetCommentsManagmentFromInt (propsFieldEntry.ValueToInt ());
+				else if (propsFieldEntry.Name () == "repost")
+					props.IsRepost_ = (propsFieldEntry.ValueToString () == "c");
+				else if (propsFieldEntry.Name () == "repost_url")
+					props.RepostUrl_ = propsFieldEntry.ValueToUrl ();
 			}
 
 			return props;
 		}
 
-		LJEvent CreateLJEvent (const QString& login, const QVariant& data)
+		LJEvent CreateLJEvent (const QString& , const QVariant& data)
 		{
 			LJEvent ljEvent;
+			bool repost = false;
+			QUrl url;
+			QUrl originUrl;
 			for (const auto& field : data.toList ())
 			{
 				auto fieldEntry = field.value<LJParserTypes::LJParseProfileEntry> ();
@@ -1168,20 +1178,27 @@ namespace Metida
 					ljEvent.DItemID_ = fieldEntry.ValueToLongLong ();
 				else if (fieldEntry.Name () == "eventtime")
 					ljEvent.DateTime_ = QDateTime::fromString (fieldEntry.ValueToString (),
-															   "yyyy-MM-dd hh:mm:ss");
-					else if (fieldEntry.Name () == "props")
-					{
-						QStringList tags;
-						ljEvent.Props_ = CreateLJEventPropetries (tags, fieldEntry.Value ());
-						ljEvent.Tags_ = tags;
-					}
-					else if (fieldEntry.Name () == "url")
-						ljEvent.Url_ = QUrl (fieldEntry.ValueToString ());
-					else if (fieldEntry.Name () == "anum")
-						ljEvent.ANum_ = fieldEntry.ValueToInt ();
-					else if (fieldEntry.Name () == "security")
-						ljEvent.Security_ = MetidaUtils::GetAccessForString (fieldEntry.ValueToString ());
+							"yyyy-MM-dd hh:mm:ss");
+				else if (fieldEntry.Name () == "props")
+				{
+					QStringList tags;
+					ljEvent.Props_ = CreateLJEventPropetries (tags, fieldEntry.Value ());
+					ljEvent.Tags_ = tags;
+				}
+				else if (fieldEntry.Name () == "url")
+					url = QUrl (fieldEntry.ValueToUrl ());
+				else if (fieldEntry.Name () == "anum")
+					ljEvent.ANum_ = fieldEntry.ValueToInt ();
+				else if (fieldEntry.Name () == "security")
+					ljEvent.Security_ = MetidaUtils::GetAccessForString (fieldEntry.ValueToString ());
+				else if (fieldEntry.Name () == "repost" &&
+						fieldEntry.ValueToInt () == 1)
+					repost = true;
+				else if (fieldEntry.Name () == "original_entry_url")
+					originUrl = QUrl (fieldEntry.ValueToUrl ());
 			}
+
+			ljEvent.Url_ = repost ? originUrl : url;
 
 			return ljEvent;
 		}

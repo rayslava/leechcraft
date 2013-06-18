@@ -132,14 +132,21 @@ namespace NetStoreManager
 
 		auto plugin = qobject_cast<IStoragePlugin*> (acc->GetParentPlugin ());
 
+		const QFileInfo fi (path);
 		QList<QStandardItem*> row;
 		row << new QStandardItem (tr ("Uploading %1 to %2...")
-					.arg (QFileInfo (path).fileName ())
+					.arg (fi.fileName ())
 					.arg (plugin->GetStorageName ()));
 		row << new QStandardItem ();
 		row << new QStandardItem (tr ("Initializing..."));
-		row.last ()->setData (QVariant::fromValue<JobHolderRow> (JobHolderRow::ProcessProgress),
+
+		auto progressItem = row.at (JobHolderColumn::JobProgress);
+		progressItem->setData (QVariant::fromValue<JobHolderRow> (JobHolderRow::ProcessProgress),
 				CustomDataRoles::RoleJobHolderRow);
+		progressItem->setData (0, ProcessState::Done);
+		progressItem->setData (fi.size (), ProcessState::Total);
+		progressItem->setData (QVariant::fromValue<TaskParameters> (FromUserInitiated),
+				ProcessState::TaskFlags);
 		ReprModel_->appendRow (row);
 
 		ReprItems_ [acc] [path] = row;
@@ -204,6 +211,11 @@ namespace NetStoreManager
 				PInfo_);
 		Proxy_->GetEntityManager ()->HandleEntity (e);
 
+		URLHandlers_ [id] << [this, filePath] (const QUrl& url, const QByteArray&)
+		{
+			emit fileUploaded (filePath, url);
+		};
+
 		if (Autoshare_.remove (filePath))
 		{
 			auto ifl = qobject_cast<ISupportFileListings*> (sender ());
@@ -213,11 +225,6 @@ namespace NetStoreManager
 						<< "account doesn't support file listings, cannot autoshare";
 				return;
 			}
-
-			URLHandlers_ [id] << [this, filePath] (const QUrl& url, const QByteArray&)
-			{
-				emit fileUploaded (filePath, url);
-			};
 
 			ifl->RequestUrl (id);
 		}

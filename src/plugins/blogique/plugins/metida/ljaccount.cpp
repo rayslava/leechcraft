@@ -71,13 +71,13 @@ namespace Metida
 				this,
 				SLOT (handleValidatingFinished (bool)));
 		connect (LJXmlRpc_,
-				SIGNAL (error (int, QString)),
+				SIGNAL (error (int, QString, QString)),
 				this,
-				SLOT (handleXmlRpcError (int, QString)));
+				SIGNAL (gotError (int, QString, QString)));
 		connect (LJXmlRpc_,
 				SIGNAL (networkError (int, QString)),
 				this,
-				SLOT (handleNetworkError (int, QString)));
+				SIGNAL (gotError (int, QString)));
 		connect (LJXmlRpc_,
 				SIGNAL (profileUpdated (LJProfileData)),
 				LJProfile_.get (),
@@ -86,6 +86,10 @@ namespace Metida
 				SIGNAL (gotTags (QHash<QString, int>)),
 				LJProfile_.get (),
 				SLOT (handleGotTags (QHash<QString, int>)));
+		connect (LJProfile_.get (),
+				SIGNAL (tagsUpdated (QHash<QString, int>)),
+				this,
+				SIGNAL (tagsUpdated (QHash<QString, int>)));
 		connect (LJXmlRpc_,
 				SIGNAL (eventPosted (QList<LJEvent>)),
 				this,
@@ -213,15 +217,25 @@ namespace Metida
 			props.ScreeningComments_ = static_cast<CommentsManagement> (map ["hidecomment"].toInt ());
 			props.PostAvatar_ = map ["avatar"].toString ();
 			props.ShowInFriendsPage_ = map ["showInFriendsPage"].toBool ();
-
+			props.LikeButtons_ = map ["likes"].toStringList ();
 			return props;
+		}
+
+
+		QString ToLJTags (const QString& content)
+		{
+			QRegExp rexpOpen ("<lj-poll name=\"(.+)\">\\s*</lj-poll>");
+			rexpOpen.setMinimal (true);
+			QString entry = content;
+			entry.replace (rexpOpen, "<lj-poll-\\1></lj-poll-\\1>");
+			return entry;
 		}
 
 		LJEvent Entry2LJEvent (const Entry& entry)
 		{
 			LJEvent ljEvent;
 			ljEvent.ItemID_ = entry.EntryId_;
-			ljEvent.Event_ = entry.Content_;
+			ljEvent.Event_ = ToLJTags (entry.Content_);
 			ljEvent.DateTime_ = entry.Date_;
 			ljEvent.Subject_ = entry.Subject_;
 			ljEvent.Tags_ = entry.Tags_;
@@ -250,16 +264,37 @@ namespace Metida
 			return map;
 		}
 
+		QString FromLJTags (const QString& content)
+		{
+			QRegExp rexpOpen ("<lj-poll-(.+)>");
+			QRegExp rexpClose ("</lj-poll-(.+)>");
+			rexpOpen.setMinimal (true);
+			rexpClose.setMinimal (true);
+			QString entry = content;
+			if (rexpClose.indexIn (entry) != -1)
+			{
+				entry.replace (rexpOpen, "<lj-poll name=\"\\1\">");
+				entry.replace (rexpClose, "</lj-poll>");
+			}
+			else
+				entry.replace (rexpOpen, "<lj-poll name=\"\\1\" />");
+
+			return entry;
+		}
+
 		Entry LJEvent2Entry (const LJEvent& ljEvent, const QString& login)
 		{
 			Entry entry;
 			entry.EntryId_ = ljEvent.ItemID_;
-			entry.Content_ = ljEvent.Event_;
+			entry.Content_ = QString ("<div>%1</div>")
+					.arg (FromLJTags (ljEvent.Event_));
 			entry.Date_ = ljEvent.DateTime_;
 			entry.Subject_ = ljEvent.Subject_;
 			entry.Tags_ = ljEvent.Tags_;
 			entry.Target_ = login;
-			entry.EntryUrl_ = ljEvent.Url_;
+			entry.EntryUrl_ = ljEvent.Props_.IsRepost_ ?
+				ljEvent.Props_.RepostUrl_ :
+				ljEvent.Url_;
 			entry.PostOptions_ = GetPostOptionsMapFromLJEvent (ljEvent);
 			return entry;
 		}
@@ -284,6 +319,10 @@ namespace Metida
 	void LJAccount::RequestStatistics ()
 	{
 		LJXmlRpc_->RequestStatistics ();
+	}
+
+	void LJAccount::RequestTags ()
+	{
 		LJXmlRpc_->RequestTags ();
 	}
 
@@ -440,36 +479,6 @@ namespace Metida
 		emit accountSettingsChanged ();
 	}
 
-	void LJAccount::handleXmlRpcError (int errorCode, const QString& msgInEng)
-	{
-		qWarning () << Q_FUNC_INFO
-				<< "error code:"
-				<< errorCode
-				<< "error text:"
-				<< msgInEng;
-
-		Core::Instance ().SendEntity (Util::MakeNotification ("Blogique",
-				tr ("%1 (original message: %2)")
-						.arg (MetidaUtils::GetLocalizedErrorMessage (errorCode),
-						msgInEng),
-				PWarning_));
-	}
-
-	void LJAccount::handleNetworkError (int errorCode, const QString& msgInEng)
-	{
-		qWarning () << Q_FUNC_INFO
-				<< "error code:"
-				<< errorCode
-				<< "error text:"
-				<< msgInEng;
-
-		Core::Instance ().SendEntity (Util::MakeNotification ("Blogique",
-				tr ("%1 (error code: %2)")
-					.arg (msgInEng)
-					.arg (errorCode),
-				PWarning_));
-	}
-
 	void LJAccount::updateProfile ()
 	{
 		LJXmlRpc_->UpdateProfileInfo ();
@@ -477,16 +486,10 @@ namespace Metida
 
 	void LJAccount::submit (const Entry& entry)
 	{
-		LJEvent ljEvent;
 		LJEventProperties props;
-
 		const QVariantMap& postOptions = entry.PostOptions_;
 
-		ljEvent.Subject_ = entry.Subject_;
-		ljEvent.Event_ = entry.Content_;
-		ljEvent.UseJournal_ = entry.Target_;
-		ljEvent.DateTime_ = entry.Date_;
-		ljEvent.Tags_ = entry.Tags_;
+		LJEvent ljEvent = Entry2LJEvent (entry);
 
 		Access access = static_cast<Access> (postOptions.value ("access").toInt ());
 		ljEvent.Security_ = access < Access::MAXAccess ?
@@ -525,9 +528,23 @@ namespace Metida
 		props.ShowInFriendsPage_ = postOptions.value ("showInFriendsPage").toBool ();
 
 		props.PostAvatar_ = postOptions.value ("avatar").toString ();
+		props.LikeButtons_ = postOptions.value ("likes").toStringList ();
 
 		ljEvent.Props_ = props;
-		ljEvent.Event_.append ("<em style=\"font-size: 0.8em;\">Posted via <a href=\"http://leechcraft.org/plugins-blogique\">LeechCraft Blogique</a>.</em>");
+		ljEvent.Event_.append ("\n<em style=\"font-size: 0.8em;\">Posted via <a href=\"http://leechcraft.org/plugins-blogique\">LeechCraft Blogique</a>.</em>");
+
+		QRegExp rxp ("(<lj-like.+(buttons=\"((\\w+,?)+)\"\\s?)?\\/?>).+(</lj-like>)?", Qt::CaseInsensitive);
+		QString buttons = QString ("<lj-like buttons=\"%1\" />")
+				.arg (props.LikeButtons_.join (","));
+		if (rxp.indexIn (entry.Content_) != -1)
+			ljEvent.Event_.replace (rxp, buttons);
+		else if (!ljEvent.Props_.LikeButtons_.isEmpty ())
+		{
+			if (XmlSettingsManager::Instance ().Property ("LikeButtonPosition", "bottom").toString () == "top")
+				ljEvent.Event_.prepend (buttons);
+			else
+				ljEvent.Event_.append (buttons);
+		}
 
 		LJXmlRpc_->Submit (ljEvent);
 	}

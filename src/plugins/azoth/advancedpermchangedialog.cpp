@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2010-2012  Oleg Linkin
+ * Copyright (C) 2006-2013  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -27,52 +27,35 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#pragma once
-
-#include <QWidget>
-#include <interfaces/blogique/iblogiquesidewidget.h>
-#include <interfaces/blogique/ipostoptionswidget.h>
-#include "ui_postoptionswidget.h"
+#include "advancedpermchangedialog.h"
+#include "interfaces/azoth/iclentry.h"
+#include "interfaces/azoth/imucperms.h"
 
 namespace LeechCraft
 {
-namespace Blogique
+namespace Azoth
 {
-namespace Hestia
-{
-	class LocalBlogAccount;
-
-	class PostOptionsWidget : public QWidget
-							, public IBlogiqueSideWidget
-							, public IPostOptionsWidget
+	AdvancedPermChangeDialog::AdvancedPermChangeDialog (ICLEntry* entry,
+			const QByteArray& permClass, const QByteArray& perm, QWidget *parent)
+	: QDialog (parent)
 	{
-		Q_OBJECT
-		Q_INTERFACES (LeechCraft::Blogique::IBlogiqueSideWidget
-				LeechCraft::Blogique::IPostOptionsWidget)
+		Ui_.setupUi (this);
 
-		Ui::PostOptions Ui_;
-		LocalBlogAccount *Account_;
+		auto perms = qobject_cast<IMUCPerms*> (entry->GetParentCLEntry ());
+		Ui_.NameLabel_->setText (tr ("Set %1 to %2 for %3")
+					.arg (perms->GetUserString (permClass))
+					.arg (perms->GetUserString (perm))
+					.arg ("<em>" + entry->GetEntryName () + "</em>"));
+	}
 
-	public:
-		PostOptionsWidget (QWidget *parent = 0);
+	QString AdvancedPermChangeDialog::GetReason () const
+	{
+		return Ui_.Reason_->text ();
+	}
 
-		QString GetName () const;
-		SideWidgetType GetWidgetType () const;
-		QVariantMap GetPostOptions () const;
-		void SetPostOptions (const QVariantMap& map);
-		QVariantMap GetCustomData () const;
-		void SetCustomData (const QVariantMap& map);
-		void SetAccount (QObject *account);
-
-		QStringList GetTags () const;
-		void SetTags (const QStringList& tags);
-		QDateTime GetPostDate () const;
-		void SetPostDate (const QDateTime& date);
-
-	private slots:
-		void on_CurrentTime__released ();
-	};
+	bool AdvancedPermChangeDialog::IsGlobal () const
+	{
+		return Ui_.ChangeGlobally_->checkState () == Qt::Checked;
+	}
 }
 }
-}
-

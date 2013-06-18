@@ -1,5 +1,4 @@
 import QtQuick 1.1
-
 import org.LC.common 1.0
 
 Rectangle {
@@ -26,8 +25,10 @@ Rectangle {
         anchors.top: parent.top
         anchors.left: parent.left
 
-        columns: viewOrient == "vertical" ? 1 : launcherItemRepeater.count
-        rows: viewOrient == "vertical" ? launcherItemRepeater.count : 1
+        property int itemCount: launcherItemRepeater.count + (showPager ? 1 : 0)
+
+        columns: viewOrient == "vertical" ? 1 : itemCount
+        rows: viewOrient == "vertical" ? itemCount : 1
 
         Repeater {
             id: launcherItemRepeater
@@ -35,18 +36,23 @@ Rectangle {
             Item {
                 id: taskbarItem
 
+                visible: showFromAllDesks || isCurrentDesktop
+
                 height: rootRect.itemSize
-                width: rootRect.itemSize
+                width: viewOrient == "vertical" ?
+                        rootRect.itemSize :
+                        Math.min(150, rootRect.width / taskbarColumn.itemCount)
 
                 ActionButton {
                     id: tcButton
 
-                    height: rootRect.itemSize
-                    width: rootRect.itemSize
+                    anchors.fill: parent
 
                     actionIconURL: "image://TaskbarIcons/" + windowID + '/' + iconGenID
                     textTooltip: windowName
-                    transparentStyle: true
+                    decoOpacity: isMinimizedWindow ? 0.3 : (isActiveWindow ? 0.8 : 0.5)
+                    orientation: viewOrient
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
 
                     isHighlight: !isMinimizedWindow
                     isStrongHighlight: isActiveWindow
@@ -54,8 +60,38 @@ Rectangle {
                     onTriggered: isActiveWindow ?
                             KT_taskbarProxy.minimizeWindow(windowID) :
                             KT_taskbarProxy.raiseWindow(windowID);
+                    onClicked: commonJS.showTooltip(tcButton,
+                            function(x, y) { KT_taskbarProxy.showMenu(windowID, x, y) })
+
+                    actionText: windowName
+
+                    ActionButton {
+                        opacity: viewOrient == "horizontal" && (parent.isHovered || isHovered) ? 1 : 0
+                        Behavior on opacity { PropertyAnimation {} }
+
+                        anchors.right: parent.right
+                        anchors.rightMargin: parent.height / 4
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.height / 2
+                        height: parent.height / 2
+
+                        actionIconURL: "image://ThemeIcons/window-close"
+                        onTriggered: KT_taskbarProxy.closeWindow(windowID)
+                    }
                 }
             }
+        }
+
+        ActionButton {
+            id: showPagerButton
+
+            width: rootRect.itemSize
+            height: rootRect.itemSize
+
+            visible: showPager
+
+            actionIconURL: "image://ThemeIcons/user-desktop"
+            onTriggered: commonJS.showTooltip(showPagerButton, KT_taskbarProxy.showPager)
         }
     }
 }

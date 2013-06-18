@@ -48,13 +48,23 @@ namespace Dolozhee
 			Feature
 		};
 
+		enum class Priority
+		{
+			Low,
+			Normal,
+			High
+		};
+
 		ReportTypePage (QWidget* = 0);
 
 		int nextId () const;
 		void initializePage ();
 
+		void ForceReportType (Type);
+
 		Type GetReportType () const;
 		int GetCategoryID () const;
+		Priority GetPriority () const;
 	private slots:
 		void handleCategoriesFinished ();
 	};

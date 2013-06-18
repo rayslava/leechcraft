@@ -78,6 +78,23 @@ namespace Dolozhee
 				SLOT (handleCategoriesFinished ()));
 	}
 
+	void ReportTypePage::ForceReportType (Type type)
+	{
+		switch (type)
+		{
+		case Type::Feature:
+			Ui_.TypeCombo_->setCurrentIndex (1);
+			break;
+		case Type::Bug:
+			Ui_.TypeCombo_->setCurrentIndex (0);
+			break;
+		default:
+			return;
+		}
+
+		Ui_.TypeCombo_->setEnabled (false);
+	}
+
 	ReportTypePage::Type ReportTypePage::GetReportType () const
 	{
 		return Ui_.TypeCombo_->currentIndex () == 1 ? Type::Feature : Type::Bug;
@@ -89,6 +106,11 @@ namespace Dolozhee
 		return idx > 0 ?
 				Ui_.CatCombo_->itemData (idx).toInt () :
 				-1;
+	}
+
+	ReportTypePage::Priority ReportTypePage::GetPriority () const
+	{
+		return static_cast<Priority> (Ui_.PriorityBox_->currentIndex ());
 	}
 
 	void ReportTypePage::handleCategoriesFinished ()

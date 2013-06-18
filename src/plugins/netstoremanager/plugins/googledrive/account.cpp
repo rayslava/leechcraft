@@ -65,9 +65,9 @@ namespace GoogleDrive
 				this,
 				SLOT (handleGotNewItem (DriveItem)));
 		connect (DriveManager_,
-				SIGNAL (gotChanges (QList<DriveChanges>, qlonglong)),
+				SIGNAL (gotChanges (QList<DriveChanges>)),
 				this,
-				SLOT (handleGotChanges (QList<DriveChanges>, qlonglong)));
+				SLOT (handleGotChanges (QList<DriveChanges>)));
 	}
 
 	QObject* Account::GetQObject ()
@@ -120,12 +120,12 @@ namespace GoogleDrive
 	}
 
 	void Account::Download (const QByteArray& id, const QString& filepath,
-			bool silent)
+			TaskParameters tp, bool silent, bool open)
 	{
 		if (id.isEmpty ())
 			return;
 
-		DriveManager_->Download (id, filepath, silent);
+		DriveManager_->Download (id, filepath, tp, silent, open);
 	}
 
 	ListingOps Account::GetListingOps () const
@@ -303,12 +303,16 @@ namespace GoogleDrive
 			storageItem.ID_ = item.Id_.toUtf8 ();
 			storageItem.ParentID_ = item.ParentId_.toUtf8 ();
 			storageItem.Name_ = item.Name_;
+			storageItem.Size_ = item.FileSize_;
 			storageItem.ModifyDate_ = item.ModifiedDate_;
 			storageItem.Hash_ = item.Md5_.toUtf8 ();
 			storageItem.HashType_ = StorageItem::HashType::Md5;
 			storageItem.IsDirectory_ = item.IsFolder_;
 			storageItem.IsTrashed_ = item.Labels_ & DriveItem::ILRemoved;
 			storageItem.MimeType_ = item.Mime_;
+			storageItem.Url_ = item.DownloadUrl_;
+			storageItem.ShareUrl_ = item.ShareUrl_;
+			storageItem.Shared_ = item.Shared_;
 			for (const auto& key : item.ExportLinks_.keys ())
 			{
 				const QString mime = item.ExportLinks_.value (key);
@@ -340,10 +344,8 @@ namespace GoogleDrive
 		emit gotNewItem (CreateItem (item), item.ParentId_.toUtf8 ());
 	}
 
-	void Account::handleGotChanges (const QList<DriveChanges>& driveChanges, qlonglong lastId)
+	void Account::handleGotChanges (const QList<DriveChanges>& driveChanges)
 	{
-		XmlSettingsManager::Instance ().setProperty ("LastChangesId", lastId);
-
 		QList<Change> changes;
 		for (const auto& driveChange : driveChanges)
 		{
@@ -353,9 +355,10 @@ namespace GoogleDrive
 
 			Change change;
 			change.Deleted_ = driveChange.Deleted_;
-			change.Id_ << driveChange.FileId_;
-			change.ParentId_ << driveChange.FileResource_.ParentId_;
-			change.ParentIsRoot_ = driveChange.FileResource_.ParentIsRoot_;
+			change.ID_ = driveChange.Id_.toUtf8 ();
+			change.ItemID_ = driveChange.FileId_.toUtf8 ();
+			if (!change.Deleted_)
+				change.Item_ = CreateItem (driveChange.FileResource_);
 
 			changes << change;
 		}

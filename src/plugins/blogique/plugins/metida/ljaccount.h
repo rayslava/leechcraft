@@ -64,6 +64,9 @@ namespace Metida
 		bool EntryVisibility_;
 		bool UsedRTE_;
 		bool NotifyByEmail_;
+		QStringList LikeButtons_;
+		QUrl RepostUrl_;
+		bool IsRepost_;
 
 		LJEventProperties ()
 		: CurrentMoodId_ (-1)
@@ -75,6 +78,7 @@ namespace Metida
 		, EntryVisibility_ (true)
 		, UsedRTE_ (true)
 		, NotifyByEmail_ (true)
+		, IsRepost_ (false)
 		{
 		}
 	};
@@ -154,6 +158,7 @@ namespace Metida
 
 		void RequestLastEntries (int count);
 		void RequestStatistics ();
+		void RequestTags ();
 		void RequestInbox ();
 		void RequestRecentComments ();
 
@@ -179,8 +184,6 @@ namespace Metida
 
 	public slots:
 		void handleValidatingFinished (bool success);
-		void handleXmlRpcError (int errorCode, const QString& msgInEng);
-		void handleNetworkError (int errorCode, const QString& msgInEng);
 		void updateProfile ();
 
 		void submit (const Entry& event);
@@ -210,6 +213,9 @@ namespace Metida
 		void entryUpdated (const QList<Entry>& entries);
 		void entryRemoved (int itemId);
 
+		void gotError(int errorCode, const QString& errorString,
+				const QString& localizedErrorString = QString ());
+
 		void gotEntries2Backup (const QList<Entry>& entries);
 		void gettingEntries2BackupFinished ();
 
@@ -217,6 +223,7 @@ namespace Metida
 		void gotRecentComments (const QList<LJCommentEntry>& comments);
 
 		void gotBlogStatistics (const QMap<QDate, int>& statistics);
+		void tagsUpdated (const QHash<QString, int>& tags);
 
 	};
 }

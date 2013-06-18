@@ -32,6 +32,9 @@
 #include <QtDebug>
 #include <QFileInfo>
 #include <QDesktopServices>
+#include <QMessageBox>
+#include <QMainWindow>
+#include <interfaces/core/irootwindowsmanager.h>
 #include <util/util.h>
 #include <qjson/parser.h>
 #include <qjson/serializer.h>
@@ -49,6 +52,7 @@ namespace GoogleDrive
 	: QObject (parent)
 	, DirectoryId_ ("application/vnd.google-apps.folder")
 	, Account_ (acc)
+	, SecondRequestIfNoItems_ (true)
 	{
 #ifdef HAVE_MAGIC
 		Magic_ = magic_open (MAGIC_MIME_TYPE);
@@ -125,12 +129,13 @@ namespace GoogleDrive
 	}
 
 	void DriveManager::Download (const QString& id, const QString& filepath,
-			bool silent)
+			TaskParameters tp, bool silent, bool open)
 	{
 		if (id.isEmpty ())
 			return;
 		ApiCallQueue_ << [this, id] (const QString& key) { RequestFileInfo (id, key); };
-		DownloadsQueue_ << [this, filepath, silent] (const QUrl& url) { DownloadFile (filepath, url, silent); };
+		DownloadsQueue_ << [this, filepath, tp, silent, open] (const QUrl& url)
+			{ DownloadFile (filepath, url, tp, silent, open); };
 		RequestAccessToken ();
 	}
 
@@ -150,9 +155,10 @@ namespace GoogleDrive
 		RequestAccessToken ();
 	}
 
-	void DriveManager::RequestFileChanges (qlonglong startId)
+	void DriveManager::RequestFileChanges (qlonglong startId, const QString& pageToken)
 	{
-		ApiCallQueue_ << [this, startId] (const QString& key) { GetFileChanges (startId, key); };
+		ApiCallQueue_ << [this, startId, pageToken] (const QString& key)
+				{ GetFileChanges (startId, pageToken, key); };
 		RequestAccessToken ();
 	}
 
@@ -395,14 +401,24 @@ namespace GoogleDrive
 				SLOT (handleMoveItem ()));
 	}
 
-	void DriveManager::GetFileChanges (qlonglong startId, const QString& key)
+	void DriveManager::GetFileChanges (qlonglong startId,
+			const QString& pageToken, const QString& key)
 	{
-		const QString str = startId ?
-			QString ("https://www.googleapis.com/drive/v2/changes?includeDeleted=true&startChangeId=%1&access_token=%2")
-					.arg (startId + 1)
-					.arg (key) :
-			QString ("https://www.googleapis.com/drive/v2/changes?includeDeleted=true&access_token=%1")
-					.arg (key);
+		QString urlSuffix = "includeDeleted=true&access_token=" + key;
+
+		if (startId)
+		{
+			urlSuffix.append ("&startChangeId=");
+			urlSuffix += QString::number (startId);
+		}
+
+		if (!pageToken.isEmpty ())
+		{
+			urlSuffix.append ("&pageToken=");
+			urlSuffix += pageToken;
+		}
+
+		const QString str = "https://www.googleapis.com/drive/v2/changes?" + urlSuffix;
 
 		QNetworkReply *reply = Core::Instance ().GetProxy ()->GetNetworkAccessManager ()->
 				get (QNetworkRequest (str));
@@ -447,26 +463,21 @@ namespace GoogleDrive
 	}
 
 	void DriveManager::DownloadFile (const QString& filePath, const QUrl& url,
-			bool silent)
+			TaskParameters tp, bool silent, bool open)
 	{
-		TaskParameters tp = OnlyDownload;
 		QString savePath;
 		if (silent)
-		{
 			savePath = QDesktopServices::storageLocation (QDesktopServices::TempLocation) +
-						"/" + QFileInfo (filePath).fileName ();
-			tp |= AutoAccept |
-					Internal |
-					DoNotNotifyUser |
-					DoNotSaveInHistory |
-					DoNotAnnounceEntity;
-		}
-		else
-			tp |= FromUserInitiated;
+					"/" + QFileInfo (filePath).fileName ();
 
-		const auto& e = Util::MakeEntity (url, savePath, tp);
+		auto e = Util::MakeEntity (url, savePath, tp);
+		QFileInfo fi (filePath);
+		e.Additional_ ["Filename"] = QString ("%1_%2.%3")
+				.arg (fi.baseName ())
+				.arg (QDateTime::currentDateTime ().toTime_t ())
+				.arg (fi.completeSuffix ());
 		silent ?
-			Core::Instance ().DelegateEntity (e, filePath) :
+			Core::Instance ().DelegateEntity (e, filePath, open) :
 			Core::Instance ().SendEntity (e);
 	}
 
@@ -629,7 +640,9 @@ namespace GoogleDrive
 				mime = GetLocalMimeTypeFromGoogleMimeType (mime, driveItem.FileExtension_);
 			driveItem.Mime_ = mime;
 
-			driveItem.DownloadUrl_ = QUrl (map ["webContentLink"].toString ());
+			driveItem.DownloadUrl_ = QUrl (map ["downloadUrl"].toString ());
+			driveItem.ShareUrl_ = QUrl (map ["webContentLink"].toString ());
+			driveItem.Shared_ = map ["shared"].toBool ();
 
 			const QVariantMap& labels = map ["labels"].toMap ();
 			driveItem.Labels_ = DriveItem::ILNone;
@@ -660,7 +673,7 @@ namespace GoogleDrive
 
 			driveItem.OriginalFileName_ = map ["originalFilename"].toString ();
 			driveItem.Md5_ = map ["md5Checksum"].toString ();
-			driveItem.FileSize_ = map ["fileSize"].toLongLong ();
+			driveItem.FileSize_ = map ["quotaBytesUsed"].toLongLong ();
 
 			for (const auto& ownerName : map ["ownerNames"].toList ())
 				driveItem.OwnerNames_ << ownerName.toString ();
@@ -701,6 +714,11 @@ namespace GoogleDrive
 		if (!resMap.contains ("items"))
 		{
 			qDebug () << Q_FUNC_INFO << "there are no items";
+			if (SecondRequestIfNoItems_)
+			{
+				SecondRequestIfNoItems_ = false;
+				RefreshListing ();
+			}
 			return;
 		}
 
@@ -710,6 +728,7 @@ namespace GoogleDrive
 			return;
 		}
 
+		SecondRequestIfNoItems_ = true;
 		QList<DriveItem> resList;
 		Q_FOREACH (const auto& item, resMap ["items"].toList ())
 		{
@@ -800,7 +819,8 @@ namespace GoogleDrive
 		{
 			qDebug () << Q_FUNC_INFO
 					<< "file moved to trash successfully";
-			RefreshListing ();
+			RequestFileChanges (XmlSettingsManager::Instance ().Property ("largestChangeId", 0)
+					.toLongLong ());
 			return;
 		}
 
@@ -828,7 +848,8 @@ namespace GoogleDrive
 		{
 			qDebug () << Q_FUNC_INFO
 					<< "file restored from trash successfully";
-			RefreshListing ();
+			RequestFileChanges (XmlSettingsManager::Instance ().Property ("largestChangeId", 0)
+					.toLongLong ());
 			return;
 		}
 
@@ -917,8 +938,8 @@ namespace GoogleDrive
 		{
 			qDebug () << Q_FUNC_INFO
 					<< "file uploaded successfully";
-			RefreshListing ();
-			emit gotNewItem (CreateDriveItem (res));
+			RequestFileChanges (XmlSettingsManager::Instance ().Property ("largestChangeId", 0)
+					.toLongLong ());
 			emit finished (id, Reply2FilePath_.take (reply));
 			return;
 		}
@@ -1000,7 +1021,8 @@ namespace GoogleDrive
 		{
 			qDebug () << Q_FUNC_INFO
 					<< "entry copied successfully";
-			RefreshListing ();
+			RequestFileChanges (XmlSettingsManager::Instance ().Property ("largestChangeId", 0)
+					.toLongLong ());
 			return;
 		}
 
@@ -1028,7 +1050,8 @@ namespace GoogleDrive
 		{
 			qDebug () << Q_FUNC_INFO
 					<< "entry moved successfully";
-			RefreshListing ();
+			RequestFileChanges (XmlSettingsManager::Instance ().Property ("largestChangeId", 0)
+					.toLongLong ());
 			return;
 		}
 
@@ -1066,20 +1089,27 @@ namespace GoogleDrive
 				map ["items"].toList ().isEmpty ())
 			return;
 
+		const QString nextPageTokent = map ["nextPageToken"].toString ();
+		qlonglong largestId = map ["largestChangeId"].toLongLong ();
+		XmlSettingsManager::Instance ().setProperty ("largestChangeId",
+				largestId);
 		for (auto itemVar : map ["items"].toList ())
 		{
 			QVariantMap itemMap = itemVar.toMap ();
-			DriveItem driveItem = CreateDriveItem (itemMap ["file"]);
 			DriveChanges change;
 			change.FileId_ = itemMap ["fileId"].toString ();
 			change.Id_ = itemMap ["id"].toString ();
 			change.Deleted_ = itemMap ["deleted"].toBool ();
-			change.FileResource_ = driveItem;
+			if (!change.Deleted_)
+				change.FileResource_ =CreateDriveItem (itemMap ["file"]);
 
 			changes << change;
 		}
 
-		gotChanges (changes, map ["largestChangeId"].toLongLong () + 1);
+		emit gotChanges (changes);
+
+		if (!nextPageTokent.isEmpty ())
+			RequestFileChanges (largestId, nextPageTokent);
 	}
 
 	void DriveManager::handleGetFileInfo ()
@@ -1105,6 +1135,15 @@ namespace GoogleDrive
 		if (!map.contains ("error"))
 		{
 			DriveItem it = CreateDriveItem (res);
+			if (it.DownloadUrl_.isEmpty ())
+			{
+				QMessageBox::warning (Core::Instance ().GetProxy ()->GetRootWindowsManager ()->GetPreferredWindow (),
+						"LeechCraft",
+						tr ("This file cannot be downloaded. Use export instead of Download or Open File action"));
+				DownloadsQueue_.removeFirst ();
+				return;
+			}
+
 			if (!access_token.isEmpty ())
 				it.DownloadUrl_.addQueryItem ("access_token", access_token);
 
@@ -1140,7 +1179,8 @@ namespace GoogleDrive
 			DriveItem it = CreateDriveItem (res);
 			qDebug () << Q_FUNC_INFO
 					<< "entry renamed successfully";
-			emit gotNewItem (it);
+			RequestFileChanges (XmlSettingsManager::Instance ().Property ("largestChangeId", 0)
+					.toLongLong ());
 
 			return;
 		}

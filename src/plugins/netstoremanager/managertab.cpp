@@ -41,7 +41,6 @@
 #include <util/util.h>
 #include "interfaces/netstoremanager/istorageaccount.h"
 #include "interfaces/netstoremanager/istorageplugin.h"
-#include "interfaces/netstoremanager/isupportfilelistings.h"
 #include "accountsmanager.h"
 #include "filestreemodel.h"
 #include "xmlsettingsmanager.h"
@@ -61,13 +60,12 @@ namespace NetStoreManager
 	, ProxyModel_ (new FilesProxyModel (this))
 	, TreeModel_ (new FilesTreeModel (this))
 	, AccountsBox_ (0)
-	, TrashAction_ (0)
 	{
 		Ui_.setupUi (this);
 
 		Ui_.FilesView_->setModel (ProxyModel_);
 		ProxyModel_->setSourceModel (TreeModel_);
-		TreeModel_->setHorizontalHeaderLabels ({ tr ("Name"), tr ("Modify") });
+		TreeModel_->setHorizontalHeaderLabels ({ tr ("Name"), tr ("Used space"), tr ("Modify") });
 		Ui_.FilesView_->header ()->setResizeMode (Columns::Name, QHeaderView::Interactive);
 
 		connect (Ui_.FilesView_->header (),
@@ -76,6 +74,12 @@ namespace NetStoreManager
 				SLOT (handleFilesViewSectionResized (int, int, int)));
 		Ui_.FilesView_->setContextMenuPolicy (Qt::CustomContextMenu);
 
+		OpenFile_ = new QAction (Proxy_->GetIcon ("system-run"),
+				tr ("Open file"), this);
+		connect (OpenFile_,
+				SIGNAL (triggered ()),
+				this,
+				SLOT (flOpenFile ()));
 		CopyURL_ = new QAction (Proxy_->GetIcon ("edit-copy"),
 				tr ("Copy URL..."), this);
 		connect (CopyURL_,
@@ -231,6 +235,10 @@ namespace NetStoreManager
 						SIGNAL (gotFileUrl (QUrl, QByteArray)),
 						this,
 						SLOT (handleGotFileUrl (QUrl, QByteArray)));
+				connect (acc->GetQObject (),
+						SIGNAL (gotChanges (QList<Change>)),
+						this,
+						SLOT (handleGotChanges (QList<Change>)));
 			}
 		}
 
@@ -318,7 +326,7 @@ namespace NetStoreManager
 
 	namespace
 	{
-		QList<QStandardItem*> CreateItems (const StorageItem& storageItem, ICoreProxy_ptr proxy)
+		QList<QStandardItem*> CreateItems (const StorageItem& storageItem, quint64 folderSize, ICoreProxy_ptr proxy)
 		{
 			QStandardItem *name = new QStandardItem (storageItem.Name_);
 			name->setEditable (false);
@@ -328,22 +336,30 @@ namespace NetStoreManager
 					ListingRole::HashType);
 			name->setData (storageItem.IsDirectory_, ListingRole::IsDirectory);
 			name->setData (storageItem.IsTrashed_, ListingRole::InTrash);
-			name->setIcon (proxy->GetIcon (storageItem.IsDirectory_ ?
+			QIcon icon = proxy->GetIcon (storageItem.IsDirectory_ ?
 					"inode-directory" :
-					storageItem.MimeType_));
-			if (name->icon ().isNull ())
+					storageItem.MimeType_);
+			if (icon.isNull ())
+			{
 				qDebug () << "[NetStoreManager]"
 						<< "Unknown mime type:"
 						<< storageItem.MimeType_
 						<< "for file"
 						<< storageItem.Name_
 						<< storageItem.ID_;
+				icon = proxy->GetIcon ("unknown");
+			}
+			name->setIcon (icon);
+
+			QStandardItem *size = new QStandardItem (Util::MakePrettySize (storageItem
+					.IsDirectory_ ? folderSize : storageItem.Size_));
+			size->setEditable (false);
 
 			QStandardItem *modify = new QStandardItem (storageItem.ModifyDate_
 					.toString ("dd.MM.yy hh:mm"));
 			modify->setEditable (false);
 
-			return { name, modify };
+			return { name, size, modify };
 		}
 	}
 
@@ -352,7 +368,7 @@ namespace NetStoreManager
 		if (acc != GetCurrentAccount ())
 			return;
 
-		ShowListItemsWithParent (LastParentID_);
+		ShowListItemsWithParent (LastParentID_, OpenTrash_->isChecked ());
 
 		Ui_.FilesView_->header ()->resizeSection (Columns::Name,
 				XmlSettingsManager::Instance ().Property ("ViewSectionSize",
@@ -390,7 +406,7 @@ namespace NetStoreManager
 	{
 		QList<QByteArray> ids;
 		Q_FOREACH (const auto& idx, Ui_.FilesView_->selectionModel ()->selectedRows ())
-			ids << idx.data (ListingRole::ID).toByteArray ();
+			ids << ProxyModel_->mapToSource (idx).data (ListingRole::ID).toByteArray ();
 
 		return ids;
 	}
@@ -405,7 +421,7 @@ namespace NetStoreManager
 	{
 		QModelIndex idx = Ui_.FilesView_->currentIndex ();
 		idx = idx.sibling (idx.row (), Columns::Name);
-		return idx.data (ListingRole::ID).toByteArray ();
+		return ProxyModel_->mapToSource (idx).data (ListingRole::ID).toByteArray ();
 	}
 
 	void ManagerTab::CallOnSelection (std::function<void (ISupportFileListings*, QList<QByteArray>)> func)
@@ -416,6 +432,28 @@ namespace NetStoreManager
 
 		auto sfl = qobject_cast<ISupportFileListings*> (acc->GetQObject ());
 		func (sfl, GetSelectedIDs ());
+	}
+
+	quint64 ManagerTab::GetFolderSize (const QByteArray& id) const
+	{
+		quint64 size = 0;
+		QList<StorageItem> childItems;
+		for (const auto& item : Id2Item_.values ())
+			if (item.ParentID_ == id)
+			{
+				if (item.IsDirectory_ &&
+						((item.IsTrashed_ && Id2Item_ [id].IsTrashed_) ||
+						(!item.IsTrashed_ && !Id2Item_ [id].IsTrashed_)))
+					childItems << item;
+				else if (((item.IsTrashed_ && Id2Item_ [id].IsTrashed_) ||
+						(!item.IsTrashed_ && !Id2Item_ [id].IsTrashed_)))
+					size += item.Size_;
+			}
+
+		for (const auto& item : childItems)
+			size += GetFolderSize (item.ID_);
+
+		return size;
 	}
 
 	void ManagerTab::ShowListItemsWithParent (const QByteArray& parentId, bool inTrash)
@@ -433,15 +471,19 @@ namespace NetStoreManager
 		}
 
 		for (const auto& item : Id2Item_.values ())
+		{
+			quint64 folderSize = 0;
+				if (item.IsDirectory_)
+					folderSize = GetFolderSize (item.ID_);
 			if (!inTrash &&
 					!item.IsTrashed_)
 			{
 				if (parentId.isNull () &&
 						!Id2Item_.contains (item.ParentID_))
-					TreeModel_->appendRow (CreateItems (item, Proxy_));
+					TreeModel_->appendRow (CreateItems (item, folderSize, Proxy_));
 				else if (!parentId.isNull () &&
 						item.ParentID_ == parentId)
-					TreeModel_->appendRow (CreateItems (item, Proxy_));
+					TreeModel_->appendRow (CreateItems (item, folderSize, Proxy_));
 			}
 			else if (inTrash &&
 					item.IsTrashed_)
@@ -449,15 +491,16 @@ namespace NetStoreManager
 				if (parentId.isNull () &&
 						(!Id2Item_.contains (item.ParentID_) ||
 						!Id2Item_ [item.ParentID_].IsTrashed_))
-					TreeModel_->appendRow (CreateItems (item, Proxy_));
+					TreeModel_->appendRow (CreateItems (item, folderSize, Proxy_));
 				else if (!parentId.isNull () &&
 						item.ParentID_ == parentId &&
 						Id2Item_ [parentId].IsTrashed_)
-					TreeModel_->appendRow (CreateItems (item, Proxy_));
+					TreeModel_->appendRow (CreateItems (item, folderSize, Proxy_));
 				else if (!parentId.isNull () &&
 						!Id2Item_ [parentId].IsTrashed_)
 					ShowListItemsWithParent (QByteArray (), true);
 			}
+		}
 	}
 
 	void ManagerTab::handleRefresh ()
@@ -504,7 +547,10 @@ namespace NetStoreManager
 		}
 
 		if (!idx.data (ListingRole::IsDirectory).toBool ())
+		{
+			flOpenFile ();
 			return;
+		}
 
 		ShowListItemsWithParent (idx.data (ListingRole::ID).toByteArray (),
 				OpenTrash_->isChecked ());
@@ -621,6 +667,22 @@ namespace NetStoreManager
 
 		auto sfl = qobject_cast<ISupportFileListings*> (acc->GetQObject ());
 		sfl->MoveToTrash (ids);
+	}
+
+	void ManagerTab::flOpenFile ()
+	{
+		IStorageAccount *acc = GetCurrentAccount ();
+		if (!acc)
+			return;
+
+		TaskParameters tp = OnlyDownload |
+				AutoAccept |
+				DoNotNotifyUser |
+				DoNotSaveInHistory |
+				FromUserInitiated;
+		acc->Download (GetCurrentID (),
+				Ui_.FilesView_->currentIndex ().data ().toString (), tp, true,
+				true);
 	}
 
 	void ManagerTab::flCopy ()
@@ -751,7 +813,9 @@ namespace NetStoreManager
 		if (!acc)
 			return;
 
-		acc->Download (GetCurrentID (), QString ());
+		acc->Download (GetCurrentID (),
+				Ui_.FilesView_->currentIndex ().data ().toString (),
+				OnlyDownload | FromUserInitiated);
 	}
 
 	void ManagerTab::flCopyUrl ()
@@ -761,15 +825,15 @@ namespace NetStoreManager
 			return;
 
 		const QByteArray id = GetCurrentID ();
-		if (!Id2Item_ [id].Url_.isEmpty () &&
-				Id2Item_ [id].Url_.isValid ())
-			handleGotFileUrl (Id2Item_ [id].Url_);
+		if (Id2Item_ [id].Shared_)
+			handleGotFileUrl (Id2Item_ [id].ShareUrl_);
 		else
 			qobject_cast<ISupportFileListings*> (acc->GetQObject ())->RequestUrl (id);
 	}
 
 	void ManagerTab::showTrashContent (bool show)
 	{
+		OpenTrash_->setText (show ? tr ("Close trash") : tr ("Open trash"));
 		ShowListItemsWithParent (QByteArray (), show);
 	}
 
@@ -813,6 +877,13 @@ namespace NetStoreManager
 			StorageItem item;
 			if (Id2Item_.contains (id))
 				item = Id2Item_ [id];
+
+			if (item.IsValid () &&
+					!item.IsDirectory_)
+			{
+				menu->insertAction (CopyURL_, OpenFile_);
+				menu->insertSeparator (CopyURL_);
+			}
 
 			if (item.IsValid () &&
 					!item.ExportLinks.isEmpty ())
@@ -901,6 +972,21 @@ namespace NetStoreManager
 		QString text = tr ("File URL has been copied to the clipboard.");
 		Proxy_->GetEntityManager ()->
 				HandleEntity (Util::MakeNotification ("NetStoreManager", text, PInfo_));
+	}
+
+
+	void ManagerTab::handleGotChanges(const QList<Change>& changes)
+	{
+		for (const auto& change : changes)
+		{
+			if (change.Deleted_)
+				Id2Item_.remove (change.ItemID_);
+			else if (change.Item_.IsValid ())
+				Id2Item_ [change.ItemID_] = change.Item_;
+		}
+
+		LastParentID_ = GetParentIDInListViewMode ();
+		FillModel (GetCurrentAccount ());
 	}
 
 }

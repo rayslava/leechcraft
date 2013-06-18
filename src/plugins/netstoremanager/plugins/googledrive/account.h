@@ -79,7 +79,7 @@ namespace GoogleDrive
 				UploadType ut = UploadType::Upload,
 				const QByteArray& id = QByteArray ());
 		void Download (const QByteArray& id, const QString& filepath,
-				bool silent = false);
+				TaskParameters tp, bool silent = false, bool open = false);
 
 		ListingOps GetListingOps () const;
 
@@ -111,7 +111,7 @@ namespace GoogleDrive
 		void handleFileList (const QList<DriveItem>& items);
 		void handleSharedFileId (const QString& id);
 		void handleGotNewItem (const DriveItem& item);
-		void handleGotChanges (const QList<DriveChanges>& changes, qlonglong lastId);
+		void handleGotChanges (const QList<DriveChanges>& changes);
 
 	signals:
 		void upError (const QString& error, const QString& filepath);

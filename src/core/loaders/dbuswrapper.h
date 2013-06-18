@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2010-2013  Oleg Linkin
+ * Copyright (C) 2006-2013  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -27,24 +27,35 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#include "tagswidget.h"
+#pragma once
+
+#include <QObject>
+#include <interfaces/iinfo.h>
+
+class QDBusInterface;
 
 namespace LeechCraft
 {
-namespace Blogique
+namespace Loaders
 {
-namespace Metida
-{
-	TagsWidget::TagsWidget (QWidget *parent)
-	: QLineEdit (parent)
+	class DBusWrapper : public QObject
+					  , public IInfo
 	{
-	}
+		Q_OBJECT
+		Q_INTERFACES (IInfo)
 
-	void TagsWidget::SetTags (const QHash<QString, int>& tags)
-	{
-		Tags_ = tags;
-	}
+		const QString Service_;
+		std::shared_ptr<QDBusInterface> IFace_;
+	public:
+		explicit DBusWrapper (const QString& service);
 
-}
+		void Init (ICoreProxy_ptr proxy);
+		void SecondInit ();
+		void Release ();
+		QByteArray GetUniqueID () const;
+		QString GetName () const;
+		QString GetInfo () const;
+		QIcon GetIcon () const;
+	};
 }
 }

@@ -27,58 +27,34 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#ifndef PLUGINS_AUSCRIE_POSTER_H
-#define PLUGINS_AUSCRIE_POSTER_H
-#include <memory>
-#include <QObject>
-#include <QMap>
+#pragma once
 
-class QNetworkReply;
-class QNetworkAccessManager;
+#include <QObject>
+#include <interfaces/iinfo.h>
+#include <interfaces/iquarkcomponentprovider.h>
 
 namespace LeechCraft
 {
-struct Entity;
-
-namespace Auscrie
+namespace Mellonetray
 {
-	struct Worker
-	{
-		virtual ~Worker () {}
-
-		virtual QNetworkReply* Post (const QByteArray& imageData,
-				const QString& format, QNetworkAccessManager *am) const = 0;
-		virtual QString GetLink (const QString& contents, QNetworkReply *reply) const = 0;
-	};
-
-	typedef std::shared_ptr<Worker> Worker_ptr;
-
-	class Poster : public QObject
+	class Plugin : public QObject
+				 , public IInfo
+				 , public IQuarkComponentProvider
 	{
 		Q_OBJECT
+		Q_INTERFACES (IInfo IQuarkComponentProvider)
 
-		QNetworkReply *Reply_;
+		QuarkComponent_ptr Panel_;
 	public:
-		enum HostingService
-		{
-			DumpBitcheeseNet,
-			SavepicRu,
-			ImagebinCa
-		};
-	private:
-		const HostingService Service_;
-		QMap<HostingService, Worker_ptr> Workers_;
-	public:
-		Poster (HostingService,
-				const QByteArray&, const QString&,
-				QNetworkAccessManager*, QObject* = 0);
-	private slots:
-		void handleFinished ();
-		void handleError ();
-	signals:
-		void gotEntity (const LeechCraft::Entity&);
+		void Init (ICoreProxy_ptr);
+		void SecondInit ();
+		QByteArray GetUniqueID () const;
+		void Release ();
+		QString GetName () const;
+		QString GetInfo () const;
+		QIcon GetIcon () const;
+
+		QuarkComponents_t GetComponents () const;
 	};
 }
 }
-
-#endif

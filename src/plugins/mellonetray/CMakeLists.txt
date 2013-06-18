@@ -1,0 +1,33 @@
+cmake_minimum_required (VERSION 2.8)
+project (leechcraft_mellonetray)
+include (InitLCPlugin OPTIONAL)
+
+find_package (X11 REQUIRED)
+
+set (QT_USE_QTDECLARATIVE TRUE)
+include (${QT_USE_FILE})
+include_directories (
+	${CMAKE_CURRENT_BINARY_DIR}
+	${Boost_INCLUDE_DIR}
+	${LEECHCRAFT_INCLUDE_DIR}
+	)
+set (SRCS
+	mellonetray.cpp
+	traymodel.cpp
+	iconhandler.cpp
+	)
+#CreateTrs("mellonetray" "en;ru_RU" COMPILED_TRANSLATIONS)
+CreateTrsUpTarget("mellonetray" "en;ru_RU" "${SRCS}" "${FORMS}" "")
+
+add_library (leechcraft_mellonetray SHARED
+	${COMPILED_TRANSLATIONS}
+	${SRCS}
+	)
+target_link_libraries (leechcraft_mellonetray
+	${QT_LIBRARIES}
+	${LEECHCRAFT_LIBRARIES}
+	${X11_X11_LIB}
+	${X11_Xdamage_LIB}
+	)
+install (TARGETS leechcraft_mellonetray DESTINATION ${LC_PLUGINS_DEST})
+install (DIRECTORY share/qml/mellonetray DESTINATION ${LC_QML_DEST})

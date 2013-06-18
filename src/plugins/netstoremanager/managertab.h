@@ -34,6 +34,7 @@
 #include <interfaces/structures.h>
 #include <interfaces/core/icoreproxy.h>
 #include <interfaces/ihavetabs.h>
+#include "interfaces/netstoremanager/isupportfilelistings.h"
 #include "ui_managertab.h"
 
 class QToolButton;
@@ -56,6 +57,7 @@ namespace NetStoreManager
 	enum Columns
 	{
 		Name,
+		Size,
 		Modify
 	};
 
@@ -91,6 +93,7 @@ namespace NetStoreManager
 		};
 		QPair<TransferOperation, QList<QByteArray>> TransferedIDs_;
 
+		QAction *OpenFile_;
 		QAction *CopyURL_;
 		QAction *Copy_;
 		QAction *Move_;
@@ -105,7 +108,6 @@ namespace NetStoreManager
 		QAction *Download_;
 		QAction *OpenTrash_;
 		QToolButton *Trash_;
-		QAction *TrashAction_;
 
 		QByteArray LastParentID_;
 
@@ -136,7 +138,7 @@ namespace NetStoreManager
 		QByteArray GetCurrentID () const;
 
 		void CallOnSelection (std::function<void (ISupportFileListings *sfl, QList<QByteArray> ids)>);
-
+		quint64 GetFolderSize (const QByteArray& id) const;
 		void ShowListItemsWithParent (const QByteArray& parentId = QByteArray (),
 				bool inTrash = false);
 
@@ -161,6 +163,7 @@ namespace NetStoreManager
 		void performRestoreFromTrash (const QList<QByteArray>& ids);
 		void performMoveToTrash (const QList<QByteArray>& ids);
 
+		void flOpenFile ();
 		void flCopy ();
 		void flMove ();
 		void flRename ();
@@ -182,6 +185,8 @@ namespace NetStoreManager
 		void handleCurrentIndexChanged (int index);
 
 		void handleGotFileUrl (const QUrl& url, const QByteArray& id = QByteArray ());
+
+		void handleGotChanges (const QList<Change>& changes);
 
 	signals:
 		void removeTab (QWidget*);

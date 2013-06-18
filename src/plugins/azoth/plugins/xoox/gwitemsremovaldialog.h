@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2010-2012  Oleg Linkin
+ * Copyright (C) 2006-2013  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -29,45 +29,23 @@
 
 #pragma once
 
-#include <QMetaType>
-#include <QVariant>
+#include <QDialog>
+#include "ui_gwitemsremovaldialog.h"
 
 namespace LeechCraft
 {
-namespace Blogique
+namespace Azoth
 {
-	/** @brief Interface representing a side widget with main post options'.
-	*
-	**/
-	class IPostOptionsWidget
+namespace Xoox
+{
+	class GlooxCLEntry;
+
+	class GWItemsRemovalDialog : public QDialog
 	{
+		Ui::GWItemsRemovalDialog Ui_;
 	public:
-		virtual ~IPostOptionsWidget () {};
-
-		/** @brief Returns list of tags for entry.
-		*
-		* @return List of tags
-		**/
-		virtual QStringList GetTags () const = 0;
-
-		/** @brief Set tags.
-		 * 
-		 **/
-		virtual void SetTags (const QStringList& tags) = 0;
-
-		/** @brief Returns date when post was written.
-		 * 
-		 * @return Post date
-		 **/
-		virtual QDateTime GetPostDate () const = 0;
-
-		/** @brief Set post timestamp.
-		 * 
-		 **/
-		virtual void SetPostDate (const QDateTime& dt) = 0;
+		GWItemsRemovalDialog (const QList<GlooxCLEntry*>&, QWidget* = 0);
 	};
 }
 }
-
-Q_DECLARE_INTERFACE (LeechCraft::Blogique::IPostOptionsWidget,
-		"org.Deviant.LeechCraft.Blogique.IPostOptionsWidget/1.0");
+}

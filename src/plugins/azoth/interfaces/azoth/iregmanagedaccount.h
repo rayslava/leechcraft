@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2010-2013  Oleg Linkin
+ * Copyright (C) 2006-2013  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -29,24 +29,32 @@
 
 #pragma once
 
-#include <QLineEdit>
+#include <QFlags>
+#include <QMetaType>
 
 namespace LeechCraft
 {
-namespace Blogique
+namespace Azoth
 {
-namespace Metida
-{
-	class TagsWidget : public QLineEdit
+	class IRegManagedAccount
 	{
-		Q_OBJECT
-		QHash<QString, int> Tags_;
-
 	public:
-		explicit TagsWidget (QWidget *parent = 0);
+		virtual ~IRegManagedAccount () {}
 
-		void SetTags (const QHash<QString, int>& tags);
+		enum class Feature
+		{
+			UpdatePass,
+			RemoveAcc
+		};
+
+		virtual bool SupportsFeature (Feature) const = 0;
+
+		virtual void UpdateServerPassword (const QString& newPass) = 0;
+	protected:
+		virtual void serverPasswordUpdated (const QString&) = 0;
 	};
 }
 }
-}
+
+Q_DECLARE_INTERFACE (LeechCraft::Azoth::IRegManagedAccount,
+		"org.Deviant.LeechCraft.Azoth.IRegManagedAccount/1.0");

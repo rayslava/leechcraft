@@ -61,16 +61,6 @@ namespace NetStoreManager
 
 	Q_DECLARE_FLAGS (ListingOps, ListingOp);
 
-	struct Change
-	{
-		QStringList Id_;
-		bool Deleted_;
-		QList<QStandardItem*> Row_;
-
-		QStringList ParentId_;
-		bool ParentIsRoot_;
-	};
-
 	struct StorageItem
 	{
 		QByteArray ID_;
@@ -78,6 +68,8 @@ namespace NetStoreManager
 
 		QString Name_;
 		QDateTime ModifyDate_;
+
+		quint64 Size_;
 
 		QByteArray Hash_;
 		enum class HashType
@@ -87,18 +79,23 @@ namespace NetStoreManager
 			Sha1
 		} HashType_;
 
-
 		QUrl Url_;
+		QUrl ShareUrl_;
 		QMap<QUrl, QPair<QString, QString>> ExportLinks;
+
+		bool Shared_;
 
 		bool IsDirectory_;
 
 		bool IsTrashed_;
 
+
 		QString MimeType_;
 
 		StorageItem ()
-		: IsDirectory_ (false)
+		: Size_ (0)
+		, Shared_ (false)
+		, IsDirectory_ (false)
 		, IsTrashed_ (false)
 		{
 		}
@@ -107,6 +104,14 @@ namespace NetStoreManager
 		{
 			return !ID_.isEmpty ();
 		}
+	};
+
+	struct Change
+	{
+		QByteArray ID_;
+		bool Deleted_;
+		QByteArray ItemID_;
+		StorageItem Item_;
 	};
 
 	class ISupportFileListings

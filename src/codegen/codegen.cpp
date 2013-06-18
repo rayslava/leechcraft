@@ -27,28 +27,42 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#ifndef PLUGINS_AUSCRIE_REQUESTBUILDER_H
-#define PLUGINS_AUSCRIE_REQUESTBUILDER_H
-#include <QString>
+#define __STDC_LIMIT_MACROS
+#define __STDC_CONSTANT_MACROS
 
-namespace LeechCraft
+#include <clang/AST/ASTConsumer.h>
+#include <clang/AST/ASTContext.h>
+#include <clang/AST/DeclVisitor.h>
+#include <clang/Basic/Builtins.h>
+#include <clang/Basic/Diagnostic.h>
+#include <clang/Basic/FileManager.h>
+#include <clang/Basic/IdentifierTable.h>
+#include <clang/Basic/SourceManager.h>
+#include <clang/Basic/TargetInfo.h>
+#include <clang/Frontend/CompilerInstance.h>
+#include <clang/Frontend/FrontendActions.h>
+#include <clang/Frontend/TextDiagnosticBuffer.h>
+#include <clang/Lex/HeaderSearch.h>
+#include <clang/Lex/Preprocessor.h>
+#include <clang/Parse/ParseAST.h>
+#include <clang/Parse/Parser.h>
+#include <clang/Sema/Sema.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/Support/Casting.h>
+
+int main ()
 {
-namespace Auscrie
-{
-	class RequestBuilder
-	{
-		QByteArray Result_;
-		QString Boundary_;
-	public:
-		RequestBuilder ();
+	/*
+	clang::DiagnosticOptions opts;
+	llvm::IntrusiveRefCntPtr<clang::DiagnosticIDs> ids (new clang::DiagnosticIDs);
+	clang::DiagnosticsEngine diag (ids, &opts);
 
-		void AddPair (const QString&, const QString&);
-		void AddFile (const QString&, const QString&, const QByteArray&);
+	clang::LangOptions langOptions;
+	langOptions.CPlusPlus = 1;
 
-		QByteArray Build ();
-		QString GetBoundary () const;
-	};
+	clang::TargetOptions targetOptions;
+	targetOptions.Triple = "x86_64";
+
+	std::auto_ptr<clang::TargetInfo> targetInfo (clang::TargetInfo::CreateTargetInfo(diag, &targetOptions));
+	*/
 }
-}
-
-#endif
