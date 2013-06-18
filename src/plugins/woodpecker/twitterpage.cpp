@@ -343,7 +343,13 @@ namespace Woodpecker
 			Ui_.TwitList_->verticalScrollBar ()->setSliderPosition (Ui_.TwitList_->verticalScrollBar ()->maximum () - 1);
 			Ui_.TwitList_->setEnabled (false);
 			if (!ScreenTwits_.empty ())
-				Interface_->requestMoreTweets (QString ("%1").arg ((*(ScreenTwits_.begin ()))->GetId ()));
+			{
+				KQOAuthParameters param;
+				param.insert ("max_id", QString ("%1").arg ((*(ScreenTwits_.begin ()))->GetId ()));
+				param.insert ("count", QString ("%1").arg (30));
+				
+				Interface_->request (param, FeedMode::UserTimeline);
+			}
 		}
 	}
 
