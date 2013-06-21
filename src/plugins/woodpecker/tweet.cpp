@@ -116,7 +116,28 @@ namespace Woodpecker
 			else
 				pos += rx.matchedLength ();
 		}
+		
+		QRegExp usernameRx ("(\\s|^)(@[\\w\\d_]+)(\\s|,|$|:)");
+		usernameRx.setMinimal (true);
 
+		/* Some regexp multiple match support magic for links highlighting.
+		 * Borrowed from Qt support forum */
+		pos = 0;
+		while ((pos = usernameRx.indexIn (html, pos)) != -1)
+		{
+			if (usernameRx.cap (2).startsWith ("http")) 
+			{
+				QString before = usernameRx.cap (2);
+				if (before.endsWith ("."))
+					before.chop (1);
+				QString after = " <a href=\"user\">" + before + "</a>";
+				html.replace (pos, before.length () + 1, after);
+				pos += after.length ();
+			}
+			else
+				pos += usernameRx.matchedLength ();
+		}
+		
 		Document_.setHtml (html);
 	}
 

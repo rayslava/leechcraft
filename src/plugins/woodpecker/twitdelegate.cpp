@@ -194,6 +194,7 @@ namespace Woodpecker
 
 				if (parentWidget && !anchor.isEmpty ())
 				{
+					qDebug () << Q_FUNC_INFO << QString (anchor);
 					Entity url = Util::MakeEntity (QUrl (anchor), QString (), OnlyHandle | FromUserInitiated, QString ());
 					Core::Instance ().GetCoreProxy ()->GetEntityManager ()->HandleEntity (url);
 				}
