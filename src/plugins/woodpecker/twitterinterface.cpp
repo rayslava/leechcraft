@@ -349,6 +349,12 @@ namespace Woodpecker
 				SetLastRequestMode (FeedMode::HomeTimeline);
 				SignedRequest (TwitterRequest::HomeTimeline, KQOAuthRequest::GET, param);
 				break;
+				
+			case FeedMode::Direct:
+				SetLastRequestMode (FeedMode::Direct);
+				SignedRequest (TwitterRequest::Direct, KQOAuthRequest::GET, param);
+				break;
+				
 			default:
 				qWarning () << Q_FUNC_INFO << "Unknown request";
 		}

@@ -63,6 +63,19 @@ namespace Woodpecker
 			[this] (const TabClassInfo& tc)
 				{ MakeTab (new TwitterPage (tc, this), tc); }
 			});	
+		
+		TabClasses_.append ({
+			{
+				GetUniqueID () + "/Direct",
+				tr ("Direct messages"),
+				tr ("User's directs timeline"),
+				GetIcon (),
+				2,
+				TFOpenableByRequest
+			},
+			[this] (const TabClassInfo& tc)
+				{ MakeTab (new TwitterPage (tc, this, FeedMode::Direct), tc); }
+			});	
 	}
 	
 	void Plugin::AddTab (const QString& id, const QString& name, const QString& info, 
