@@ -88,17 +88,39 @@ namespace Murm
 		QHash<QNetworkReply*, MessageInfoSetter_f> Reply2MessageSetter_;
 		QHash<QNetworkReply*, PhotoInfoSetter_f> Reply2PhotoSetter_;
 
+		QHash<QNetworkReply*, QString> Reply2ListName_;
+
+		QHash<QNetworkReply*, ChatInfo> Reply2ChatInfo_;
+
+		struct ChatRemoveInfo
+		{
+			qulonglong Chat_;
+			qulonglong User_;
+		};
+		QHash<QNetworkReply*, ChatRemoveInfo> Reply2ChatRemoveInfo_;
+
 		int APIErrorCount_ = 0;
 		bool ShouldRerunPrepared_ = false;
+
+		bool MarkingOnline_ = false;
+		QTimer * const MarkOnlineTimer_;
 	public:
+		enum class MessageType
+		{
+			Dialog,
+			Chat
+		};
+
 		VkConnection (const QByteArray&, ICoreProxy_ptr);
 
 		const QByteArray& GetCookies () const;
 
 		void RerequestFriends ();
 
-		void SendMessage (qulonglong to, const QString& body,
-				std::function<void (qulonglong)> idSetter);
+		void SendMessage (qulonglong to,
+				const QString& body,
+				std::function<void (qulonglong)> idSetter,
+				MessageType type);
 		void SendTyping (qulonglong to);
 		void MarkAsRead (const QList<qulonglong>&);
 		void RequestGeoIds (const QList<int>&, GeoSetter_f, GeoIdType);
@@ -106,10 +128,19 @@ namespace Murm
 		void GetMessageInfo (qulonglong id, MessageInfoSetter_f setter);
 		void GetPhotoInfos (const QStringList& ids, PhotoInfoSetter_f setter);
 
+		void AddFriendList (const QString&, const QList<qulonglong>&);
+		void ModifyFriendList (const ListInfo&, const QList<qulonglong>&);
+
+		void CreateChat (const QString&, const QList<qulonglong>&);
+		void RequestChatInfo (qulonglong);
+		void RemoveChatUser (qulonglong chat, qulonglong user);
+
 		void SetStatus (const QString&);
 
 		void SetStatus (const EntryStatus&);
 		EntryStatus GetStatus () const;
+
+		void SetMarkingOnlineEnabled (bool);
 
 		void QueueRequest (PreparedCall_f);
 	private:
@@ -119,14 +150,22 @@ namespace Murm
 		void rerunPrepared ();
 		void callWithKey (const QString&);
 
+		void markOnline ();
+
 		void handleListening ();
 		void handlePollError ();
 		void handlePollStopped ();
 		void handlePollData (const QVariantMap&);
 
+		void handleFriendListAdded ();
+		void handleGotSelfInfo ();
 		void handleGotFriendLists ();
 		void handleGotFriends ();
 		void handleGotUnreadMessages ();
+
+		void handleChatCreated ();
+		void handleChatInfo ();
+		void handleChatUserRemoved ();
 
 		void handleMessageSent ();
 		void handleCountriesFetched ();
@@ -141,10 +180,16 @@ namespace Murm
 
 		void stoppedPolling ();
 
+		void gotSelfInfo (const UserInfo&);
+
 		void gotLists (const QList<ListInfo>&);
+		void addedLists (const QList<ListInfo>&);
 		void gotUsers (const QList<UserInfo>&);
 		void gotMessage (const MessageInfo&);
 		void gotTypingNotification (qulonglong uid);
+
+		void gotChatInfo (const ChatInfo&);
+		void chatUserRemoved (qulonglong, qulonglong);
 
 		void userStateChanged (qulonglong uid, bool online);
 	};

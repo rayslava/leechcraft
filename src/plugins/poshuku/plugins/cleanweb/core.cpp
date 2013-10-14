@@ -43,6 +43,7 @@
 #include <qwebelement.h>
 #include <QCoreApplication>
 #include <QtConcurrentRun>
+#include <QtConcurrentMap>
 #include <QFutureWatcher>
 #include <QMenu>
 #include <QMainWindow>
@@ -58,6 +59,7 @@
 Q_DECLARE_METATYPE (QWebFrame*);
 Q_DECLARE_METATYPE (QPointer<QWebFrame>);
 Q_DECLARE_METATYPE (QNetworkReply*);
+Q_DECLARE_METATYPE (LeechCraft::Poshuku::CleanWeb::HidingWorkerResult);
 
 namespace LeechCraft
 {
@@ -212,6 +214,13 @@ namespace CleanWeb
 				SIGNAL (gotEntity (LeechCraft::Entity)),
 				this,
 				SIGNAL (gotEntity (LeechCraft::Entity)));
+
+		qRegisterMetaType<HidingWorkerResult> ("HidingWorkerResult");
+
+		connect (UserFilters_,
+				SIGNAL (filtersChanged ()),
+				this,
+				SLOT (regenFilterCaches ()));
 	}
 
 	Core& Core::Instance ()
@@ -341,10 +350,7 @@ namespace CleanWeb
 	{
 		void RemoveElem (QWebElement elem)
 		{
-			auto parent = elem.parent ();
-			elem.removeFromDocument ();
-			if (!parent.isNull () && !parent.findAll ("*").count ())
-				RemoveElem (parent);
+			elem.setStyleProperty ("visibility", "hidden !important");
 		}
 	}
 
@@ -368,20 +374,19 @@ namespace CleanWeb
 		if (req.url ().scheme () == "data")
 			return 0;
 
-		QString matched;
-		if (!ShouldReject (req, &matched))
+		if (!ShouldReject (req))
 			return 0;
 
 		hook->CancelDefault ();
 
 		QWebFrame *frame = qobject_cast<QWebFrame*> (req.originatingObject ());
-		qDebug () << "rejecting against" << matched << frame;
+		qDebug () << "rejecting" << frame;
 		if (frame)
 			QMetaObject::invokeMethod (this,
 					"delayedRemoveElements",
 					Qt::QueuedConnection,
 					Q_ARG (QPointer<QWebFrame>, frame),
-					Q_ARG (QString, req.url ().toEncoded ()));
+					Q_ARG (QUrl, req.url ()));
 
 		Util::CustomNetworkReply *result = new Util::CustomNetworkReply (req.url (), this);
 		result->SetContent (QString ("Blocked by Poshuku CleanWeb"));
@@ -405,19 +410,19 @@ namespace CleanWeb
 		if (error->error != QNetworkReply::ContentAccessDenied)
 			return;
 
-		QString url = error->url.toEncoded ();
+		auto url = error->url;
 		proxy->CancelDefault ();
 		proxy->SetReturnValue (true);
 		QMetaObject::invokeMethod (this,
 				"delayedRemoveElements",
 				Qt::QueuedConnection,
 				Q_ARG (QPointer<QWebFrame>, page->mainFrame ()),
-				Q_ARG (QString, url));
+				Q_ARG (QUrl, url));
 	}
 
 	void Core::HandleContextMenu (const QWebHitTestResult& r,
-		QWebView *view, QMenu *menu,
-		LeechCraft::Poshuku::WebViewCtxMenuStage stage)
+			QWebView *view, QMenu *menu,
+			LeechCraft::Poshuku::WebViewCtxMenuStage stage)
 	{
 		QUrl iurl = r.imageUrl ();
 		if (stage == WVSAfterImage &&
@@ -448,6 +453,130 @@ namespace CleanWeb
 		return FlashOnClickWhitelist_;
 	}
 
+	namespace
+	{
+#if defined (Q_OS_WIN32) || defined (Q_OS_MAC)
+		// Thanks for this goes to http://www.codeproject.com/KB/string/patmatch.aspx
+		bool WildcardMatches (const char *pattern, const char *str)
+		{
+			enum State {
+				Exact,        // exact match
+				Any,        // ?
+				AnyRepeat    // *
+			};
+
+			const char *s = str;
+			const char *p = pattern;
+			const char *q = 0;
+			int state = 0;
+
+			bool match = true;
+			while (match && *p) {
+				if (*p == '*') {
+					state = AnyRepeat;
+					q = p+1;
+				} else if (*p == '?') state = Any;
+				else state = Exact;
+
+				if (*s == 0) break;
+
+				switch (state) {
+					case Exact:
+						match = *s == *p;
+						s++;
+						p++;
+						break;
+
+					case Any:
+						match = true;
+						s++;
+						p++;
+						break;
+
+					case AnyRepeat:
+						match = true;
+						s++;
+
+						if (*s == *q) p++;
+						break;
+				}
+			}
+
+			if (state == AnyRepeat) return (*s == *q);
+			else if (state == Any) return (*s == *p);
+			else return match && (*s == *p);
+		}
+#else
+#include <fnmatch.h>
+
+		bool WildcardMatches (const char *pat, const char *str)
+		{
+			return !fnmatch (pat, str, 0);
+		}
+#endif
+
+		bool Matches (const FilterItem& item,
+				const QString& urlStr, const QByteArray& urlUtf8, const QString& domain)
+		{
+			if (item.Option_.MatchObjects_ != FilterOption::MatchObject::All)
+			{
+				if (!(item.Option_.MatchObjects_ & FilterOption::MatchObject::CSS) &&
+						!(item.Option_.MatchObjects_ & FilterOption::MatchObject::Image) &&
+						!(item.Option_.MatchObjects_ & FilterOption::MatchObject::Script) &&
+						!(item.Option_.MatchObjects_ & FilterOption::MatchObject::Object) &&
+						!(item.Option_.MatchObjects_ & FilterOption::MatchObject::ObjSubrequest))
+					return false;
+			}
+
+			const auto& opt = item.Option_;
+			if (!opt.NotDomains_.isEmpty ())
+			{
+				for (const auto& notDomain : opt.NotDomains_)
+					if (domain.endsWith (notDomain, opt.Case_))
+						return false;
+			}
+
+			if (!opt.Domains_.isEmpty ())
+			{
+				bool shouldFurther = false;
+				for (const auto& doDomain : opt.Domains_)
+					if (domain.endsWith (doDomain, opt.Case_))
+					{
+						shouldFurther = true;
+						break;
+					}
+
+				if (!shouldFurther)
+					return false;
+			}
+
+			switch (opt.MatchType_)
+			{
+			case FilterOption::MTRegexp:
+				return item.RegExp_.Matches (urlStr);
+			case FilterOption::MTWildcard:
+				return WildcardMatches (item.OrigString_.constData (), urlUtf8.constData ());
+			case FilterOption::MTPlain:
+				return item.PlainMatcher_.indexIn (urlUtf8) >= 0;
+			case FilterOption::MTBegin:
+				return urlStr.startsWith (item.OrigString_);
+			case FilterOption::MTEnd:
+				return urlStr.endsWith (item.OrigString_);
+			}
+
+			return false;
+		}
+	}
+
+	namespace
+	{
+		void DumbReductor (bool& res, bool value)
+		{
+			if (value)
+				res = true;
+		}
+	}
+
 	/** We test each filter until we know that we should reject it or until
 	 * it gets whitelisted.
 	 *
@@ -469,7 +598,7 @@ namespace CleanWeb
 	 *
 	 * The same is applied to the filter strings.
 	 */
-	bool Core::ShouldReject (const QNetworkRequest& req, QString *matchedFilter) const
+	bool Core::ShouldReject (const QNetworkRequest& req) const
 	{
 		if (!req.hasRawHeader ("referer"))
 			return false;
@@ -508,151 +637,38 @@ namespace CleanWeb
 		const auto& domainUtf8 = domain.toUtf8 ();
 		const bool isForeign = !req.rawHeader ("Referer").contains (domainUtf8);
 
-		QList<Filter> allFilters = Filters_;
-		allFilters << UserFilters_->GetFilter ();
-		Q_FOREACH (const Filter& filter, allFilters)
-		{
-			Q_FOREACH (const auto& item, filter.Exceptions_)
+		auto matches = [=] (const QList<QList<FilterItem>>& chunks) -> bool
 			{
-				const auto& url = item.Option_.Case_ == Qt::CaseSensitive ? urlStr : cinUrlStr;
-				const auto& utf8 = item.Option_.Case_ == Qt::CaseSensitive ? urlUtf8 : cinUrlUtf8;
-				if (item.Option_.HideSelector_.isEmpty () && Matches (item, url, utf8, domain))
-					return false;
-			}
+				return QtConcurrent::blockingMappedReduced (chunks.begin (), chunks.end (),
+						std::function<bool (const QList<FilterItem>&)>
+						{
+							[=] (const QList<FilterItem>& items) -> bool
+							{
+								for (const auto& item : items)
+								{
+									const auto& opt = item.Option_;
+									if (opt.AbortForeign_ && isForeign)
+										continue;
 
-			Q_FOREACH (const auto& item, filter.Filters_)
-			{
-				if (!item.Option_.HideSelector_.isEmpty ())
-					continue;
+									if (opt.MatchObjects_ != FilterOption::MatchObject::All &&
+											objs != FilterOption::MatchObject::All &&
+											!(objs & opt.MatchObjects_))
+										continue;
 
-				const auto& opt = item.Option_;
-				if (opt.AbortForeign_ && isForeign)
-					continue;
+									const auto& url = item.Option_.Case_ == Qt::CaseSensitive ? urlStr : cinUrlStr;
+									const auto& utf8 = item.Option_.Case_ == Qt::CaseSensitive ? urlUtf8 : cinUrlUtf8;
+									if (Matches (item, url, utf8, domain))
+										return true;
+								}
 
-				if (opt.MatchObjects_ != FilterOption::MatchObject::All &&
-						objs != FilterOption::MatchObject::All &&
-						!(objs & opt.MatchObjects_))
-					continue;
-
-				const auto& url = opt.Case_ == Qt::CaseSensitive ? urlStr : cinUrlStr;
-				const auto& utf8 = opt.Case_ == Qt::CaseSensitive ? urlUtf8 : cinUrlUtf8;
-				if (Matches (item, url, utf8, domain))
-				{
-					*matchedFilter = item.OrigString_;
-					return true;
-				}
-			}
-		}
-
-		return false;
-	}
-
-	#if defined (Q_OS_WIN32) || defined (Q_OS_MAC)
-	// Thanks for this goes to http://www.codeproject.com/KB/string/patmatch.aspx
-	bool WildcardMatches (const char *pattern, const char *str)
-	{
-		enum State {
-			Exact,        // exact match
-			Any,        // ?
-			AnyRepeat    // *
-		};
-
-		const char *s = str;
-		const char *p = pattern;
-		const char *q = 0;
-		int state = 0;
-
-		bool match = true;
-		while (match && *p) {
-			if (*p == '*') {
-				state = AnyRepeat;
-				q = p+1;
-			} else if (*p == '?') state = Any;
-			else state = Exact;
-
-			if (*s == 0) break;
-
-			switch (state) {
-				case Exact:
-					match = *s == *p;
-					s++;
-					p++;
-					break;
-
-				case Any:
-					match = true;
-					s++;
-					p++;
-					break;
-
-				case AnyRepeat:
-					match = true;
-					s++;
-
-					if (*s == *q) p++;
-					break;
-			}
-		}
-
-		if (state == AnyRepeat) return (*s == *q);
-		else if (state == Any) return (*s == *p);
-		else return match && (*s == *p);
-	}
-	#else
-	#include <fnmatch.h>
-
-	bool WildcardMatches (const char *pat, const char *str)
-	{
-		return !fnmatch (pat, str, 0);
-	}
-	#endif
-
-	bool Core::Matches (const FilterItem& item, const QString& urlStr, const QByteArray& urlUtf8, const QString& domain) const
-	{
-		if (item.Option_.MatchObjects_ != FilterOption::MatchObject::All)
-		{
-			if (!(item.Option_.MatchObjects_ & FilterOption::MatchObject::CSS) &&
-					!(item.Option_.MatchObjects_ & FilterOption::MatchObject::Image) &&
-					!(item.Option_.MatchObjects_ & FilterOption::MatchObject::Script) &&
-					!(item.Option_.MatchObjects_ & FilterOption::MatchObject::Object) &&
-					!(item.Option_.MatchObjects_ & FilterOption::MatchObject::ObjSubrequest))
-				return false;
-		}
-
-		const auto& opt = item.Option_;
-		if (!opt.NotDomains_.isEmpty ())
-		{
-			Q_FOREACH (const auto& notDomain, opt.NotDomains_)
-				if (domain.endsWith (notDomain, opt.Case_))
-					return false;
-		}
-
-		if (!opt.Domains_.isEmpty ())
-		{
-			bool shouldFurther = false;
-			Q_FOREACH (QString doDomain, opt.Domains_)
-				if (domain.endsWith (doDomain, opt.Case_))
-				{
-					shouldFurther = true;
-					break;
-				}
-			if (!shouldFurther)
-				return false;
-		}
-
-		switch (opt.MatchType_)
-		{
-		case FilterOption::MTRegexp:
-			return item.RegExp_.Matches (urlStr);
-		case FilterOption::MTWildcard:
-			return WildcardMatches (item.OrigString_.constData (), urlUtf8.constData ());
-		case FilterOption::MTPlain:
-			return item.PlainMatcher_.indexIn (urlUtf8) >= 0;
-		case FilterOption::MTBegin:
-			return urlStr.startsWith (item.OrigString_);
-		case FilterOption::MTEnd:
-			return urlStr.endsWith (item.OrigString_);
-		}
+								return false;
+							}
+						}, DumbReductor);
+			};
+		if (matches (ExceptionsCache_))
+			return false;
+		if (matches (FilterItemsCache_))
+			return true;
 
 		return false;
 	}
@@ -689,6 +705,8 @@ namespace CleanWeb
 		beginInsertRows (QModelIndex (), Filters_.size (), Filters_.size ());
 		Filters_ << f;
 		endInsertRows ();
+
+		regenFilterCaches ();
 	}
 
 	void Core::Parse (const QString& filePath)
@@ -918,6 +936,7 @@ namespace CleanWeb
 		if (!frame)
 			return;
 
+		qDebug () << Q_FUNC_INFO << frame;
 		const QUrl& frameUrl = frame->url ();
 		const QString& urlStr = frameUrl.toString ();
 		const auto& urlUtf8 = urlStr.toUtf8 ();
@@ -928,91 +947,193 @@ namespace CleanWeb
 
 		QList<Filter> allFilters = Filters_;
 		allFilters << UserFilters_->GetFilter ();
-		int numItems = 0;
-		QList<QWebElement> elems;
-		Q_FOREACH (const Filter& filter, allFilters)
-			Q_FOREACH (const auto& item, filter.Filters_)
-			{
-				if (item.Option_.HideSelector_.isEmpty ())
-					continue;
 
-				const auto& opt = item.Option_;
-				const auto& url = opt.Case_ == Qt::CaseSensitive ? urlStr : cinUrlStr;
-				const auto& utf8 = opt.Case_ == Qt::CaseSensitive ? urlUtf8 : cinUrlUtf8;
-				if (!item.OrigString_.isEmpty () && !Matches (item, url, utf8, domain))
-					continue;
-
-				const auto& matchingElems = frame->findAllElements (item.Option_.HideSelector_);
-				if (matchingElems.count ())
-					qDebug () << "removing"
-							<< matchingElems.count ()
-							<< "elems for"
-							<< item.Option_.HideSelector_
-							<< frameUrl;
-
-				Q_FOREACH (auto elem, matchingElems)
-					RemoveElem (elem);
-
-				if (!(++numItems % 100))
-				{
-					qApp->processEvents ();
-					if (!frame)
+		auto watcher = new QFutureWatcher<HidingWorkerResult> (this);
+		connect (watcher,
+				SIGNAL (finished ()),
+				this,
+				SLOT (hidingElementsFound ()));
+		watcher->setFuture (QtConcurrent::run ([=] () -> HidingWorkerResult
 					{
-						qDebug () << Q_FUNC_INFO
-								<< "frame destroyed in processEvents(), stopping";
-						return;
-					}
-				}
-			}
+						QStringList sels;
+						for (const Filter& filter : allFilters)
+							for (const auto& item : filter.Filters_)
+							{
+								if (item.Option_.HideSelector_.isEmpty ())
+									continue;
+
+								const auto& opt = item.Option_;
+								const auto& url = opt.Case_ == Qt::CaseSensitive ? urlStr : cinUrlStr;
+								const auto& utf8 = opt.Case_ == Qt::CaseSensitive ? urlUtf8 : cinUrlUtf8;
+								if (!item.OrigString_.isEmpty () && !Matches (item, url, utf8, domain))
+									continue;
+
+								sels << item.Option_.HideSelector_;
+							}
+						return { frame, 0, sels };
+					}));
+
+		for (auto childFrame : frame->childFrames ())
+			handleFrameLayout (childFrame);
 	}
 
-	void Core::delayedRemoveElements (QPointer<QWebFrame> frame, const QString& url)
+	void Core::hidingElementsFound ()
+	{
+		auto watcher = dynamic_cast<QFutureWatcher<HidingWorkerResult>*> (sender ());
+		watcher->deleteLater ();
+
+		hideElementsChunk (watcher->result ());
+
+	}
+
+	void Core::hideElementsChunk (HidingWorkerResult result)
+	{
+		if (!result.Frame_)
+			return;
+
+		const int chunkSize = 100;
+
+		auto& i = result.CurrentPos_;
+		for (auto end = std::min (i + chunkSize, result.Selectors_.size ()); i < end; ++i)
+		{
+			const auto& selector = result.Selectors_.value (i);
+
+			const auto& matchingElems = result.Frame_->findAllElements (selector);
+			if (matchingElems.count ())
+				qDebug () << "removing"
+						<< matchingElems.count ()
+						<< "elems for"
+						<< selector
+						<< result.Frame_->url ();
+
+			for (int i = matchingElems.count () - 1; i >= 0; --i)
+				RemoveElem (matchingElems.at (i));
+		}
+
+		if (result.CurrentPos_ < result.Selectors_.size ())
+			QMetaObject::invokeMethod (this,
+					"hideElementsChunk",
+					Qt::QueuedConnection,
+					Q_ARG (HidingWorkerResult, result));
+	}
+
+	namespace
+	{
+		bool RemoveElements (QWebFrame *frame, const QList<QUrl>& urls)
+		{
+			const auto& baseUrl = frame->baseUrl ();
+
+			const auto& elems = frame->findAllElements ("img,script,iframe,applet,object");
+
+			bool removed = false;
+			for (int i = elems.count () - 1; i >= 0; --i)
+			{
+				auto elem = elems.at (i);
+				if (urls.contains (baseUrl.resolved (QUrl::fromEncoded (elem.attribute ("src").toUtf8 ()))))
+				{
+					elem.removeFromDocument ();
+					removed = true;
+				}
+			}
+			return removed;
+		}
+	}
+
+	void Core::delayedRemoveElements (QPointer<QWebFrame> frame, const QUrl& url)
 	{
 		if (!frame)
 			return;
 
-		const auto& elems = frame->findAllElements ("*[src=\"" + url + "\"]");
-		if (elems.count ())
-			Q_FOREACH (QWebElement elem, elems)
-				RemoveElem (elem);
-		else if (frame->parentFrame ())
-			delayedRemoveElements (frame->parentFrame (), url);
-		else
-		{
-			connect (frame,
-					SIGNAL (loadFinished (bool)),
-					this,
-					SLOT (moreDelayedRemoveElements ()),
-					Qt::UniqueConnection);
-			connect (frame,
-					SIGNAL (destroyed (QObject*)),
-					this,
-					SLOT (handleFrameDestroyed ()),
-					Qt::UniqueConnection);
-			MoreDelayedURLs_ [frame] << url;
-		}
+		if (RemoveElements (frame, { url }))
+			return;
+
+		connect (frame,
+				SIGNAL (loadFinished (bool)),
+				this,
+				SLOT (moreDelayedRemoveElements ()),
+				Qt::UniqueConnection);
+		connect (frame,
+				SIGNAL (destroyed (QObject*)),
+				this,
+				SLOT (handleFrameDestroyed ()),
+				Qt::UniqueConnection);
+		MoreDelayedURLs_ [frame] << url;
 	}
 
 	void Core::moreDelayedRemoveElements ()
 	{
-		QWebFrame *frame = qobject_cast<QWebFrame*> (sender ());
-		Q_FOREACH (const QString& url, MoreDelayedURLs_ [frame])
-		{
-			QWebElementCollection elems =
-					frame->findAllElements ("*[src=\"" + url + "\"]");
-			if (elems.count ())
-				Q_FOREACH (QWebElement elem, elems)
-					elem.removeFromDocument ();
-			else
-				qWarning () << Q_FUNC_INFO << "not found" << url;
-		}
+		auto frame = qobject_cast<QWebFrame*> (sender ());
 
-		MoreDelayedURLs_.remove (frame);
+		const auto& urls = MoreDelayedURLs_.take (frame);
+		if (!RemoveElements (frame, urls))
+			qWarning () << Q_FUNC_INFO
+					<< urls
+					<< "not found for"
+					<< frame;
 	}
 
 	void Core::handleFrameDestroyed ()
 	{
 		MoreDelayedURLs_.remove (static_cast<QWebFrame*> (sender ()));
+	}
+
+	void Core::regenFilterCaches ()
+	{
+		ExceptionsCache_.clear ();
+		FilterItemsCache_.clear ();
+
+		QList<Filter> allFilters = Filters_;
+		allFilters << UserFilters_->GetFilter ();
+
+		int exceptionsCount = 0;
+		int filtersCount = 0;
+		for (const Filter& filter : allFilters)
+		{
+			exceptionsCount += filter.Exceptions_.size ();
+			filtersCount += filter.Filters_.size ();
+		}
+
+		auto idealThreads = std::max (QThread::idealThreadCount (), 2);
+
+		const int exChunkSize = std::max (exceptionsCount / idealThreads / 4, 200);
+		const int fChunkSize = std::max (filtersCount / idealThreads / 4, 200);
+		qDebug () << Q_FUNC_INFO << exceptionsCount << filtersCount << exChunkSize << fChunkSize;
+
+		QList<FilterItem> lastItemsChunk, lastExceptionsChunk;
+		lastItemsChunk.reserve (fChunkSize);
+		lastExceptionsChunk.reserve (exChunkSize);
+
+		for (const Filter& filter : allFilters)
+		{
+			for (const auto& item : filter.Exceptions_)
+				if (item.Option_.HideSelector_.isEmpty ())
+				{
+					lastExceptionsChunk << item;
+					if (lastExceptionsChunk.size () >= exChunkSize)
+					{
+						ExceptionsCache_ << lastExceptionsChunk;
+						lastExceptionsChunk.clear ();
+					}
+				}
+
+			for (const auto& item : filter.Filters_)
+			{
+				if (!item.Option_.HideSelector_.isEmpty ())
+					continue;
+
+				lastItemsChunk << item;
+				if (lastItemsChunk.size () >= fChunkSize)
+				{
+					FilterItemsCache_ << lastItemsChunk;
+					lastItemsChunk.clear ();
+				}
+			}
+		}
+
+		if (!lastItemsChunk.isEmpty ())
+			ExceptionsCache_ << lastItemsChunk;
+		if (!lastExceptionsChunk.isEmpty ())
+			FilterItemsCache_ << lastExceptionsChunk;
 	}
 }
 }

@@ -56,6 +56,14 @@ namespace CleanWeb
 	class FlashOnClickWhitelist;
 	class UserFiltersModel;
 
+
+	struct HidingWorkerResult
+	{
+		QPointer<QWebFrame> Frame_;
+		int CurrentPos_;
+		QStringList Selectors_;
+	};
+
 	class Core : public QAbstractItemModel
 	{
 		Q_OBJECT
@@ -65,6 +73,10 @@ namespace CleanWeb
 		UserFiltersModel *UserFilters_;
 
 		QList<Filter> Filters_;
+
+		QList<QList<FilterItem>> ExceptionsCache_;
+		QList<QList<FilterItem>> FilterItemsCache_;
+
 		QObjectList Downloaders_;
 		QStringList HeaderLabels_;
 
@@ -77,7 +89,7 @@ namespace CleanWeb
 		};
 		QMap<int, PendingJob> PendingJobs_;
 
-		QHash<QWebFrame*, QStringList> MoreDelayedURLs_;
+		QHash<QWebFrame*, QList<QUrl>> MoreDelayedURLs_;
 
 		ICoreProxy_ptr Proxy_;
 
@@ -115,7 +127,7 @@ namespace CleanWeb
 				QWebView*, QMenu*,
 				WebViewCtxMenuStage);
 
-		bool ShouldReject (const QNetworkRequest&, QString*) const;
+		bool ShouldReject (const QNetworkRequest&) const;
 
 		UserFiltersModel* GetUserFiltersModel () const;
 		FlashOnClickPlugin* GetFlashOnClick ();
@@ -155,7 +167,6 @@ namespace CleanWeb
 		 */
 		bool Load (const QUrl& url, const QString& subscrName);
 	private:
-		bool Matches (const FilterItem&, const QString&, const QByteArray&, const QString&) const;
 		void HandleProvider (QObject*);
 
 		void AddFilter (const Filter&);
@@ -174,9 +185,13 @@ namespace CleanWeb
 		void handleJobFinished (int);
 		void handleJobError (int, IDownload::Error);
 		void handleFrameLayout (QPointer<QWebFrame>);
-		void delayedRemoveElements (QPointer<QWebFrame>, const QString&);
+		void hidingElementsFound ();
+		void hideElementsChunk (HidingWorkerResult);
+		void delayedRemoveElements (QPointer<QWebFrame>, const QUrl&);
 		void moreDelayedRemoveElements ();
 		void handleFrameDestroyed ();
+
+		void regenFilterCaches ();
 	signals:
 		void delegateEntity (const LeechCraft::Entity&,
 				int*, QObject**);

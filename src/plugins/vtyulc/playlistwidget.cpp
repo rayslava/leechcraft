@@ -53,8 +53,8 @@ namespace vlc
 {
 	PlaylistWidget::PlaylistWidget (QIcon playIcon, QWidget *parent)
 	: QTreeView (parent)
-	, PlayIcon_ (playIcon)
 	, LastPlayingItem_ (nullptr)
+	, PlayIcon_ (playIcon)
 	{
 		setDragEnabled (true);
 		setDropIndicatorShown (true);
@@ -120,7 +120,15 @@ namespace vlc
 				return;
 			}
 		
-		libvlc_media_t *m = libvlc_media_new_path (Instance_, url.toEncoded ());
+		libvlc_media_t *m = libvlc_media_new_location (Instance_, url.toEncoded ());
+		libvlc_media_parse (m);
+		if (libvlc_media_get_duration (m) == 0) 
+		{
+			libvlc_media_release (m);
+			qWarning () << Q_FUNC_INFO << "A little fail:" << url;
+			return;
+		}
+		
 		libvlc_media_set_meta (m, libvlc_meta_URL, url.toEncoded ());
 		libvlc_media_list_add_media (Playlist_, m);
 		
@@ -237,7 +245,6 @@ namespace vlc
 		libvlc_media_t *media = libvlc_media_list_item_at_index (Playlist_, current);
 		if (current > -1 && current < libvlc_media_list_count (Playlist_))
 		{
-			int count = libvlc_media_list_count (Playlist_);
 			libvlc_media_list_player_play_item (Player_, media);
 			while (!libvlc_media_player_is_playing (NativePlayer_))
 			{

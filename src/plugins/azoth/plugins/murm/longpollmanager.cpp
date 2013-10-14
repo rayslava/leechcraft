@@ -63,8 +63,6 @@ namespace Murm
 	{
 		const auto& url = GetURLTemplate ();
 
-		qDebug () << Q_FUNC_INFO << url;
-
 		LastPollDT_ = QDateTime::currentDateTime ();
 		connect (Proxy_->GetNetworkAccessManager ()->get (QNetworkRequest (url)),
 				SIGNAL (finished ()),
@@ -172,7 +170,11 @@ namespace Murm
 				start ();
 		}
 		else
+		{
+			qDebug () << Q_FUNC_INFO
+					<< "should stop polling, stopping...";
 			emit stopped ();
+		}
 	}
 
 	void LongPollManager::handleGotLPServer()

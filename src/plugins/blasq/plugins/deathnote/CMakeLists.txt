@@ -14,24 +14,32 @@ include_directories (
 	)
 
 set (DEATHNOTE_SRCS
+	albumsettingsdialog.cpp
 	deathnote.cpp
 	fotobilderaccount.cpp
 	fotobilderservice.cpp
 	registerpage.cpp
+	selectgroupsdialog.cpp
 	)
 
 set (DEATHNOTE_FORMS
+	albumsettingsdialog.ui
 	registerpage.ui
+	selectgroupsdialog.ui
 	)
+
+set (DEATHNOTE_RESOURCES blasqdeathnoteresources.qrc)
 # CreateTrs("blasq_vangog" "en;ru_RU" VANGOG_COMPILED_TRANSLATIONS)
 # CreateTrsUpTarget("blasq_vangog" "en;ru_RU" "${VANGOG_SRCS}" "${VANGOG_FORMS}" "")
 
 QT4_WRAP_UI (DEATHNOTE_UIS_H ${DEATHNOTE_FORMS})
+QT4_ADD_RESOURCES (DEATHNOTE_RCCS ${DEATHNOTE_RESOURCES})
 
 add_library (leechcraft_blasq_deathnote SHARED
 # 	${VANGOG_COMPILED_TRANSLATIONS}
 	${DEATHNOTE_SRCS}
 	${DEATHNOTE_UIS_H}
+	${DEATHNOTE_RCCS}
 	)
 
 target_link_libraries (leechcraft_blasq_deathnote

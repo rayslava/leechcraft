@@ -64,6 +64,7 @@ set (SRCS
 	tags/tagscompletionmodel.cpp
 	tags/tagslineedit.cpp
 	tags/tagsfiltermodel.cpp
+	xpc/stdanfields.cpp
 	xpc/stddatafiltermenucreator.cpp
 	xpc/util.cpp
 	util.cpp
@@ -79,6 +80,7 @@ set (SRCS
 	sysinfo.cpp
 	passutils.cpp
 	queuemanager.cpp
+	delayedexecutor.cpp
 	shortcuts/shortcutmanager.cpp
 	)
 set (FORMS

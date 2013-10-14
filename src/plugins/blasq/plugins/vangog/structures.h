@@ -67,6 +67,7 @@ namespace Vangog
 	{
 		QByteArray ID_;
 		QString Title_;
+		QString Description_;
 		QDateTime Published_;
 		QDateTime Updated_;
 		Access Access_;

@@ -29,6 +29,7 @@
 
 #include "vkaccount.h"
 #include <QUuid>
+#include <QIcon>
 #include <QtDebug>
 #include "vkprotocol.h"
 #include "vkconnection.h"
@@ -36,7 +37,9 @@
 #include "vkmessage.h"
 #include "photostorage.h"
 #include "georesolver.h"
+#include "groupsmanager.h"
 #include "xmlsettingsmanager.h"
+#include "vkchatentry.h"
 
 namespace LeechCraft
 {
@@ -53,6 +56,7 @@ namespace Murm
 	, PhotoStorage_ (new PhotoStorage (proxy->GetNetworkAccessManager (), ID_))
 	, Name_ (name)
 	, Conn_ (new VkConnection (cookies, proxy))
+	, GroupsMgr_ (new GroupsManager (Conn_))
 	, GeoResolver_ (new GeoResolver (Conn_, this))
 	{
 		connect (Conn_,
@@ -63,10 +67,11 @@ namespace Murm
 				SIGNAL (stoppedPolling ()),
 				this,
 				SLOT (finishOffline ()));
+
 		connect (Conn_,
-				SIGNAL (gotLists (QList<ListInfo>)),
+				SIGNAL (gotSelfInfo (UserInfo)),
 				this,
-				SLOT (handleLists (QList<ListInfo>)));
+				SLOT (handleSelfInfo (UserInfo)));
 		connect (Conn_,
 				SIGNAL (gotUsers (QList<UserInfo>)),
 				this,
@@ -75,6 +80,7 @@ namespace Murm
 				SIGNAL (userStateChanged (qulonglong, bool)),
 				this,
 				SLOT (handleUserState (qulonglong, bool)));
+
 		connect (Conn_,
 				SIGNAL (gotMessage (MessageInfo)),
 				this,
@@ -87,6 +93,19 @@ namespace Murm
 				SIGNAL (statusChanged (EntryStatus)),
 				this,
 				SIGNAL (statusChanged (EntryStatus)));
+
+		connect (Conn_,
+				SIGNAL (gotChatInfo (ChatInfo)),
+				this,
+				SLOT (handleGotChatInfo (ChatInfo)));
+		connect (Conn_,
+				SIGNAL (chatUserRemoved (qulonglong, qulonglong)),
+				this,
+				SLOT (handleChatUserRemoved (qulonglong, qulonglong)));
+
+		XmlSettingsManager::Instance ().RegisterObject ("MarkAsOnline",
+				this, "handleMarkOnline");
+		handleMarkOnline ();
 	}
 
 	QByteArray VkAccount::Serialize () const
@@ -127,16 +146,38 @@ namespace Murm
 		return new VkAccount (name, proto, proxy, id, cookies);
 	}
 
-	ListInfo VkAccount::GetListInfo (qulonglong id) const
-	{
-		return ID2ListInfo_ [id];
-	}
-
 	void VkAccount::Send (VkEntry *entry, VkMessage *msg)
 	{
 		Conn_->SendMessage (entry->GetInfo ().ID_,
 				msg->GetBody (),
-				[msg] (qulonglong id) { msg->SetID (id); });
+				[msg] (qulonglong id) { msg->SetID (id); },
+				VkConnection::MessageType::Dialog);
+	}
+
+	void VkAccount::Send (VkChatEntry *entry, VkMessage *msg)
+	{
+		Conn_->SendMessage (entry->GetInfo ().ChatID_,
+				msg->GetBody (),
+				[msg] (qulonglong id) { msg->SetID (id); },
+				VkConnection::MessageType::Chat);
+	}
+
+	void VkAccount::CreateChat (const QString& name, const QList<VkEntry*>& entries)
+	{
+		QList<qulonglong> ids;
+		for (auto entry : entries)
+			ids << entry->GetInfo ().ID_;
+		Conn_->CreateChat (name, ids);
+	}
+
+	VkEntry* VkAccount::GetEntry (qulonglong id) const
+	{
+		return Entries_.value (id);
+	}
+
+	VkEntry* VkAccount::GetSelf () const
+	{
+		return SelfEntry_;
 	}
 
 	ICoreProxy_ptr VkAccount::GetCoreProxy () const
@@ -159,6 +200,11 @@ namespace Murm
 		return GeoResolver_;
 	}
 
+	GroupsManager* VkAccount::GetGroupsManager () const
+	{
+		return GroupsMgr_;
+	}
+
 	QObject* VkAccount::GetQObject ()
 	{
 		return this;
@@ -177,8 +223,9 @@ namespace Murm
 	QList<QObject*> VkAccount::GetCLEntries ()
 	{
 		QList<QObject*> result;
-		result.reserve (Entries_.size ());
+		result.reserve (Entries_.size () + ChatEntries_.size ());
 		std::copy (Entries_.begin (), Entries_.end (), std::back_inserter (result));
+		std::copy (ChatEntries_.begin (), ChatEntries_.end (), std::back_inserter (result));
 		return result;
 	}
 
@@ -265,11 +312,27 @@ namespace Murm
 		Conn_->SetStatus (toPublish);
 	}
 
-	void VkAccount::handleLists (const QList<ListInfo>& lists)
+	QObject* VkAccount::GetSelfContact () const
 	{
-		ID2ListInfo_.clear ();
-		for (const auto& list : lists)
-			ID2ListInfo_ [list.ID_] = list;
+		return SelfEntry_;
+	}
+
+	QImage VkAccount::GetSelfAvatar () const
+	{
+		return SelfEntry_ ? SelfEntry_->GetAvatar () : QImage ();
+	}
+
+	QIcon VkAccount::GetAccountIcon () const
+	{
+		return {};
+	}
+
+	void VkAccount::handleSelfInfo (const UserInfo& info)
+	{
+		handleUsers ({ info });
+
+		SelfEntry_ = Entries_ [info.ID_];
+		SelfEntry_->SetSelf ();
 	}
 
 	void VkAccount::handleUsers (const QList<UserInfo>& infos)
@@ -316,17 +379,32 @@ namespace Murm
 
 	void VkAccount::handleMessage (const MessageInfo& info)
 	{
-		const auto from = info.From_;
-		if (!Entries_.contains (from))
+		if (info.Flags_ & MessageFlag::Chat &&
+				info.Params_.contains ("from"))
 		{
-			qWarning () << Q_FUNC_INFO
-					<< "message from unknown user"
-					<< from;
-			return;
-		}
+			const auto from = info.From_ - 2000000000;
+			if (!ChatEntries_.contains (from))
+			{
+				PendingMessages_ << info;
+				Conn_->RequestChatInfo (from);
+				return;
+			}
 
-		const auto entry = Entries_.value (from);
-		entry->HandleMessage (info);
+			ChatEntries_.value (from)->HandleMessage (info);
+		}
+		else
+		{
+			const auto from = info.From_;
+			if (!Entries_.contains (from))
+			{
+				qWarning () << Q_FUNC_INFO
+						<< "message from unknown user"
+						<< from;
+				return;
+			}
+
+			Entries_.value (from)->HandleMessage (info);
+		}
 	}
 
 	void VkAccount::handleTypingNotification (qulonglong uid)
@@ -344,11 +422,62 @@ namespace Murm
 		entry->HandleTypingNotification ();
 	}
 
+	void VkAccount::handleMarkOnline ()
+	{
+		const auto mark = XmlSettingsManager::Instance ().property ("MarkAsOnline").toBool ();
+		Conn_->SetMarkingOnlineEnabled (mark);
+	}
+
 	void VkAccount::finishOffline ()
 	{
+		SelfEntry_ = nullptr;
+
 		emit removedCLItems (GetCLEntries ());
 		qDeleteAll (Entries_);
 		Entries_.clear ();
+
+		qDeleteAll (ChatEntries_);
+		ChatEntries_.clear ();
+	}
+
+	void VkAccount::handleGotChatInfo (const ChatInfo& info)
+	{
+		if (!ChatEntries_.contains (info.ChatID_))
+		{
+			auto entry = new VkChatEntry (info, this);
+			connect (entry,
+					SIGNAL (removeEntry (VkChatEntry*)),
+					this,
+					SLOT (handleRemoveEntry (VkChatEntry*)));
+			ChatEntries_ [info.ChatID_] = entry;
+			emit gotCLItems ({ entry });
+
+			decltype (PendingMessages_) pending;
+			std::swap (pending, PendingMessages_);
+			for (const auto& info : pending)
+				handleMessage (info);
+		}
+		else
+			ChatEntries_ [info.ChatID_]->UpdateInfo (info);
+	}
+
+	void VkAccount::handleRemoveEntry (VkChatEntry *entry)
+	{
+		emit removedCLItems ({ entry });
+		entry->deleteLater ();
+	}
+
+	void VkAccount::handleChatUserRemoved (qulonglong chat, qulonglong id)
+	{
+		if (!ChatEntries_.contains (chat))
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "unknown chat"
+					<< chat;
+			return;
+		}
+
+		ChatEntries_ [chat]->HandleRemoved (id);
 	}
 
 	void VkAccount::emitUpdateAcc ()

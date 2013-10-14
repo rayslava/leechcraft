@@ -100,7 +100,6 @@ namespace LMP
 		LoadLastParams ();
 
 		Ui_.setupUi (this);
-		Ui_.UploadButton_->setIcon (Core::Instance ().GetProxy ()->GetIcon ("svn-commit"));
 
 		DevUploadModel_->setSourceModel (Core::Instance ().GetLocalCollection ()->GetCollectionModel ());
 		Ui_.OurCollection_->setModel (DevUploadModel_);
@@ -118,6 +117,10 @@ namespace LMP
 				SIGNAL (uploadProgress (int, int, SyncManagerBase*)),
 				this,
 				SLOT (handleUploadProgress (int, int)));
+		connect (Core::Instance ().GetSyncManager (),
+				SIGNAL (singleUploadProgress (int, int, SyncManagerBase*)),
+				this,
+				SLOT (handleSingleUploadProgress (int, int)));
 
 		connect (Core::Instance ().GetSyncUnmountableManager (),
 				SIGNAL (transcodingProgress (int, int, SyncManagerBase*)),
@@ -127,9 +130,14 @@ namespace LMP
 				SIGNAL (uploadProgress (int, int, SyncManagerBase*)),
 				this,
 				SLOT (handleUploadProgress (int, int)));
+		connect (Core::Instance ().GetSyncUnmountableManager (),
+				SIGNAL (singleUploadProgress (int, int, SyncManagerBase*)),
+				this,
+				SLOT (handleSingleUploadProgress (int, int)));
 
 		Ui_.TSProgress_->hide ();
 		Ui_.UploadProgress_->hide ();
+		Ui_.SingleUploadProgress_->hide ();
 
 		Ui_.UnmountablePartsWidget_->hide ();
 	}
@@ -368,6 +376,11 @@ namespace LMP
 		SaveLastParams ();
 	}
 
+	void DevicesBrowserWidget::on_RefreshButton__released ()
+	{
+		UnmountableMgr_->Refresh ();
+	}
+
 	void DevicesBrowserWidget::on_DevicesSelector__activated (int idx)
 	{
 		CurrentSyncer_ = 0;
@@ -419,9 +432,20 @@ namespace LMP
 
 	void DevicesBrowserWidget::handleUploadProgress (int done, int total)
 	{
-		Ui_.UploadProgress_->setVisible (done < total);
+		const auto visible = done < total;
+		Ui_.UploadProgress_->setVisible (visible);
+		if (!visible)
+			Ui_.SingleUploadProgress_->hide ();
+
 		Ui_.UploadProgress_->setMaximum (total);
 		Ui_.UploadProgress_->setValue (done);
+	}
+
+	void DevicesBrowserWidget::handleSingleUploadProgress (int done, int total)
+	{
+		Ui_.SingleUploadProgress_->setVisible (done < total && total > 0);
+		Ui_.SingleUploadProgress_->setMaximum (total);
+		Ui_.SingleUploadProgress_->setValue (done);
 	}
 }
 }

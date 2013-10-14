@@ -47,10 +47,11 @@ namespace Murm
 	VkConnection::VkConnection (const QByteArray& cookies, ICoreProxy_ptr proxy)
 	: AuthMgr_ (new Util::SvcAuth::VkAuthManager ("3778319",
 			{ "messages", "notifications", "friends", "status", "photos" },
-			cookies, proxy, this))
+			cookies, proxy, nullptr, this))
 	, Proxy_ (proxy)
 	, CallQueue_ (new Util::QueueManager (400))
 	, LPManager_ (new LongPollManager (this, proxy))
+	, MarkOnlineTimer_ (new QTimer (this))
 	{
 		connect (AuthMgr_,
 				SIGNAL (cookiesChanged (QByteArray)),
@@ -101,6 +102,12 @@ namespace Murm
 			{ emit gotTypingNotification (items.value (1).toULongLong ()); };
 
 		Dispatcher_ [101] = [this] (const QVariantList&) {};	// unknown stuff
+
+		MarkOnlineTimer_->setInterval (12 * 60 * 1000);
+		connect (MarkOnlineTimer_,
+				SIGNAL (timeout ()),
+				this,
+				SLOT (markOnline ()));
 	}
 
 	const QByteArray& VkConnection::GetCookies () const
@@ -110,19 +117,22 @@ namespace Murm
 
 	void VkConnection::RerequestFriends ()
 	{
+		qDebug () << Q_FUNC_INFO;
 		PushFriendsRequest ();
 		AuthMgr_->GetAuthKey ();
 	}
 
-	void VkConnection::SendMessage (qulonglong to,
-			const QString& body, std::function<void (qulonglong)> idSetter)
+	void VkConnection::SendMessage (qulonglong to, const QString& body,
+			std::function<void (qulonglong)> idSetter, MessageType type)
 	{
 		auto nam = Proxy_->GetNetworkAccessManager ();
 		PreparedCalls_.push_back ([=] (const QString& key) -> QNetworkReply*
 			{
 				QUrl url ("https://api.vk.com/method/messages.send");
 				url.addQueryItem ("access_token", key);
-				url.addQueryItem ("uid", QString::number (to));
+
+				const auto& idName = type == MessageType::Dialog ? "uid" : "chat_id";
+				url.addQueryItem (idName, QString::number (to));
 				url.addQueryItem ("message", body);
 				url.addQueryItem ("type", "1");
 
@@ -265,6 +275,112 @@ namespace Murm
 		AuthMgr_->GetAuthKey ();
 	}
 
+	void VkConnection::AddFriendList (const QString& name, const QList<qulonglong>& ids)
+	{
+		const auto& joined = CommaJoin (ids);
+		auto nam = Proxy_->GetNetworkAccessManager ();
+		PreparedCalls_.push_back ([this, joined, name, nam] (const QString& key) -> QNetworkReply*
+			{
+				QUrl url ("https://api.vk.com/method/friends.addList");
+				url.addQueryItem ("access_token", key);
+				url.addQueryItem ("name", name);
+				url.addQueryItem ("uids", joined);
+
+				auto reply = nam->get (QNetworkRequest (url));
+				Reply2ListName_ [reply] = name;
+				connect (reply,
+						SIGNAL (finished ()),
+						this,
+						SLOT (handleFriendListAdded ()));
+				return reply;
+			});
+		AuthMgr_->GetAuthKey ();
+	}
+
+	void VkConnection::ModifyFriendList (const ListInfo& list, const QList<qulonglong>& newContents)
+	{
+		const auto& joined = CommaJoin (newContents);
+		auto nam = Proxy_->GetNetworkAccessManager ();
+		PreparedCalls_.push_back ([this, joined, list, nam] (const QString& key) -> QNetworkReply*
+			{
+				QUrl url ("https://api.vk.com/method/friends.editList");
+				url.addQueryItem ("access_token", key);
+				url.addQueryItem ("lid", QString::number (list.ID_));
+				url.addQueryItem ("name", list.Name_);
+				url.addQueryItem ("uids", joined);
+
+				auto reply = nam->get (QNetworkRequest (url));
+				connect (reply,
+						SIGNAL (finished ()),
+						reply,
+						SLOT (deleteLater ()));
+				return reply;
+			});
+		AuthMgr_->GetAuthKey ();
+	}
+
+	void VkConnection::CreateChat (const QString& title, const QList<qulonglong>& ids)
+	{
+		const auto& joined = CommaJoin (ids);
+		auto nam = Proxy_->GetNetworkAccessManager ();
+		PreparedCalls_.push_back ([=] (const QString& key) -> QNetworkReply*
+			{
+				QUrl url ("https://api.vk.com/method/messages.createChat");
+				url.addQueryItem ("access_token", key);
+				url.addQueryItem ("title", title);
+				url.addQueryItem ("uids", joined);
+
+				auto reply = nam->get (QNetworkRequest (url));
+				Reply2ChatInfo_ [reply] = { 0, title, ids };
+				connect (reply,
+						SIGNAL (finished ()),
+						this,
+						SLOT (handleChatCreated ()));
+				return reply;
+			});
+		AuthMgr_->GetAuthKey ();
+	}
+
+	void VkConnection::RequestChatInfo (qulonglong id)
+	{
+		auto nam = Proxy_->GetNetworkAccessManager ();
+		PreparedCalls_.push_back ([=] (const QString& key) -> QNetworkReply*
+			{
+				QUrl url ("https://api.vk.com/method/messages.getChat");
+				url.addQueryItem ("access_token", key);
+				url.addQueryItem ("chat_id", QString::number (id));
+
+				auto reply = nam->get (QNetworkRequest (url));
+				connect (reply,
+						SIGNAL (finished ()),
+						this,
+						SLOT (handleChatInfo ()));
+				return reply;
+			});
+		AuthMgr_->GetAuthKey ();
+	}
+
+	void VkConnection::RemoveChatUser (qulonglong chat, qulonglong user)
+	{
+		auto nam = Proxy_->GetNetworkAccessManager ();
+		PreparedCalls_.push_back ([=] (const QString& key) -> QNetworkReply*
+			{
+				QUrl url ("https://api.vk.com/method/messages.removeChatUser");
+				url.addQueryItem ("access_token", key);
+				url.addQueryItem ("chat_id", QString::number (chat));
+				url.addQueryItem ("uid", QString::number (user));
+
+				auto reply = nam->get (QNetworkRequest (url));
+				Reply2ChatRemoveInfo_ [reply] = ChatRemoveInfo { chat, user };
+				connect (reply,
+						SIGNAL (finished ()),
+						this,
+						SLOT (handleChatUserRemoved ()));
+				return reply;
+			});
+		AuthMgr_->GetAuthKey ();
+	}
+
 	void VkConnection::SetStatus (const QString& status)
 	{
 		auto nam = Proxy_->GetNetworkAccessManager ();
@@ -286,6 +402,7 @@ namespace Murm
 
 	void VkConnection::SetStatus (const EntryStatus& status)
 	{
+		qDebug () << Q_FUNC_INFO << status.State_;
 		LPManager_->ForceServerRequery ();
 
 		Status_ = status;
@@ -296,6 +413,20 @@ namespace Murm
 		}
 
 		auto nam = Proxy_->GetNetworkAccessManager ();
+		PreparedCalls_.push_back ([this, nam] (const QString& key) -> QNetworkReply*
+			{
+				QUrl lpUrl ("https://api.vk.com/method/users.get");
+				lpUrl.addQueryItem ("access_token", key);
+				lpUrl.addQueryItem ("fields",
+						"first_name,last_name,nickname,photo,photo_big,sex,"
+						"bdate,city,country,timezone,contacts,education");
+				auto reply = nam->get (QNetworkRequest (lpUrl));
+				connect (reply,
+						SIGNAL (finished ()),
+						this,
+						SLOT (handleGotSelfInfo ()));
+				return reply;
+			});
 		PreparedCalls_.push_back ([this, nam] (const QString& key) -> QNetworkReply*
 			{
 				QUrl lpUrl ("https://api.vk.com/method/friends.getLists");
@@ -313,6 +444,20 @@ namespace Murm
 	EntryStatus VkConnection::GetStatus () const
 	{
 		return CurrentStatus_;
+	}
+
+	void VkConnection::SetMarkingOnlineEnabled (bool enabled)
+	{
+		qDebug () << Q_FUNC_INFO << enabled;
+		MarkingOnline_ = enabled;
+
+		if (enabled)
+		{
+			markOnline ();
+			MarkOnlineTimer_->start ();
+		}
+		else
+			MarkOnlineTimer_->stop ();
 	}
 
 	void VkConnection::QueueRequest (VkConnection::PreparedCall_f call)
@@ -395,24 +540,51 @@ namespace Murm
 		}
 	}
 
+	void VkConnection::markOnline ()
+	{
+		if (Status_.State_ == SOffline)
+			return;
+
+		auto nam = Proxy_->GetNetworkAccessManager ();
+		PreparedCalls_.push_back ([this, nam] (const QString& key) -> QNetworkReply*
+			{
+				QUrl url ("https://api.vk.com/method/account.setOnline");
+				url.addQueryItem ("access_token", key);
+				auto reply = nam->get (QNetworkRequest (url));
+				connect (reply,
+						SIGNAL (finished ()),
+						reply,
+						SLOT (deleteLater ()));
+				return reply;
+			});
+		qDebug () << Q_FUNC_INFO << "request scheduled";
+		AuthMgr_->GetAuthKey ();
+	}
+
 	void VkConnection::handleListening ()
 	{
 		CurrentStatus_ = Status_;
 		emit statusChanged (GetStatus ());
+
+		SetMarkingOnlineEnabled (MarkingOnline_);
 	}
 
 	void VkConnection::handlePollError ()
 	{
+		qDebug () << Q_FUNC_INFO;
 		CurrentStatus_ = EntryStatus ();
 		emit statusChanged (GetStatus ());
 	}
 
 	void VkConnection::handlePollStopped ()
 	{
+		qDebug () << Q_FUNC_INFO;
 		CurrentStatus_ = Status_;
 		emit statusChanged (GetStatus ());
 
 		emit stoppedPolling ();
+
+		MarkOnlineTimer_->stop ();
 	}
 
 	void VkConnection::handlePollData (const QVariantMap& rootMap)
@@ -432,25 +604,18 @@ namespace Murm
 		}
 	}
 
-	void VkConnection::handleGotFriendLists ()
+	void VkConnection::handleFriendListAdded ()
 	{
 		auto reply = qobject_cast<QNetworkReply*> (sender ());
 		if (!CheckFinishedReply (reply))
 			return;
 
-		QList<ListInfo> lists;
+		const auto& name = Reply2ListName_.take (reply);
 
 		const auto& data = QJson::Parser ().parse (reply);
-		for (const auto& item : data.toMap () ["response"].toList ())
-		{
-			const auto& map = item.toMap ();
-			lists.append ({ map ["lid"].toULongLong (), map ["name"].toString () });
-		}
+		const auto id = data.toMap () ["response"].toMap () ["lid"].toULongLong ();
 
-		emit gotLists (lists);
-
-		PushFriendsRequest ();
-		AuthMgr_->GetAuthKey ();
+		emit addedLists ({ { id, name } });
 	}
 
 	namespace
@@ -492,6 +657,39 @@ namespace Murm
 				lists
 			};
 		}
+	}
+
+	void VkConnection::handleGotSelfInfo ()
+	{
+		auto reply = qobject_cast<QNetworkReply*> (sender ());
+		if (!CheckFinishedReply (reply))
+			return;
+
+		const auto& data = QJson::Parser ().parse (reply);
+
+		const auto& list = data.toMap () ["response"].toList ();
+		emit gotSelfInfo (UserMap2Info (list.value (0).toMap ()));
+	}
+
+	void VkConnection::handleGotFriendLists ()
+	{
+		auto reply = qobject_cast<QNetworkReply*> (sender ());
+		if (!CheckFinishedReply (reply))
+			return;
+
+		QList<ListInfo> lists;
+
+		const auto& data = QJson::Parser ().parse (reply);
+		for (const auto& item : data.toMap () ["response"].toList ())
+		{
+			const auto& map = item.toMap ();
+			lists.append ({ map ["lid"].toULongLong (), map ["name"].toString () });
+		}
+
+		emit gotLists (lists);
+
+		PushFriendsRequest ();
+		AuthMgr_->GetAuthKey ();
 	}
 
 	void VkConnection::handleGotFriends ()
@@ -539,12 +737,19 @@ namespace Murm
 
 		const auto& data = QJson::Parser ().parse (reply);
 		auto respList = data.toMap () ["response"].toList ();
+		if (respList.isEmpty ())
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "no response"
+					<< data;
+			return;
+		}
 		respList.removeFirst ();
 
 		for (const auto& msgMapVar : respList)
 		{
 			const auto& map = msgMapVar.toMap ();
-			qDebug () << map;
+			qDebug () << Q_FUNC_INFO << map;
 
 			MessageFlags flags = MessageFlag::Unread;
 			if (map ["out"].toULongLong ())
@@ -559,6 +764,55 @@ namespace Murm
 					{}
 				});
 		}
+	}
+
+	void VkConnection::handleChatCreated ()
+	{
+		auto reply = qobject_cast<QNetworkReply*> (sender ());
+		if (!CheckFinishedReply (reply))
+			return;
+
+		const auto& data = QJson::Parser ().parse (reply);
+
+		auto info = Reply2ChatInfo_.take (reply);
+		info.ChatID_ = data.toMap () ["response"].toULongLong ();
+
+		emit gotChatInfo (info);
+	}
+
+	void VkConnection::handleChatInfo ()
+	{
+		auto reply = qobject_cast<QNetworkReply*> (sender ());
+		if (!CheckFinishedReply (reply))
+			return;
+
+		const auto& data = QJson::Parser ().parse (reply);
+		const auto& map = data.toMap () ["response"].toMap ();
+
+		QList<qulonglong> users;
+		for (auto item : map ["users"].toList ())
+			users << item.toULongLong ();
+
+		emit gotChatInfo ({
+				map ["chat_id"].toULongLong (),
+				map ["title"].toString (),
+				users
+			});
+	}
+
+	void VkConnection::handleChatUserRemoved ()
+	{
+		auto reply = qobject_cast<QNetworkReply*> (sender ());
+		if (!CheckFinishedReply (reply))
+			return;
+
+		auto removeInfo = Reply2ChatRemoveInfo_.take (reply);
+
+		const auto& data = QJson::Parser ().parse (reply);
+		qDebug () << Q_FUNC_INFO << data;
+		const auto& map = data.toMap ();
+		if (map ["response"].toULongLong () == 1)
+			emit chatUserRemoved (removeInfo.Chat_, removeInfo.User_);
 	}
 
 	void VkConnection::handleMessageSent ()
@@ -685,7 +939,7 @@ namespace Murm
 
 					HandleAttachments (repost, wallMap.take ("attachments"));
 					wallMap.take ("attachment");
-					qDebug () << wallMap;
+					qDebug () << Q_FUNC_INFO << wallMap;
 
 					info.ContainedReposts_.append (repost);
 				}

@@ -69,12 +69,7 @@ namespace vlc
 	, Parent_ (parent)
 	, DVD_ (false)
 	{
-		const char * const vlc_args[] = 
-		{
-			"--ffmpeg-hw"
-		};
-
-		VlcInstance_ = std::shared_ptr<libvlc_instance_t> (libvlc_new (sizeof (vlc_args) / sizeof (vlc_args [0]), vlc_args), libvlc_release);
+		VlcInstance_ = std::shared_ptr<libvlc_instance_t> (libvlc_new (0, nullptr), libvlc_release);
 		Mp_ = std::shared_ptr<libvlc_media_player_t> (libvlc_media_player_new (VlcInstance_.get ()), libvlc_media_player_release);
 		libvlc_media_player_set_xwindow (Mp_.get (), parent->winId ());
 	}
@@ -184,7 +179,7 @@ namespace vlc
 		UnFreeze ();
 	}
 	
-	void VlcPlayer::UnFreeze()
+	void VlcPlayer::UnFreeze ()
 	{
 		libvlc_media_player_play (Mp_.get ());
 		
@@ -379,6 +374,21 @@ namespace vlc
 	void VlcPlayer::minus10seconds ()
 	{
 		libvlc_media_player_set_time (Mp_.get (), libvlc_media_player_get_time (Mp_.get ()) - 10 * 1000);
+	}
+	
+	void VlcPlayer::setAspectRatio (const QByteArray& ratio)
+	{
+		libvlc_video_set_aspect_ratio (Mp_.get (), ratio);
+	}
+	
+	void VlcPlayer::setRealZoom (const QByteArray& zoom)
+	{
+		libvlc_video_set_crop_geometry (Mp_.get (), zoom.constData ());
+	}
+	
+	QString VlcPlayer::GetAspectRatio () const
+	{
+		return libvlc_video_get_aspect_ratio (Mp_.get ());
 	}
 }
 }

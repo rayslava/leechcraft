@@ -31,6 +31,7 @@
 
 #include <QObject>
 #include <QMap>
+#include <interfaces/ientityhandler.h>
 #include <interfaces/iinfo.h>
 #include <interfaces/ihavetabs.h>
 #include <interfaces/ihaveshortcuts.h>
@@ -48,15 +49,16 @@ namespace vlc
 				 , public IHaveTabs
 				 , public IHaveShortcuts
 				 , public IHaveSettings
+				 , public IEntityHandler
 	{
 		Q_OBJECT
-		Q_INTERFACES (IInfo IHaveTabs IHaveShortcuts IHaveSettings)
-	
+		Q_INTERFACES (IInfo IHaveTabs IHaveShortcuts IHaveSettings IEntityHandler)
+
 		ICoreProxy_ptr Proxy_;
 		Util::ShortcutManager *Manager_;
 		QVector<VlcWidget*> Tabs_;
 		Util::XmlSettingsDialog_ptr XmlSettingsDialog_;
-	
+
 	public:
 		void Init (ICoreProxy_ptr);
 		void SecondInit ();
@@ -66,13 +68,16 @@ namespace vlc
 		QString GetInfo () const;
 		QIcon GetIcon () const;
 		Util::XmlSettingsDialog_ptr GetSettingsDialog () const;
-		
+
 		void TabOpenRequested (const QByteArray&);
 		LeechCraft::TabClasses_t GetTabClasses () const;
-		
+
 		QMap<QString, ActionInfo> GetActionInfo () const;
 		void SetShortcut (const QString&, const QKeySequences_t&);
-		
+
+		EntityTestHandleResult CouldHandle (const Entity& entity) const;
+		void Handle (Entity entity);
+
 	signals:
 		void addNewTab (const QString&, QWidget*);
 		void removeTab (QWidget*);
@@ -80,9 +85,9 @@ namespace vlc
 		void changeTabIcon (QWidget*, const QIcon&);
 		void statusBarChanged (QWidget*, const QString&);
 		void raiseTab (QWidget*);
-		
+
 	private slots:
-		void deleteDeleted (QWidget*);
+		void deleted (QWidget*);
 	};
 }
 }

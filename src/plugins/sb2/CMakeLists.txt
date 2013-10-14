@@ -36,6 +36,8 @@ set (SRCS
 	quarkorderview.cpp
 	declarativewindow.cpp
 	viewgeometrymanager.cpp
+	viewsettingsmanager.cpp
+	sb2util.cpp
 	)
 
 if (WITH_X11)
@@ -62,3 +64,4 @@ target_link_libraries (leechcraft_sb2
 	)
 install (TARGETS leechcraft_sb2 DESTINATION ${LC_PLUGINS_DEST})
 install (DIRECTORY share/qml/sb2 DESTINATION ${LC_QML_DEST})
+install (FILES sb2panelsettings.xml DESTINATION ${LC_SETTINGS_DEST})

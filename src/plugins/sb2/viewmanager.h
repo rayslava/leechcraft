@@ -54,6 +54,8 @@ namespace Util
 
 namespace SB2
 {
+
+class ViewSettingsManager;
 	class SBView;
 	class QuarkManager;
 	class ViewGeometryManager;
@@ -70,6 +72,8 @@ namespace SB2
 		QToolBar *Toolbar_;
 
 		QMainWindow *Window_;
+		const bool IsDesktopMode_;
+		const int OnloadWindowIndex_;
 
 		QHash<QUrl, QuarkManager_ptr> Quark2Manager_;
 		QSet<QString> RemovedIDs_;
@@ -77,9 +81,9 @@ namespace SB2
 
 		QuarkComponents_t InternalComponents_;
 
+		ViewSettingsManager *SettingsManager_;
+
 		ViewGeometryManager *GeomManager_;
-		const bool IsDesktopMode_;
-		const int OnloadWindowIndex_;
 	public:
 		ViewManager (ICoreProxy_ptr, Util::ShortcutManager*, QMainWindow*, QObject* = 0);
 
@@ -87,6 +91,7 @@ namespace SB2
 		QToolBar* GetToolbar () const;
 		QMainWindow* GetManagedWindow () const;
 		QRect GetFreeCoords () const;
+		ViewSettingsManager* GetViewSettingsManager () const;
 
 		bool IsDesktopMode () const;
 
@@ -107,7 +112,7 @@ namespace SB2
 		QuarkManager_ptr GetAddedQuarkManager (const QUrl&) const;
 
 		int GetWindowIndex () const;
-		
+
 		std::shared_ptr<QSettings> GetSettings () const;
 	private:
 		void AddComponent (QuarkComponent_ptr);

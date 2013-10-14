@@ -32,6 +32,7 @@
 #include <QObject>
 #include <interfaces/azoth/iaccount.h>
 #include <interfaces/azoth/isupporttune.h>
+#include <interfaces/azoth/iextselfinfoaccount.h>
 #include <interfaces/core/icoreproxy.h>
 #include "structures.h"
 
@@ -42,18 +43,23 @@ namespace Azoth
 namespace Murm
 {
 	class VkEntry;
+	class VkChatEntry;
 	class VkMessage;
 	class VkProtocol;
 	class VkConnection;
 	class PhotoStorage;
 	class GeoResolver;
+	class GroupsManager;
 
 	class VkAccount : public QObject
 					, public IAccount
 					, public ISupportTune
+					, public IExtSelfInfoAccount
 	{
 		Q_OBJECT
-		Q_INTERFACES (LeechCraft::Azoth::IAccount LeechCraft::Azoth::ISupportTune)
+		Q_INTERFACES (LeechCraft::Azoth::IAccount
+				LeechCraft::Azoth::ISupportTune
+				LeechCraft::Azoth::IExtSelfInfoAccount)
 
 		const ICoreProxy_ptr CoreProxy_;
 
@@ -65,10 +71,14 @@ namespace Murm
 		QString Name_;
 
 		VkConnection * const Conn_;
+		GroupsManager * const GroupsMgr_;
 		GeoResolver * const GeoResolver_;
 
+		VkEntry *SelfEntry_ = nullptr;
 		QHash<qulonglong, VkEntry*> Entries_;
-		QHash<qulonglong, ListInfo> ID2ListInfo_;
+		QHash<qulonglong, VkChatEntry*> ChatEntries_;
+
+		QList<MessageInfo> PendingMessages_;
 	public:
 		VkAccount (const QString& name, VkProtocol *proto, ICoreProxy_ptr proxy,
 				const QByteArray& id, const QByteArray& cookies);
@@ -76,14 +86,17 @@ namespace Murm
 		QByteArray Serialize () const;
 		static VkAccount* Deserialize (const QByteArray&, VkProtocol*, ICoreProxy_ptr);
 
-		ListInfo GetListInfo (qulonglong) const;
-
 		void Send (VkEntry*, VkMessage*);
+		void Send (VkChatEntry*, VkMessage*);
+		void CreateChat (const QString&, const QList<VkEntry*>&);
+		VkEntry* GetEntry (qulonglong) const;
+		VkEntry* GetSelf () const;
 
 		ICoreProxy_ptr GetCoreProxy () const;
 		VkConnection* GetConnection () const;
 		PhotoStorage* GetPhotoStorage () const;
 		GeoResolver* GetGeoResolver () const;
+		GroupsManager* GetGroupsManager () const;
 
 		QObject* GetQObject ();
 		QObject* GetParentProtocol () const;
@@ -109,12 +122,23 @@ namespace Murm
 		QObject* GetTransferManager () const;
 
 		void PublishTune (const QMap<QString, QVariant>& tuneData);
+
+		QObject* GetSelfContact () const;
+		QImage GetSelfAvatar () const;
+		QIcon GetAccountIcon () const;
 	private slots:
-		void handleLists (const QList<ListInfo>&);
+		void handleSelfInfo (const UserInfo&);
 		void handleUsers (const QList<UserInfo>&);
 		void handleUserState (qulonglong, bool);
 		void handleMessage (const MessageInfo&);
 		void handleTypingNotification (qulonglong);
+
+		void handleGotChatInfo (const ChatInfo&);
+		void handleChatUserRemoved (qulonglong, qulonglong);
+
+		void handleRemoveEntry (VkChatEntry*);
+
+		void handleMarkOnline ();
 
 		void finishOffline ();
 

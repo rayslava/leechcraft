@@ -83,6 +83,7 @@
 #include "util.h"
 #include "proxyobject.h"
 #include "customchatstylemanager.h"
+#include "coremessage.h"
 
 namespace LeechCraft
 {
@@ -269,6 +270,7 @@ namespace Azoth
 		SetChatPartState (CPSGone);
 
 		qDeleteAll (HistoryMessages_);
+		qDeleteAll (CoreMessages_);
 		delete Ui_.MsgEdit_->document ();
 
 		delete MUCEventLog_;
@@ -279,10 +281,20 @@ namespace Azoth
 		QString data = Core::Instance ().GetSelectedChatTemplate (GetEntry<QObject> (),
 				Ui_.View_->page ()->mainFrame ());
 		if (data.isEmpty ())
-			data = "<h1 style='color:red;'>" +
-					tr ("Unable to load style, "
-						"please check you've enabled at least one styles plugin.") +
-					"</h1>";
+			data = QString (R"delim(
+				<?xml version="1.0" encoding="utf-8"?>
+				<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+				<html xmlns="http://www.w3.org/1999/xhtml">
+					<head>
+						<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+						<title></title>
+					</head>
+					<body>
+						<h1 style="color:red">%1</h1>
+					</body>
+				</html>)delim")
+					.arg (tr ("Unable to load style, please check you've enabled at least one styles plugin."));
+
 		Ui_.View_->setContent (data.toUtf8 (),
 				"text/html", //"application/xhtml+xml" fails to work, though better to use it
 				Core::Instance ().GetSelectedChatTemplateURL (GetEntry<QObject> ()));
@@ -725,6 +737,9 @@ namespace Azoth
 		entry->PurgeMessages (QDateTime ());
 		qDeleteAll (HistoryMessages_);
 		HistoryMessages_.clear ();
+		qDeleteAll (CoreMessages_);
+		CoreMessages_.clear ();
+		LastDateTime_ = QDateTime ();
 		PrepareTheme ();
 	}
 
@@ -733,6 +748,9 @@ namespace Azoth
 		ScrollbackPos_ += 50;
 		qDeleteAll (HistoryMessages_);
 		HistoryMessages_.clear ();
+		qDeleteAll (CoreMessages_);
+		CoreMessages_.clear ();
+		LastDateTime_ = QDateTime ();
 		RequestLogs (ScrollbackPos_);
 	}
 
@@ -1083,7 +1101,7 @@ namespace Azoth
 
 			Entity e = Util::MakeEntity (url,
 					QString (),
-					static_cast<TaskParameter> (FromUserInitiated | OnlyHandle));
+					FromUserInitiated | OnlyHandle);
 			if (!raise)
 				e.Additional_ ["BackgroundHandle"] = true;
 			Core::Instance ().SendEntity (e);
@@ -1536,7 +1554,7 @@ namespace Azoth
 		const auto& openLinkInfo = infos ["org.LeechCraft.Azoth.OpenLastLink"];
 		auto shortcut = new QShortcut (openLinkInfo.Seqs_.value (0),
 				this, SLOT (handleOpenLastLink ()), 0, Qt::WidgetWithChildrenShortcut);
-		sm->RegisterShortcut ("org.LeechCraft.Azoth.OpenLastLink", openLinkInfo, shortcut);
+		sm->RegisterShortcut ("org.LeechCraft.Azoth.OpenLastLink", openLinkInfo, shortcut, true);
 	}
 
 	void ChatTab::InitEntry ()
@@ -1823,6 +1841,14 @@ namespace Azoth
 		}
 	}
 
+	namespace
+	{
+		bool IsSameDay (const QDateTime& dt, const IMessage *msg)
+		{
+			return dt.date () == msg->GetDateTime ().date ();
+		}
+	}
+
 	void ChatTab::AppendMessage (IMessage *msg)
 	{
 		ICLEntry *other = qobject_cast<ICLEntry*> (msg->OtherPart ());
@@ -1889,10 +1915,33 @@ namespace Azoth
 
 		QWebFrame *frame = Ui_.View_->page ()->mainFrame ();
 
-		ChatMsgAppendInfo info =
+		const bool isActiveChat =  Core::Instance ()
+				.GetChatTabsManager ()->IsActiveChat (GetEntry<ICLEntry> ());
+		if (!LastDateTime_.isNull () && !IsSameDay (LastDateTime_, msg))
+		{
+			auto datetime = msg->GetDateTime ();
+			const auto& thisDate = datetime.date ();
+			const auto& str = QLocale ().toString (thisDate, QLocale::LongFormat);
+
+			datetime.setTime ({0, 0});
+
+			auto coreMessage = new CoreMessage (str, datetime,
+					IMessage::MTServiceMessage, IMessage::DIn, parent->GetQObject (), this);
+			ChatMsgAppendInfo coreInfo
+			{
+				false,
+				isActiveChat,
+				ToggleRichText_->isChecked ()
+			};
+			Core::Instance ().AppendMessageByTemplate (frame, coreMessage, coreInfo);
+		}
+
+		LastDateTime_ = msg->GetDateTime ();
+
+		ChatMsgAppendInfo info
 		{
 			Core::Instance ().IsHighlightMessage (msg),
-			Core::Instance ().GetChatTabsManager ()->IsActiveChat (GetEntry<ICLEntry> ()),
+			isActiveChat,
 			ToggleRichText_->isChecked ()
 		};
 

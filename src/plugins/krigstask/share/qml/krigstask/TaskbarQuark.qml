@@ -9,8 +9,8 @@ Rectangle {
 
     property bool isExpandable: true
 
-    implicitWidth: viewOrient == "vertical" ? itemSize : longDim
-    implicitHeight: viewOrient == "vertical" ? longDim : itemSize
+    implicitWidth: viewOrient == "vertical" ? itemSize : longDim + itemSize
+    implicitHeight: viewOrient == "vertical" ? longDim + itemSize : itemSize
 
     radius: 2
 
@@ -25,6 +25,9 @@ Rectangle {
         anchors.top: parent.top
         anchors.left: parent.left
 
+        width: viewOrient == "vertical" ? rootRect.itemSize : longDim
+        height: viewOrient == "vertical" ? longDim : rootRect.itemSize
+
         function calcCount() {
             var cnt = 0;
             for (var i = 0; i < launcherItemRepeater.count; ++i) {
@@ -38,8 +41,15 @@ Rectangle {
 
         property alias fullItemCount: launcherItemRepeater.count
 
-        columns: viewOrient == "vertical" ? 1 : fullItemCount
-        rows: viewOrient == "vertical" ? fullItemCount : 1
+        columns: viewOrient == "vertical" ? taskbarRowCount : fullItemCount
+        rows: viewOrient == "vertical" ? fullItemCount : taskbarRowCount
+
+        flow: viewOrient == "vertical" ? Grid.LeftToRight : Grid.TopToBottom
+
+        property int itemHeight: rootRect.itemSize / taskbarRowCount
+        property int itemWidth: viewOrient == "vertical" ?
+                            rootRect.itemSize / taskbarRowCount :
+                            Math.min(150, rootRect.width * taskbarRowCount / taskbarColumn.calcCount())
 
         Repeater {
             id: launcherItemRepeater
@@ -49,10 +59,8 @@ Rectangle {
 
                 visible: showFromAllDesks || isCurrentDesktop
 
-                height: rootRect.itemSize
-                width: viewOrient == "vertical" ?
-                        rootRect.itemSize :
-                        Math.min(150, rootRect.width / taskbarColumn.calcCount())
+                height: taskbarColumn.itemHeight
+                width: taskbarColumn.itemWidth
 
                 ActionButton {
                     id: tcButton
@@ -92,18 +100,20 @@ Rectangle {
                 }
             }
         }
+    }
 
-        ActionButton {
-            id: showPagerButton
+    ActionButton {
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        id: showPagerButton
 
-            width: rootRect.itemSize
-            height: rootRect.itemSize
+        width: rootRect.itemSize
+        height: rootRect.itemSize
 
-            visible: showPager
+        visible: showPager
 
-            actionIconURL: "image://ThemeIcons/user-desktop"
-            onTriggered: commonJS.showTooltip(showPagerButton,
-                    function(x, y) { KT_taskbarProxy.showPager(x, y, showThumbsInPager) })
-        }
+        actionIconURL: "image://ThemeIcons/user-desktop"
+        onTriggered: commonJS.showTooltip(showPagerButton,
+                function(x, y) { KT_taskbarProxy.showPager(x, y, showThumbsInPager) })
     }
 }

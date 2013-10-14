@@ -29,10 +29,15 @@
 
 #include "inbandaccountregsecondpage.h"
 #include <QVBoxLayout>
+#include <QMessageBox>
+#include <util/network/socketerrorstrings.h>
+#include <util/util.h>
+#include <interfaces/core/ientitymanager.h>
 #include "xmppbobmanager.h"
 #include "inbandaccountregfirstpage.h"
 #include "util.h"
 #include "regformhandlerwidget.h"
+#include "core.h"
 
 namespace LeechCraft
 {
@@ -67,6 +72,10 @@ namespace Xoox
 				SIGNAL (connected ()),
 				this,
 				SLOT (handleConnected ()));
+		connect (Client_,
+				SIGNAL (error (QXmppClient::Error)),
+				this,
+				SLOT (handleClientError (QXmppClient::Error)));
 
 		connect (RegForm_,
 				SIGNAL (completeChanged ()),
@@ -121,6 +130,18 @@ namespace Xoox
 	void InBandAccountRegSecondPage::handleConnected ()
 	{
 		RegForm_->SendRequest ();
+	}
+
+	void InBandAccountRegSecondPage::handleClientError (QXmppClient::Error error)
+	{
+		qWarning () << Q_FUNC_INFO
+				<< error
+				<< Client_->socketError ()
+				<< Client_->xmppStreamError ();
+
+		if (error == QXmppClient::SocketError &&
+				wizard ()->currentPage () == this)
+			initializePage ();
 	}
 }
 }

@@ -52,8 +52,8 @@ Rectangle {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
 
-        columns: isVert ? 1 : 4
-        rows: isVert ? 4 : 1
+        columns: isVert ? 1 : 5
+        rows: isVert ? 5 : 1
 
         Item {
             id: setPanelPosWidget
@@ -145,11 +145,23 @@ Rectangle {
         }
 
         ActionButton {
+            id: showPanelSettings
+            visible: enableSettingsModeButton.settingsMode
+            width: isVert ? quarkDisplayRoot.width : quarkDisplayRoot.height
+            height: width
+
+            actionIconURL: "image://ThemeIcons/configure-toolbars"
+            textTooltip: SB2_showPanelSettingsTooltip
+
+            onTriggered: quarkProxy.panelSettingsRequested()
+        }
+
+        ActionButton {
             id: enableSettingsModeButton
             width: isVert ? quarkDisplayRoot.width : quarkDisplayRoot.height
             height: width
 
-            actionIconURL: "image://ThemeIcons/preferences-plugin"
+            actionIconURL: "image://ThemeIcons/configure"
             textTooltip: SB2_settingsModeTooltip
 
             property bool settingsMode: false
@@ -162,11 +174,13 @@ Rectangle {
 
         anchors.top: parent.top
         anchors.left: parent.left
-        height: isVert ? undefined : parent.height
-        width: isVert ? parent.width : undefined
+        height: isVert ? parent.height - ownStuffGrid.height : parent.height
+        width: isVert ? parent.width : parent.width - ownStuffGrid.width
 
         columns: isVert ? 1 : itemsRepeater.count
         rows: isVert ? itemsRepeater.count : 1
+
+        clip: true
 
         Repeater {
             id: itemsRepeater
