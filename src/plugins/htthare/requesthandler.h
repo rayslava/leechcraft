@@ -27,65 +27,20 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#ifndef PLUGINS_AZOTH_PLUGINS_STANDARDSTYLES_STANDARDSTYLESOURCE_H
-#define PLUGINS_AZOTH_PLUGINS_STANDARDSTYLES_STANDARDSTYLESOURCE_H
-#include <memory>
-#include <QObject>
-#include <QDateTime>
-#include <QHash>
-#include <QColor>
-#include <interfaces/azoth/ichatstyleresourcesource.h>
+#pragma once
+
+#include <QSet>
+#include <QString>
 
 namespace LeechCraft
 {
-namespace Util
+namespace HttThare
 {
-	class ResourceLoader;
-}
-
-namespace Azoth
-{
-class IMessage;
-class IProxyObject;
-
-namespace StandardStyles
-{
-	class StandardStyleSource : public QObject
-							  , public IChatStyleResourceSource
+	class RequestHandler
 	{
-		Q_OBJECT
-		Q_INTERFACES (LeechCraft::Azoth::IChatStyleResourceSource)
-
-		std::shared_ptr<Util::ResourceLoader> StylesLoader_;
-
-		QMap<QWebFrame*, bool> HasBeenAppended_;
-		IProxyObject *Proxy_;
-
-		mutable QHash<QString, QList<QColor>> Coloring2Colors_;
-		mutable QString LastPack_;
-
-		QHash<QObject*, QWebFrame*> Msg2Frame_;
+		QSet<QString> Roots_;
 	public:
-		StandardStyleSource (IProxyObject*, QObject* = 0);
-
-		QAbstractItemModel* GetOptionsModel () const;
-		QUrl GetBaseURL (const QString&) const;
-		QString GetHTMLTemplate (const QString&,
-				const QString&, QObject*, QWebFrame*) const;
-		bool AppendMessage (QWebFrame*, QObject*, const ChatMsgAppendInfo&);
-		void FrameFocused (QWebFrame*);
-		QStringList GetVariantsForPack (const QString&);
-	private:
-		QList<QColor> CreateColors (const QString&, QWebFrame*);
-		QString GetMessageID (QObject*);
-		QString GetStatusImage (const QString&);
-	private slots:
-		void handleMessageDelivered ();
-		void handleMessageDestroyed ();
-		void handleFrameDestroyed ();
+		RequestHandler ();
 	};
 }
 }
-}
-
-#endif

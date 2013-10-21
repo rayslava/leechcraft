@@ -27,65 +27,61 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#ifndef PLUGINS_AZOTH_PLUGINS_STANDARDSTYLES_STANDARDSTYLESOURCE_H
-#define PLUGINS_AZOTH_PLUGINS_STANDARDSTYLES_STANDARDSTYLESOURCE_H
-#include <memory>
-#include <QObject>
-#include <QDateTime>
-#include <QHash>
-#include <QColor>
-#include <interfaces/azoth/ichatstyleresourcesource.h>
+#include "server.h"
+#include <QString>
+#include <QtDebug>
+#include "connection.h"
 
 namespace LeechCraft
 {
-namespace Util
+namespace HttThare
 {
-	class ResourceLoader;
-}
+	namespace ip = boost::asio::ip;
 
-namespace Azoth
-{
-class IMessage;
-class IProxyObject;
-
-namespace StandardStyles
-{
-	class StandardStyleSource : public QObject
-							  , public IChatStyleResourceSource
+	Server::Server (const QString& address, const QString& port)
+	: Acceptor_ { IoService_ }
+	, Socket_ { IoService_ }
 	{
-		Q_OBJECT
-		Q_INTERFACES (LeechCraft::Azoth::IChatStyleResourceSource)
+		ip::tcp::resolver resolver { IoService_ };
+		ip::tcp::endpoint endpoint { *resolver.resolve ({ address.toStdString (), port.toStdString () }) };
 
-		std::shared_ptr<Util::ResourceLoader> StylesLoader_;
+		Acceptor_.open (endpoint.protocol ());
+		Acceptor_.set_option (ip::tcp::acceptor::reuse_address (true));
+		Acceptor_.bind (endpoint);
+		Acceptor_.listen ();
 
-		QMap<QWebFrame*, bool> HasBeenAppended_;
-		IProxyObject *Proxy_;
+		StartAccept ();
+	}
 
-		mutable QHash<QString, QList<QColor>> Coloring2Colors_;
-		mutable QString LastPack_;
+	void Server::Start ()
+	{
+		for (auto i = 0; i < 2; ++i)
+			Threads_.emplace_back ([this] { IoService_.run (); });
+	}
 
-		QHash<QObject*, QWebFrame*> Msg2Frame_;
-	public:
-		StandardStyleSource (IProxyObject*, QObject* = 0);
+	void Server::Stop ()
+	{
+		IoService_.stop ();
+		for (auto& thread : Threads_)
+			thread.join ();
+		Threads_.clear ();
+	}
 
-		QAbstractItemModel* GetOptionsModel () const;
-		QUrl GetBaseURL (const QString&) const;
-		QString GetHTMLTemplate (const QString&,
-				const QString&, QObject*, QWebFrame*) const;
-		bool AppendMessage (QWebFrame*, QObject*, const ChatMsgAppendInfo&);
-		void FrameFocused (QWebFrame*);
-		QStringList GetVariantsForPack (const QString&);
-	private:
-		QList<QColor> CreateColors (const QString&, QWebFrame*);
-		QString GetMessageID (QObject*);
-		QString GetStatusImage (const QString&);
-	private slots:
-		void handleMessageDelivered ();
-		void handleMessageDestroyed ();
-		void handleFrameDestroyed ();
-	};
+	void Server::StartAccept ()
+	{
+		Connection_ptr connection { new Connection { IoService_, RH_ } };
+		Acceptor_.async_accept (connection->GetSocket (),
+				[this, connection] (const boost::system::error_code& ec)
+				{
+					if (!ec)
+						connection->Start ();
+					else
+						qWarning () << Q_FUNC_INFO
+								<< "cannot accept:"
+								<< ec.message ().c_str ();
+
+					StartAccept ();
+				});
+	}
 }
 }
-}
-
-#endif

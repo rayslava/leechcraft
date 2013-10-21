@@ -136,7 +136,7 @@ if (NOT CMAKE_VERSION VERSION_LESS 2.8.6)
 endif ()
 
 set (LEECHCRAFT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
-set (LEECHCRAFT_LIBRARIES lcutil xmlsettingsdialog)
+set (LEECHCRAFT_LIBRARIES leechcraft-util leechcraft-xsd)
 
 set (CMAKE_MODULE_PATH "/usr/local/share/apps/cmake/modules;/usr/share/apps/cmake/modules;${CMAKE_MODULE_PATH}")
 
@@ -161,6 +161,7 @@ option (ENABLE_GLANCE "Quick overview of tabs" ${WITH_PLUGINS})
 option (ENABLE_GMAILNOTIFIER "Build GMail Notifier which notifies about new mail in your GMail inbox" ${WITH_PLUGINS})
 option (ENABLE_HISTORYHOLDER "Build HistoryHolder, the keeper of the history" ${WITH_PLUGINS})
 option (ENABLE_HTTP "Build CSTP, the HTTP implementation" ${WITH_PLUGINS})
+option (ENABLE_HTTHARE "Build HttThare for sharing local documents via HTTP" ${WITH_PLUGINS})
 option (ENABLE_KINOTIFY "Build Kinotify, fancy kinetic notifications" ${WITH_PLUGINS})
 option (ENABLE_KNOWHOW "Build KnowHow for displaying tips of the day" ${WITH_PLUGINS})
 option (ENABLE_LMP "Build LMP, the LeechCraft Music Player" ${WITH_PLUGINS})
@@ -313,6 +314,10 @@ endif ()
 
 if (ENABLE_HTTP)
 	add_subdirectory (plugins/cstp)
+endif ()
+
+if (ENABLE_HTTHARE)
+	add_subdirectory (plugins/htthare)
 endif ()
 
 if (ENABLE_LMP)

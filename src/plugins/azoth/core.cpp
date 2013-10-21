@@ -833,7 +833,7 @@ namespace Azoth
 		src->FrameFocused (frame);
 	}
 
-	QList<QColor> Core::GenerateColors (const QString& coloring) const
+	QList<QColor> Core::GenerateColors (const QString& coloring, QColor bg) const
 	{
 		auto compatibleColors = [] (const QColor& c1, const QColor& c2) -> bool
 		{
@@ -861,15 +861,15 @@ namespace Azoth
 				return result;
 		}
 
-		if (coloring == "hash" ||
-				coloring.isEmpty ())
+		if (coloring == "hash" || coloring.isEmpty ())
 		{
-			const QColor& bg = QApplication::palette ().color (QPalette::Base);
+			if (!bg.isValid ())
+				bg = QApplication::palette ().color (QPalette::Base);
 
 			int alpha = bg.alpha ();
 
 			QColor color;
-			for (int hue = 0; hue < 360; hue += 36)
+			for (int hue = 0; hue < 360; hue += 18)
 			{
 				color.setHsv (hue, 255, 255, alpha);
 				if (compatibleColors (color, bg))
@@ -880,8 +880,7 @@ namespace Azoth
 			}
 		}
 		else
-			Q_FOREACH (const QString& str,
-					coloring.split (' ', QString::SkipEmptyParts))
+			for (const auto& str : coloring.split (' ', QString::SkipEmptyParts))
 				result << QColor (str);
 
 		return result;
@@ -1007,16 +1006,19 @@ namespace Azoth
 		if (!src)
 			return body;
 
+		const bool requireSpace = XmlSettingsManager::Instance ()
+				.property ("RequireSpaceBeforeSmiles").toBool ();
+
 		const QString& img = QString ("<img src=\"%2\" title=\"%1\" />");
 		QList<QByteArray> rawDatas;
-		Q_FOREACH (const QString& str, src->GetEmoticonStrings (pack))
+		for (const auto& str : src->GetEmoticonStrings (pack))
 		{
 			const QString& escaped = Qt::escape (str);
 			if (!body.contains (escaped))
 				continue;
 
 			bool safeReplace = true;
-			Q_FOREACH (const QByteArray& rd, rawDatas)
+			for (const auto& rd : rawDatas)
 				if (rd.indexOf (escaped) != -1)
 				{
 					safeReplace = false;
@@ -1030,12 +1032,17 @@ namespace Azoth
 			const QString& smileStr = img
 					.arg (str)
 					.arg (QString ("data:image/png;base64," + rawData));
-			if (body.startsWith (escaped))
-				body.replace (0, escaped.size (), smileStr);
 
-			auto whites = { " ", "\n", "\t", "<br/>", "<br />", "<br>" };
-			Q_FOREACH (auto white, whites)
-				body.replace (white + escaped, white + smileStr);
+			if (requireSpace)
+			{
+				if (body.startsWith (escaped))
+					body.replace (0, escaped.size (), smileStr);
+				auto whites = { " ", "\n", "\t", "<br/>", "<br />", "<br>" };
+				for (auto white : whites)
+					body.replace (white + escaped, white + smileStr);
+			}
+			else
+				body.replace (escaped, smileStr);
 		}
 
 		return body;
@@ -2625,7 +2632,7 @@ namespace Azoth
 
 		auto nh = new Util::NotificationActionHandler (e, this);
 		nh->AddFunction (tr ("Open chat"),
-				[parentCL, this] () { ChatTabsManager_->OpenChat (parentCL); });
+				[parentCL, this] { ChatTabsManager_->OpenChat (parentCL, true); });
 		nh->AddDependentObject (parentCL->GetQObject ());
 
 		emit gotEntity (e);
@@ -2708,7 +2715,7 @@ namespace Azoth
 		Util::NotificationActionHandler *nh =
 				new Util::NotificationActionHandler (e, this);
 		nh->AddFunction (tr ("Open chat"),
-				[entry, this] () { ChatTabsManager_->OpenChat (entry); });
+				[entry, this] { ChatTabsManager_->OpenChat (entry, true); });
 		nh->AddDependentObject (entry->GetQObject ());
 
 		emit gotEntity (e);

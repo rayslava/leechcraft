@@ -27,65 +27,49 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#ifndef PLUGINS_AZOTH_PLUGINS_STANDARDSTYLES_STANDARDSTYLESOURCE_H
-#define PLUGINS_AZOTH_PLUGINS_STANDARDSTYLES_STANDARDSTYLESOURCE_H
-#include <memory>
-#include <QObject>
-#include <QDateTime>
-#include <QHash>
-#include <QColor>
-#include <interfaces/azoth/ichatstyleresourcesource.h>
+#include "httthare.h"
+#include <QIcon>
+#include "server.h"
 
 namespace LeechCraft
 {
-namespace Util
+namespace HttThare
 {
-	class ResourceLoader;
-}
-
-namespace Azoth
-{
-class IMessage;
-class IProxyObject;
-
-namespace StandardStyles
-{
-	class StandardStyleSource : public QObject
-							  , public IChatStyleResourceSource
+	void Plugin::Init (ICoreProxy_ptr proxy)
 	{
-		Q_OBJECT
-		Q_INTERFACES (LeechCraft::Azoth::IChatStyleResourceSource)
+		S_ = new Server ("localhost", "14800");
+		S_->Start ();
+	}
 
-		std::shared_ptr<Util::ResourceLoader> StylesLoader_;
+	void Plugin::SecondInit ()
+	{
+	}
 
-		QMap<QWebFrame*, bool> HasBeenAppended_;
-		IProxyObject *Proxy_;
+	QByteArray Plugin::GetUniqueID () const
+	{
+		return "org.LeechCraft.HttThare";
+	}
 
-		mutable QHash<QString, QList<QColor>> Coloring2Colors_;
-		mutable QString LastPack_;
+	void Plugin::Release ()
+	{
+		S_->Stop ();
+	}
 
-		QHash<QObject*, QWebFrame*> Msg2Frame_;
-	public:
-		StandardStyleSource (IProxyObject*, QObject* = 0);
+	QString Plugin::GetName () const
+	{
+		return "HTThare";
+	}
 
-		QAbstractItemModel* GetOptionsModel () const;
-		QUrl GetBaseURL (const QString&) const;
-		QString GetHTMLTemplate (const QString&,
-				const QString&, QObject*, QWebFrame*) const;
-		bool AppendMessage (QWebFrame*, QObject*, const ChatMsgAppendInfo&);
-		void FrameFocused (QWebFrame*);
-		QStringList GetVariantsForPack (const QString&);
-	private:
-		QList<QColor> CreateColors (const QString&, QWebFrame*);
-		QString GetMessageID (QObject*);
-		QString GetStatusImage (const QString&);
-	private slots:
-		void handleMessageDelivered ();
-		void handleMessageDestroyed ();
-		void handleFrameDestroyed ();
-	};
+	QString Plugin::GetInfo () const
+	{
+		return tr ("Share your files over local network via HTTP.");
+	}
+
+	QIcon Plugin::GetIcon () const
+	{
+		return QIcon ();
+	}
 }
 }
-}
 
-#endif
+LC_EXPORT_PLUGIN (leechcraft_httthare, LeechCraft::HttThare::Plugin);

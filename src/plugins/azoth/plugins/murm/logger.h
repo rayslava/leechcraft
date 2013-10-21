@@ -27,58 +27,96 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#ifndef PLUGINS_AZOTH_PROXYOBJECT_H
-#define PLUGINS_AZOTH_PROXYOBJECT_H
+#pragma once
+
+#include <memory>
 #include <QObject>
-#include <QHash>
-#include <QIcon>
-#include <QColor>
-#include <QDateTime>
-#include <QRegExp>
-#include "interfaces/azoth/iproxyobject.h"
+#include <QFile>
+#include <interfaces/azoth/ihaveconsole.h>
+
+class QVariant;
+class QUrl;
 
 namespace LeechCraft
 {
 namespace Azoth
 {
-	class ProxyObject : public QObject
-					  , public IProxyObject
+namespace Murm
+{
+	class Logger : public QObject
 	{
 		Q_OBJECT
-		Q_INTERFACES (LeechCraft::Azoth::IProxyObject)
 
-		QRegExp LinkRegexp_;
-		QHash<QString, AuthStatus> SerializedStr2AuthStatus_;
+		const QString Filename_;
 	public:
-		ProxyObject (QObject* = 0);
-	public slots:
-		QObject* GetSettingsManager ();
-		QString GetPassword (QObject*);
-		void SetPassword (const QString&, QObject*);
-		QString GetAccountPassword (QObject*, bool);
-		bool IsAutojoinAllowed ();
-		QString StateToString (State) const;
-		QString AuthStatusToString (AuthStatus) const;
-		AuthStatus AuthStatusFromString (const QString&) const;
-		QObject* GetAccount (const QString&) const;
-		QList<QObject*> GetAllAccounts () const;
-		QObject* GetEntry (const QString&, const QString&) const;
-		void OpenChat (const QString&, const QString&, const QString&, const QString&) const;
-		QString GetSelectedChatTemplate (QObject*, QWebFrame*) const;
-		QList<QColor> GenerateColors (const QString&, QColor) const;
-		QString GetNickColor (const QString&, const QList<QColor>&) const;
-		QString FormatDate (QDateTime, QObject*) const;
-		QString FormatNickname (QString, QObject*, const QString&) const;
-		QString FormatBody (QString, QObject*) const;
-		void PreprocessMessage (QObject*);
-		Util::ResourceLoader* GetResourceLoader (PublicResourceLoader) const;
-		QIcon GetIconForState (State) const;
-		void FormatLinks (QString&);
-		QStringList FindLinks (const QString&);
-		QObject* CreateCoreMessage (const QString&, const QDateTime&,
-				IMessage::MessageType, IMessage::Direction, QObject*, QObject*);
+		class LogProxy
+		{
+			friend class Logger;
+
+			Logger& L_;
+			const IHaveConsole::PacketDirection Dir_;
+
+			bool IsFirst_ = true;
+			std::unique_ptr<QFile> File_;
+
+			QByteArray CurrentString_;
+
+			LogProxy (Logger&, IHaveConsole::PacketDirection);
+		public:
+			LogProxy (const LogProxy&) = delete;
+			LogProxy (LogProxy&&) = default;
+
+			~LogProxy ();
+
+			template<typename T>
+			LogProxy operator<< (const T& t)
+			{
+				if (!IsFirst_)
+					Write (" ");
+				Write (t);
+				IsFirst_ = false;
+				return std::move (*this);
+			}
+		private:
+			void Write (const char*);
+			void Write (const QString&);
+			void Write (qint64);
+			void Write (const QUrl&);
+			void Write (const QVariant&);
+
+			void WriteImpl (const QByteArray&);
+
+			template<typename T>
+			void Write (const QList<T>& list)
+			{
+				Write ("[ ");
+				bool isFirst = true;
+				for (const auto& value : list)
+				{
+					Write (value);
+					if (!isFirst)
+						Write ("; ");
+					isFirst = false;
+				}
+				Write (" ]");
+			}
+		};
+
+		Logger (const QString& id, QObject* = 0);
+
+		LogProxy operator() (IHaveConsole::PacketDirection dir)
+		{
+			return LogProxy { *this, dir };
+		}
+
+		template<typename T>
+		LogProxy operator<< (const T& t)
+		{
+			return LogProxy { *this, IHaveConsole::PacketDirection::In } << t;
+		}
+	signals:
+		void gotConsolePacket (const QByteArray&, IHaveConsole::PacketDirection, const QString&);
 	};
 }
 }
-
-#endif
+}

@@ -27,65 +27,74 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#ifndef PLUGINS_AZOTH_PLUGINS_STANDARDSTYLES_STANDARDSTYLESOURCE_H
-#define PLUGINS_AZOTH_PLUGINS_STANDARDSTYLES_STANDARDSTYLESOURCE_H
-#include <memory>
-#include <QObject>
+#include "logger.h"
 #include <QDateTime>
-#include <QHash>
-#include <QColor>
-#include <interfaces/azoth/ichatstyleresourcesource.h>
+#include <QUrl>
+#include <qjson/serializer.h>
+#include <util/util.h>
 
 namespace LeechCraft
 {
-namespace Util
-{
-	class ResourceLoader;
-}
-
 namespace Azoth
 {
-class IMessage;
-class IProxyObject;
-
-namespace StandardStyles
+namespace Murm
 {
-	class StandardStyleSource : public QObject
-							  , public IChatStyleResourceSource
+	Logger::LogProxy::LogProxy (Logger& l, IHaveConsole::PacketDirection dir)
+	: L_ (l)
+	, Dir_ { dir }
+	, File_ { new QFile { l.Filename_ } }
 	{
-		Q_OBJECT
-		Q_INTERFACES (LeechCraft::Azoth::IChatStyleResourceSource)
+		File_->open (QIODevice::WriteOnly | QIODevice::Append);
+		File_->write ("[" + QDateTime::currentDateTime ().toString (Qt::ISODate).toUtf8 () + "] ");
+	}
 
-		std::shared_ptr<Util::ResourceLoader> StylesLoader_;
+	Logger::LogProxy::~LogProxy ()
+	{
+		if (!File_)
+			return;
 
-		QMap<QWebFrame*, bool> HasBeenAppended_;
-		IProxyObject *Proxy_;
+		L_.gotConsolePacket (CurrentString_, Dir_, {});
+		WriteImpl ("\n");
+	}
 
-		mutable QHash<QString, QList<QColor>> Coloring2Colors_;
-		mutable QString LastPack_;
+	void Logger::LogProxy::Write (const char *msg)
+	{
+		WriteImpl (msg);
+	}
 
-		QHash<QObject*, QWebFrame*> Msg2Frame_;
-	public:
-		StandardStyleSource (IProxyObject*, QObject* = 0);
+	void Logger::LogProxy::Write (const QString& str)
+	{
+		WriteImpl (str.toUtf8 ());
+	}
 
-		QAbstractItemModel* GetOptionsModel () const;
-		QUrl GetBaseURL (const QString&) const;
-		QString GetHTMLTemplate (const QString&,
-				const QString&, QObject*, QWebFrame*) const;
-		bool AppendMessage (QWebFrame*, QObject*, const ChatMsgAppendInfo&);
-		void FrameFocused (QWebFrame*);
-		QStringList GetVariantsForPack (const QString&);
-	private:
-		QList<QColor> CreateColors (const QString&, QWebFrame*);
-		QString GetMessageID (QObject*);
-		QString GetStatusImage (const QString&);
-	private slots:
-		void handleMessageDelivered ();
-		void handleMessageDestroyed ();
-		void handleFrameDestroyed ();
-	};
+	void Logger::LogProxy::Write (qint64 num)
+	{
+		WriteImpl (QByteArray::number (num));
+	}
+
+	void Logger::LogProxy::Write (const QUrl& url)
+	{
+		WriteImpl (url.toEncoded ());
+	}
+
+	void Logger::LogProxy::WriteImpl (const QByteArray& ba)
+	{
+		CurrentString_ += ba;
+		File_->write (ba);
+	}
+
+	void Logger::LogProxy::Write (const QVariant& json)
+	{
+		QJson::Serializer s;
+		s.setIndentMode (QJson::IndentFull);
+		WriteImpl (s.serialize (json));
+	}
+
+	Logger::Logger (const QString& id, QObject *parent)
+	: QObject { parent }
+	, Filename_ { Util::CreateIfNotExists ("azoth/murm").absoluteFilePath (id) + ".log" }
+	{
+	}
 }
 }
 }
-
-#endif

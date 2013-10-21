@@ -27,65 +27,36 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#ifndef PLUGINS_AZOTH_PLUGINS_STANDARDSTYLES_STANDARDSTYLESOURCE_H
-#define PLUGINS_AZOTH_PLUGINS_STANDARDSTYLES_STANDARDSTYLESOURCE_H
-#include <memory>
-#include <QObject>
-#include <QDateTime>
-#include <QHash>
-#include <QColor>
-#include <interfaces/azoth/ichatstyleresourcesource.h>
+#include "dummymsgmanager.h"
+#include "coremessage.h"
 
 namespace LeechCraft
 {
-namespace Util
-{
-	class ResourceLoader;
-}
-
 namespace Azoth
 {
-class IMessage;
-class IProxyObject;
-
-namespace StandardStyles
-{
-	class StandardStyleSource : public QObject
-							  , public IChatStyleResourceSource
+	DummyMsgManager::DummyMsgManager ()
 	{
-		Q_OBJECT
-		Q_INTERFACES (LeechCraft::Azoth::IChatStyleResourceSource)
+	}
 
-		std::shared_ptr<Util::ResourceLoader> StylesLoader_;
+	DummyMsgManager& DummyMsgManager::Instance ()
+	{
+		static DummyMsgManager d;
+		return d;
+	}
 
-		QMap<QWebFrame*, bool> HasBeenAppended_;
-		IProxyObject *Proxy_;
+	void DummyMsgManager::AddMessage (CoreMessage *msg)
+	{
+		Messages_ [msg->OtherPart ()] << msg;
+	}
 
-		mutable QHash<QString, QList<QColor>> Coloring2Colors_;
-		mutable QString LastPack_;
+	void DummyMsgManager::ClearMessages (QObject *entry)
+	{
+		qDeleteAll (Messages_.take (entry));
+	}
 
-		QHash<QObject*, QWebFrame*> Msg2Frame_;
-	public:
-		StandardStyleSource (IProxyObject*, QObject* = 0);
-
-		QAbstractItemModel* GetOptionsModel () const;
-		QUrl GetBaseURL (const QString&) const;
-		QString GetHTMLTemplate (const QString&,
-				const QString&, QObject*, QWebFrame*) const;
-		bool AppendMessage (QWebFrame*, QObject*, const ChatMsgAppendInfo&);
-		void FrameFocused (QWebFrame*);
-		QStringList GetVariantsForPack (const QString&);
-	private:
-		QList<QColor> CreateColors (const QString&, QWebFrame*);
-		QString GetMessageID (QObject*);
-		QString GetStatusImage (const QString&);
-	private slots:
-		void handleMessageDelivered ();
-		void handleMessageDestroyed ();
-		void handleFrameDestroyed ();
-	};
+	void DummyMsgManager::entryDestroyed ()
+	{
+		ClearMessages (sender ());
+	}
 }
 }
-}
-
-#endif

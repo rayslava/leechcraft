@@ -27,65 +27,45 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#ifndef PLUGINS_AZOTH_PLUGINS_STANDARDSTYLES_STANDARDSTYLESOURCE_H
-#define PLUGINS_AZOTH_PLUGINS_STANDARDSTYLES_STANDARDSTYLESOURCE_H
-#include <memory>
-#include <QObject>
-#include <QDateTime>
-#include <QHash>
-#include <QColor>
-#include <interfaces/azoth/ichatstyleresourcesource.h>
+#include "connection.h"
+#include <QtDebug>
+#include "requesthandler.h"
 
 namespace LeechCraft
 {
-namespace Util
+namespace HttThare
 {
-	class ResourceLoader;
-}
-
-namespace Azoth
-{
-class IMessage;
-class IProxyObject;
-
-namespace StandardStyles
-{
-	class StandardStyleSource : public QObject
-							  , public IChatStyleResourceSource
+	Connection::Connection (boost::asio::io_service& service, RequestHandler& rh)
+	: Strand_ { service }
+	, Socket_ { service }
+	, RH_ (rh)
 	{
-		Q_OBJECT
-		Q_INTERFACES (LeechCraft::Azoth::IChatStyleResourceSource)
+	}
 
-		std::shared_ptr<Util::ResourceLoader> StylesLoader_;
+	boost::asio::ip::tcp::socket& Connection::GetSocket ()
+	{
+		return Socket_;
+	}
 
-		QMap<QWebFrame*, bool> HasBeenAppended_;
-		IProxyObject *Proxy_;
+	void Connection::Start ()
+	{
+		auto conn = shared_from_this ();
+		boost::asio::async_read_until (Socket_,
+				Buf_,
+				std::string { "\r\n\r\n" },
+				Strand_.wrap ([conn] (const boost::system::error_code& ec, ulong transferred)
+					{ conn->HandleHeader (ec, transferred); }));
+	}
 
-		mutable QHash<QString, QList<QColor>> Coloring2Colors_;
-		mutable QString LastPack_;
+	void Connection::HandleHeader (const boost::system::error_code&, ulong transferred)
+	{
+		QByteArray data;
+		data.resize (transferred);
 
-		QHash<QObject*, QWebFrame*> Msg2Frame_;
-	public:
-		StandardStyleSource (IProxyObject*, QObject* = 0);
+		std::istream istr (&Buf_);
+		istr.read (data.data (), transferred);
 
-		QAbstractItemModel* GetOptionsModel () const;
-		QUrl GetBaseURL (const QString&) const;
-		QString GetHTMLTemplate (const QString&,
-				const QString&, QObject*, QWebFrame*) const;
-		bool AppendMessage (QWebFrame*, QObject*, const ChatMsgAppendInfo&);
-		void FrameFocused (QWebFrame*);
-		QStringList GetVariantsForPack (const QString&);
-	private:
-		QList<QColor> CreateColors (const QString&, QWebFrame*);
-		QString GetMessageID (QObject*);
-		QString GetStatusImage (const QString&);
-	private slots:
-		void handleMessageDelivered ();
-		void handleMessageDestroyed ();
-		void handleFrameDestroyed ();
-	};
+		qDebug () << data;
+	}
 }
 }
-}
-
-#endif

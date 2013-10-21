@@ -27,58 +27,34 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#ifndef PLUGINS_AZOTH_PROXYOBJECT_H
-#define PLUGINS_AZOTH_PROXYOBJECT_H
+#pragma once
+
 #include <QObject>
 #include <QHash>
-#include <QIcon>
-#include <QColor>
-#include <QDateTime>
-#include <QRegExp>
-#include "interfaces/azoth/iproxyobject.h"
 
 namespace LeechCraft
 {
 namespace Azoth
 {
-	class ProxyObject : public QObject
-					  , public IProxyObject
+	class CoreMessage;
+
+	class DummyMsgManager : public QObject
 	{
 		Q_OBJECT
-		Q_INTERFACES (LeechCraft::Azoth::IProxyObject)
 
-		QRegExp LinkRegexp_;
-		QHash<QString, AuthStatus> SerializedStr2AuthStatus_;
+		QHash<QObject*, QList<CoreMessage*>> Messages_;
+
+		DummyMsgManager ();
 	public:
-		ProxyObject (QObject* = 0);
-	public slots:
-		QObject* GetSettingsManager ();
-		QString GetPassword (QObject*);
-		void SetPassword (const QString&, QObject*);
-		QString GetAccountPassword (QObject*, bool);
-		bool IsAutojoinAllowed ();
-		QString StateToString (State) const;
-		QString AuthStatusToString (AuthStatus) const;
-		AuthStatus AuthStatusFromString (const QString&) const;
-		QObject* GetAccount (const QString&) const;
-		QList<QObject*> GetAllAccounts () const;
-		QObject* GetEntry (const QString&, const QString&) const;
-		void OpenChat (const QString&, const QString&, const QString&, const QString&) const;
-		QString GetSelectedChatTemplate (QObject*, QWebFrame*) const;
-		QList<QColor> GenerateColors (const QString&, QColor) const;
-		QString GetNickColor (const QString&, const QList<QColor>&) const;
-		QString FormatDate (QDateTime, QObject*) const;
-		QString FormatNickname (QString, QObject*, const QString&) const;
-		QString FormatBody (QString, QObject*) const;
-		void PreprocessMessage (QObject*);
-		Util::ResourceLoader* GetResourceLoader (PublicResourceLoader) const;
-		QIcon GetIconForState (State) const;
-		void FormatLinks (QString&);
-		QStringList FindLinks (const QString&);
-		QObject* CreateCoreMessage (const QString&, const QDateTime&,
-				IMessage::MessageType, IMessage::Direction, QObject*, QObject*);
+		DummyMsgManager (const DummyMsgManager&) = delete;
+		DummyMsgManager (DummyMsgManager&&) = delete;
+
+		static DummyMsgManager& Instance ();
+
+		void AddMessage (CoreMessage*);
+		void ClearMessages (QObject*);
+	private slots:
+		void entryDestroyed ();
 	};
 }
 }
-
-#endif

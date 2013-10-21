@@ -33,6 +33,7 @@
 #include <interfaces/azoth/iaccount.h>
 #include <interfaces/azoth/isupporttune.h>
 #include <interfaces/azoth/iextselfinfoaccount.h>
+#include <interfaces/azoth/ihaveconsole.h>
 #include <interfaces/core/icoreproxy.h>
 #include "structures.h"
 
@@ -50,16 +51,19 @@ namespace Murm
 	class PhotoStorage;
 	class GeoResolver;
 	class GroupsManager;
+	class Logger;
 
 	class VkAccount : public QObject
 					, public IAccount
 					, public ISupportTune
 					, public IExtSelfInfoAccount
+					, public IHaveConsole
 	{
 		Q_OBJECT
 		Q_INTERFACES (LeechCraft::Azoth::IAccount
 				LeechCraft::Azoth::ISupportTune
-				LeechCraft::Azoth::IExtSelfInfoAccount)
+				LeechCraft::Azoth::IExtSelfInfoAccount
+				LeechCraft::Azoth::IHaveConsole)
 
 		const ICoreProxy_ptr CoreProxy_;
 
@@ -69,6 +73,8 @@ namespace Murm
 		PhotoStorage * const PhotoStorage_;
 
 		QString Name_;
+
+		Logger * const Logger_;
 
 		VkConnection * const Conn_;
 		GroupsManager * const GroupsMgr_;
@@ -126,6 +132,9 @@ namespace Murm
 		QObject* GetSelfContact () const;
 		QImage GetSelfAvatar () const;
 		QIcon GetAccountIcon () const;
+
+		PacketFormat GetPacketFormat () const;
+		void SetConsoleEnabled (bool);
 	private slots:
 		void handleSelfInfo (const UserInfo&);
 		void handleUsers (const QList<UserInfo>&);
@@ -157,6 +166,8 @@ namespace Murm
 		void mucInvitationReceived (const QVariantMap&, const QString&, const QString&);
 
 		void accountChanged (VkAccount*);
+
+		void gotConsolePacket (const QByteArray&, IHaveConsole::PacketDirection, const QString&);
 	};
 }
 }

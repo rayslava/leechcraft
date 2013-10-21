@@ -40,6 +40,7 @@
 #include "groupsmanager.h"
 #include "xmlsettingsmanager.h"
 #include "vkchatentry.h"
+#include "logger.h"
 
 namespace LeechCraft
 {
@@ -55,7 +56,8 @@ namespace Murm
 	, ID_ (id.isEmpty () ? QUuid::createUuid ().toByteArray () : id)
 	, PhotoStorage_ (new PhotoStorage (proxy->GetNetworkAccessManager (), ID_))
 	, Name_ (name)
-	, Conn_ (new VkConnection (cookies, proxy))
+	, Logger_ (new Logger (ID_, this))
+	, Conn_ (new VkConnection (cookies, proxy, *Logger_))
 	, GroupsMgr_ (new GroupsManager (Conn_))
 	, GeoResolver_ (new GeoResolver (Conn_, this))
 	{
@@ -102,6 +104,11 @@ namespace Murm
 				SIGNAL (chatUserRemoved (qulonglong, qulonglong)),
 				this,
 				SLOT (handleChatUserRemoved (qulonglong, qulonglong)));
+
+		connect (Logger_,
+				SIGNAL (gotConsolePacket (QByteArray, IHaveConsole::PacketDirection, QString)),
+				this,
+				SIGNAL (gotConsolePacket (QByteArray, IHaveConsole::PacketDirection, QString)));
 
 		XmlSettingsManager::Instance ().RegisterObject ("MarkAsOnline",
 				this, "handleMarkOnline");
@@ -325,6 +332,15 @@ namespace Murm
 	QIcon VkAccount::GetAccountIcon () const
 	{
 		return {};
+	}
+
+	IHaveConsole::PacketFormat VkAccount::GetPacketFormat () const
+	{
+		return PacketFormat::PlainText;
+	}
+
+	void VkAccount::SetConsoleEnabled (bool)
+	{
 	}
 
 	void VkAccount::handleSelfInfo (const UserInfo& info)

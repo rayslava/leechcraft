@@ -84,6 +84,7 @@
 #include "proxyobject.h"
 #include "customchatstylemanager.h"
 #include "coremessage.h"
+#include "dummymsgmanager.h"
 
 namespace LeechCraft
 {
@@ -229,6 +230,7 @@ namespace Azoth
 				this,
 				SLOT (typeTimeout ()));
 
+		DummyMsgManager::Instance ().ClearMessages (GetCLEntry ());
 		PrepareTheme ();
 
 		auto entry = GetEntry<ICLEntry> ();
@@ -271,6 +273,7 @@ namespace Azoth
 
 		qDeleteAll (HistoryMessages_);
 		qDeleteAll (CoreMessages_);
+		DummyMsgManager::Instance ().ClearMessages (GetCLEntry ());
 		delete Ui_.MsgEdit_->document ();
 
 		delete MUCEventLog_;
@@ -739,6 +742,7 @@ namespace Azoth
 		HistoryMessages_.clear ();
 		qDeleteAll (CoreMessages_);
 		CoreMessages_.clear ();
+		DummyMsgManager::Instance ().ClearMessages (GetCLEntry ());
 		LastDateTime_ = QDateTime ();
 		PrepareTheme ();
 	}
@@ -750,6 +754,7 @@ namespace Azoth
 		HistoryMessages_.clear ();
 		qDeleteAll (CoreMessages_);
 		CoreMessages_.clear ();
+		DummyMsgManager::Instance ().ClearMessages (GetCLEntry ());
 		LastDateTime_ = QDateTime ();
 		RequestLogs (ScrollbackPos_);
 	}
@@ -1064,14 +1069,13 @@ namespace Azoth
 			newUrl.removeQueryItem ("hrid");
 
 			IAccount *account = qobject_cast<IAccount*> (own->GetParentAccount ());
-			Q_FOREACH (QObject *entryObj, account->GetCLEntries ())
+			for (QObject *entryObj : account->GetCLEntries ())
 			{
 				ICLEntry *entry = qobject_cast<ICLEntry*> (entryObj);
 				if (!entry || entry->GetHumanReadableID () != id)
 					continue;
 
-				QWidget *w = Core::Instance ()
-						.GetChatTabsManager ()->OpenChat (entry);
+				auto w = Core::Instance ().GetChatTabsManager ()->OpenChat (entry, true);
 				QMetaObject::invokeMethod (w,
 						"handleViewLinkClicked",
 						Qt::QueuedConnection,
@@ -1118,7 +1122,7 @@ namespace Azoth
 				Ui_.MsgEdit_->setFocus ();
 			}
 			else
-				Q_FOREACH (auto item, url.queryItems ())
+				for (const auto& item : url.queryItems ())
 					if (item.first == "hrid")
 					{
 						OpenChatWithText (url, item.second, GetEntry<ICLEntry> ());
@@ -1934,6 +1938,7 @@ namespace Azoth
 				ToggleRichText_->isChecked ()
 			};
 			Core::Instance ().AppendMessageByTemplate (frame, coreMessage, coreInfo);
+			CoreMessages_ << coreMessage;
 		}
 
 		LastDateTime_ = msg->GetDateTime ();

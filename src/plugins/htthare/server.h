@@ -27,65 +27,40 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#ifndef PLUGINS_AZOTH_PLUGINS_STANDARDSTYLES_STANDARDSTYLESOURCE_H
-#define PLUGINS_AZOTH_PLUGINS_STANDARDSTYLES_STANDARDSTYLESOURCE_H
-#include <memory>
-#include <QObject>
-#include <QDateTime>
-#include <QHash>
-#include <QColor>
-#include <interfaces/azoth/ichatstyleresourcesource.h>
+#pragma once
+
+#include <thread>
+#include <boost/asio.hpp>
+#include "requesthandler.h"
+
+template<typename T>
+class QSet;
+
+class QString;
 
 namespace LeechCraft
 {
-namespace Util
+namespace HttThare
 {
-	class ResourceLoader;
-}
-
-namespace Azoth
-{
-class IMessage;
-class IProxyObject;
-
-namespace StandardStyles
-{
-	class StandardStyleSource : public QObject
-							  , public IChatStyleResourceSource
+	class Server
 	{
-		Q_OBJECT
-		Q_INTERFACES (LeechCraft::Azoth::IChatStyleResourceSource)
+		boost::asio::io_service IoService_;
+		boost::asio::ip::tcp::acceptor Acceptor_;
+		boost::asio::ip::tcp::socket Socket_;
 
-		std::shared_ptr<Util::ResourceLoader> StylesLoader_;
+		RequestHandler RH_;
 
-		QMap<QWebFrame*, bool> HasBeenAppended_;
-		IProxyObject *Proxy_;
-
-		mutable QHash<QString, QList<QColor>> Coloring2Colors_;
-		mutable QString LastPack_;
-
-		QHash<QObject*, QWebFrame*> Msg2Frame_;
+		std::vector<std::thread> Threads_;
 	public:
-		StandardStyleSource (IProxyObject*, QObject* = 0);
+		Server (const QString& address, const QString& port);
 
-		QAbstractItemModel* GetOptionsModel () const;
-		QUrl GetBaseURL (const QString&) const;
-		QString GetHTMLTemplate (const QString&,
-				const QString&, QObject*, QWebFrame*) const;
-		bool AppendMessage (QWebFrame*, QObject*, const ChatMsgAppendInfo&);
-		void FrameFocused (QWebFrame*);
-		QStringList GetVariantsForPack (const QString&);
+		Server (const Server&) = delete;
+		Server& operator= (const Server&) = delete;
+
+		void Start ();
+		void Stop ();
 	private:
-		QList<QColor> CreateColors (const QString&, QWebFrame*);
-		QString GetMessageID (QObject*);
-		QString GetStatusImage (const QString&);
-	private slots:
-		void handleMessageDelivered ();
-		void handleMessageDestroyed ();
-		void handleFrameDestroyed ();
+		void StartAccept ();
 	};
 }
 }
-}
-
-#endif
