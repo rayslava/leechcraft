@@ -29,13 +29,8 @@
 
 #pragma once
 
-#include <QObject>
-#include <QUrl>
-#include <QVariantMap>
-#include <QDateTime>
-#include <interfaces/core/icoreproxy.h>
-
-class QNetworkReply;
+#include <QDialog>
+#include "ui_accountconfigdialog.h"
 
 namespace LeechCraft
 {
@@ -43,49 +38,24 @@ namespace Azoth
 {
 namespace Murm
 {
-	class VkConnection;
-
-	class LongPollManager : public QObject
+	class AccountConfigDialog : public QDialog
 	{
 		Q_OBJECT
 
-		VkConnection * const Conn_;
-		const ICoreProxy_ptr Proxy_;
-
-		QString LPKey_;
-		QString LPServer_;
-		qulonglong LPTS_;
-
-		QUrl LPURLTemplate_;
-
-		int PollErrorCount_ = 0;
-
-		bool ShouldStop_ = false;
-
-		int WaitTimeout_ = 25;
-
-		QDateTime LastPollDT_;
-
-		QNetworkReply *CurrentPollReply_ = nullptr;
+		Ui::AccountConfigDialog Ui_;
 	public:
-		LongPollManager (VkConnection*, ICoreProxy_ptr);
+		AccountConfigDialog (QWidget* = 0);
 
-		void ForceServerRequery ();
-		void Stop ();
-	private:
-		void Poll ();
+		bool GetFileLogEnabled () const;
+		void SetFileLogEnabled (bool);
 
-		QUrl GetURLTemplate () const;
-	public slots:
-		void start ();
-	private slots:
-		void handlePollFinished ();
-		void handleGotLPServer ();
+		bool GetPublishTuneEnabled () const;
+		void SetPublishTuneEnabled (bool);
+
+		bool GetMarkAsOnline () const;
+		void SetMarkAsOnline (bool);
 	signals:
-		void listening ();
-		void stopped ();
-		void pollError ();
-		void gotPollData (const QVariantMap&);
+		void reauthRequested ();
 	};
 }
 }

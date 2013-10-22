@@ -41,6 +41,7 @@
 #include "xmlsettingsmanager.h"
 #include "vkchatentry.h"
 #include "logger.h"
+#include "accountconfigdialog.h"
 
 namespace LeechCraft
 {
@@ -109,10 +110,6 @@ namespace Murm
 				SIGNAL (gotConsolePacket (QByteArray, IHaveConsole::PacketDirection, QString)),
 				this,
 				SIGNAL (gotConsolePacket (QByteArray, IHaveConsole::PacketDirection, QString)));
-
-		XmlSettingsManager::Instance ().RegisterObject ("MarkAsOnline",
-				this, "handleMarkOnline");
-		handleMarkOnline ();
 	}
 
 	QByteArray VkAccount::Serialize () const
@@ -120,10 +117,13 @@ namespace Murm
 		QByteArray result;
 		QDataStream out (&result, QIODevice::WriteOnly);
 
-		out << static_cast<quint8> (1)
+		out << static_cast<quint8> (3)
 				<< ID_
 				<< Name_
-				<< Conn_->GetCookies ();
+				<< Conn_->GetCookies ()
+				<< EnableFileLog_
+				<< PublishTune_
+				<< MarkAsOnline_;
 
 		return result;
 	}
@@ -134,7 +134,7 @@ namespace Murm
 
 		quint8 version = 0;
 		in >> version;
-		if (version != 1)
+		if (version < 1 || version > 3)
 		{
 			qWarning () << Q_FUNC_INFO
 					<< "unknown version"
@@ -150,7 +150,23 @@ namespace Murm
 				>> name
 				>> cookies;
 
-		return new VkAccount (name, proto, proxy, id, cookies);
+		auto acc = new VkAccount (name, proto, proxy, id, cookies);
+
+		if (version >= 2)
+			in >> acc->EnableFileLog_
+					>> acc->PublishTune_;
+		if (version >= 3)
+			in >> acc->MarkAsOnline_;
+
+		acc->Init ();
+
+		return acc;
+	}
+
+	void VkAccount::Init ()
+	{
+		Logger_->SetFileEnabled (EnableFileLog_);
+		handleMarkOnline ();
 	}
 
 	void VkAccount::Send (VkEntry *entry, VkMessage *msg)
@@ -269,6 +285,29 @@ namespace Murm
 
 	void VkAccount::OpenConfigurationDialog ()
 	{
+		auto dia = new AccountConfigDialog;
+
+		AccConfigDia_ = dia;
+
+		dia->SetFileLogEnabled (EnableFileLog_);
+		dia->SetPublishTuneEnabled (PublishTune_);
+		dia->SetMarkAsOnline (MarkAsOnline_);
+
+		connect (dia,
+				SIGNAL (reauthRequested ()),
+				Conn_,
+				SLOT (reauth ()));
+
+		connect (dia,
+				SIGNAL (rejected ()),
+				dia,
+				SLOT (deleteLater ()));
+		connect (dia,
+				SIGNAL (accepted ()),
+				this,
+				SLOT (handleConfigDialogAccepted ()));
+
+		dia->show ();
 	}
 
 	EntryStatus VkAccount::GetState () const
@@ -304,7 +343,7 @@ namespace Murm
 
 	void VkAccount::PublishTune (const QMap<QString, QVariant>& tuneData)
 	{
-		if (!XmlSettingsManager::Instance ().property ("PublishTune").toBool ())
+		if (!PublishTune_);
 			return;
 
 		QStringList fields
@@ -440,8 +479,7 @@ namespace Murm
 
 	void VkAccount::handleMarkOnline ()
 	{
-		const auto mark = XmlSettingsManager::Instance ().property ("MarkAsOnline").toBool ();
-		Conn_->SetMarkingOnlineEnabled (mark);
+		Conn_->SetMarkingOnlineEnabled (MarkAsOnline_);
 	}
 
 	void VkAccount::finishOffline ()
@@ -454,6 +492,24 @@ namespace Murm
 
 		qDeleteAll (ChatEntries_);
 		ChatEntries_.clear ();
+	}
+
+	void VkAccount::handleConfigDialogAccepted()
+	{
+		if (!AccConfigDia_)
+			return;
+
+		EnableFileLog_ = AccConfigDia_->GetFileLogEnabled ();
+		Logger_->SetFileEnabled (EnableFileLog_);
+
+		MarkAsOnline_ = AccConfigDia_->GetMarkAsOnline ();
+		handleMarkOnline ();
+
+		PublishTune_ = AccConfigDia_->GetPublishTuneEnabled ();
+
+		emit accountChanged (this);
+
+		AccConfigDia_->deleteLater ();
 	}
 
 	void VkAccount::handleGotChatInfo (const ChatInfo& info)

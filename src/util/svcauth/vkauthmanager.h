@@ -84,7 +84,6 @@ namespace SvcAuth
 				ICoreProxy_ptr, QueueManager* = nullptr, QObject* = nullptr);
 
 		void GetAuthKey ();
-		void Reauth ();
 
 		void ManageQueue (RequestQueue_ptr);
 		void UnmanageQueue (RequestQueue_ptr);
@@ -98,6 +97,9 @@ namespace SvcAuth
 		void RequestURL (const QUrl&);
 		void RequestAuthKey ();
 		bool CheckIsBlank (QUrl);
+	public slots:
+		void clearAuthData ();
+		void reauth ();
 	private slots:
 		void execScheduledRequest ();
 		void handleGotForm ();

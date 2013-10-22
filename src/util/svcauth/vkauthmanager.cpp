@@ -90,23 +90,6 @@ namespace SvcAuth
 		emit gotAuthKey (Token_);
 	}
 
-	void VkAuthManager::Reauth ()
-	{
-		auto view = new QWebView;
-		view->setWindowTitle (tr ("VK.com authentication"));
-		view->setWindowFlags (Qt::Window);
-		view->resize (800, 600);
-		view->page ()->setNetworkAccessManager (AuthNAM_);
-		view->show ();
-
-		view->setUrl (URL_);
-
-		connect (view,
-				SIGNAL (urlChanged (QUrl)),
-				this,
-				SLOT (handleViewUrlChanged (QUrl)));
-	}
-
 	void VkAuthManager::ManageQueue (VkAuthManager::RequestQueue_ptr queue)
 	{
 		if (!Queue_)
@@ -204,6 +187,31 @@ namespace SvcAuth
 		return true;
 	}
 
+	void VkAuthManager::clearAuthData ()
+	{
+		Cookies_->Load ({});
+		Token_.clear ();
+		ReceivedAt_ = QDateTime ();
+		ValidFor_ = 0;
+	}
+
+	void VkAuthManager::reauth ()
+	{
+		auto view = new QWebView;
+		view->setWindowTitle (tr ("VK.com authentication"));
+		view->setWindowFlags (Qt::Window);
+		view->resize (800, 600);
+		view->page ()->setNetworkAccessManager (AuthNAM_);
+		view->show ();
+
+		view->setUrl (URL_);
+
+		connect (view,
+				SIGNAL (urlChanged (QUrl)),
+				this,
+				SLOT (handleViewUrlChanged (QUrl)));
+	}
+
 	void VkAuthManager::execScheduledRequest ()
 	{
 		IsRequestScheduled_ = false;
@@ -235,7 +243,7 @@ namespace SvcAuth
 		const auto& location = reply->header (QNetworkRequest::LocationHeader).toUrl ();
 		if (location.isEmpty ())
 		{
-			Reauth ();
+			reauth ();
 			return;
 		}
 

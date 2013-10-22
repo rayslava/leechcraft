@@ -52,6 +52,7 @@ namespace Murm
 	class GeoResolver;
 	class GroupsManager;
 	class Logger;
+	class AccountConfigDialog;
 
 	class VkAccount : public QObject
 					, public IAccount
@@ -85,12 +86,20 @@ namespace Murm
 		QHash<qulonglong, VkChatEntry*> ChatEntries_;
 
 		QList<MessageInfo> PendingMessages_;
+
+		bool PublishTune_ = false;
+		bool EnableFileLog_ = false;
+		bool MarkAsOnline_ = false;
+
+		QPointer<AccountConfigDialog> AccConfigDia_;
 	public:
 		VkAccount (const QString& name, VkProtocol *proto, ICoreProxy_ptr proxy,
 				const QByteArray& id, const QByteArray& cookies);
 
 		QByteArray Serialize () const;
 		static VkAccount* Deserialize (const QByteArray&, VkProtocol*, ICoreProxy_ptr);
+
+		void Init ();
 
 		void Send (VkEntry*, VkMessage*);
 		void Send (VkChatEntry*, VkMessage*);
@@ -150,6 +159,8 @@ namespace Murm
 		void handleMarkOnline ();
 
 		void finishOffline ();
+
+		void handleConfigDialogAccepted ();
 
 		void emitUpdateAcc ();
 	signals:

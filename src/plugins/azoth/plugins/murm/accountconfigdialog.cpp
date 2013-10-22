@@ -27,15 +27,7 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#pragma once
-
-#include <QObject>
-#include <QUrl>
-#include <QVariantMap>
-#include <QDateTime>
-#include <interfaces/core/icoreproxy.h>
-
-class QNetworkReply;
+#include "accountconfigdialog.h"
 
 namespace LeechCraft
 {
@@ -43,50 +35,46 @@ namespace Azoth
 {
 namespace Murm
 {
-	class VkConnection;
-
-	class LongPollManager : public QObject
+	AccountConfigDialog::AccountConfigDialog (QWidget *parent)
+	: QDialog (parent)
 	{
-		Q_OBJECT
+		Ui_.setupUi (this);
 
-		VkConnection * const Conn_;
-		const ICoreProxy_ptr Proxy_;
+		connect (Ui_.Reauth_,
+				SIGNAL (released ()),
+				this,
+				SIGNAL (reauthRequested ()));
+	}
 
-		QString LPKey_;
-		QString LPServer_;
-		qulonglong LPTS_;
+	bool AccountConfigDialog::GetFileLogEnabled () const
+	{
+		return Ui_.KeepFileLog_->checkState () == Qt::Checked;
+	}
 
-		QUrl LPURLTemplate_;
+	void AccountConfigDialog::SetFileLogEnabled (bool enabled)
+	{
+		Ui_.KeepFileLog_->setCheckState (enabled ? Qt::Checked : Qt::Unchecked);
+	}
 
-		int PollErrorCount_ = 0;
+	bool AccountConfigDialog::GetPublishTuneEnabled () const
+	{
+		return Ui_.PublishTune_->checkState () == Qt::Checked;
+	}
 
-		bool ShouldStop_ = false;
+	void AccountConfigDialog::SetPublishTuneEnabled (bool enabled)
+	{
+		Ui_.PublishTune_->setCheckState (enabled ? Qt::Checked : Qt::Unchecked);
+	}
 
-		int WaitTimeout_ = 25;
+	bool AccountConfigDialog::GetMarkAsOnline () const
+	{
+		return Ui_.MarkAsOnline_->checkState () == Qt::Checked;
+	}
 
-		QDateTime LastPollDT_;
-
-		QNetworkReply *CurrentPollReply_ = nullptr;
-	public:
-		LongPollManager (VkConnection*, ICoreProxy_ptr);
-
-		void ForceServerRequery ();
-		void Stop ();
-	private:
-		void Poll ();
-
-		QUrl GetURLTemplate () const;
-	public slots:
-		void start ();
-	private slots:
-		void handlePollFinished ();
-		void handleGotLPServer ();
-	signals:
-		void listening ();
-		void stopped ();
-		void pollError ();
-		void gotPollData (const QVariantMap&);
-	};
+	void AccountConfigDialog::SetMarkAsOnline (bool enabled)
+	{
+		Ui_.MarkAsOnline_->setCheckState (enabled ? Qt::Checked : Qt::Unchecked);
+	}
 }
 }
 }
