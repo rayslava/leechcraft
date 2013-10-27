@@ -51,6 +51,7 @@ namespace Murm
 			cookies, proxy, nullptr, this))
 	, Proxy_ (proxy)
 	, Logger_ (logger)
+	, LastCookies_ (cookies)
 	, CallQueue_ (new Util::QueueManager (400))
 	, LPManager_ (new LongPollManager (this, proxy))
 	, MarkOnlineTimer_ (new QTimer (this))
@@ -132,15 +133,21 @@ namespace Murm
 		PreparedCalls_.push_back ([=] (const QString& key) -> QNetworkReply*
 			{
 				QUrl url ("https://api.vk.com/method/messages.send");
-				url.addQueryItem ("access_token", key);
 
-				const auto& idName = type == MessageType::Dialog ? "uid" : "chat_id";
-				url.addQueryItem (idName, QString::number (to));
-				url.addEncodedQueryItem ("message",
-						QUrl::toPercentEncoding (body, {}, "+"));
-				url.addQueryItem ("type", "1");
+				auto query = "access_token=" + QUrl::toPercentEncoding (key.toUtf8 ());
+				query += '&';
+				query += type == MessageType::Dialog ? "uid" : "chat_id";
+				query += '=' + QByteArray::number (to);
+				query += "&type=1&";
+				query += "message=" + QUrl::toPercentEncoding (body, {}, "+");
 
-				auto reply = nam->get (QNetworkRequest (url));
+				QNetworkRequest req (url);
+				req.setHeader (QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+				auto reply = nam->post (req, query);
+				Logger_ (IHaveConsole::PacketDirection::Out)
+						<< url
+						<< " : posting"
+						<< QString::fromUtf8 (query);
 				MsgReply2Setter_ [reply] = idSetter;
 				connect (reply,
 						SIGNAL (finished ()),
@@ -529,6 +536,7 @@ namespace Murm
 
 	void VkConnection::reauth ()
 	{
+		Logger_ << "reauthing";
 		auto status = GetStatus ();
 		SetStatus (EntryStatus { SOffline, {} });
 
@@ -582,6 +590,7 @@ namespace Murm
 
 	void VkConnection::handleListening ()
 	{
+		Logger_ << "listening now";
 		CurrentStatus_ = Status_;
 		emit statusChanged (GetStatus ());
 

@@ -27,30 +27,14 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#pragma once
-
-#include <QTextEdit>
+#include "storagemanager.h"
 
 namespace LeechCraft
 {
-namespace Azoth
+namespace HttThare
 {
-	class TextEdit : public QTextEdit
+	StorageManager::StorageManager ()
 	{
-		Q_OBJECT
-	public:
-		TextEdit (QWidget *parent = 0);
-	protected:
-		void keyPressEvent (QKeyEvent*);
-	private slots:
-		void deleteWord ();
-		void deleteBOL ();
-		void deleteEOL ();
-	signals:
-		void keyReturnPressed ();
-		void keyTabPressed ();
-		void clearAvailableNicks ();
-		void scroll (int);
-	};
+	}
 }
 }

@@ -35,16 +35,21 @@ namespace LeechCraft
 {
 namespace HttThare
 {
-	Connection::Connection (boost::asio::io_service& service, RequestHandler& rh)
+	Connection::Connection (boost::asio::io_service& service, const StorageManager& stMgr)
 	: Strand_ { service }
 	, Socket_ { service }
-	, RH_ (rh)
+	, StorageMgr_ (stMgr)
 	{
 	}
 
 	boost::asio::ip::tcp::socket& Connection::GetSocket ()
 	{
 		return Socket_;
+	}
+
+	boost::asio::io_service::strand& Connection::GetStrand ()
+	{
+		return Strand_;
 	}
 
 	void Connection::Start ()
@@ -65,7 +70,7 @@ namespace HttThare
 		std::istream istr (&Buf_);
 		istr.read (data.data (), transferred);
 
-		qDebug () << data;
+		RequestHandler { shared_from_this () } (data);
 	}
 }
 }

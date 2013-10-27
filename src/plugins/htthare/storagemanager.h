@@ -29,28 +29,14 @@
 
 #pragma once
 
-#include <QTextEdit>
-
 namespace LeechCraft
 {
-namespace Azoth
+namespace HttThare
 {
-	class TextEdit : public QTextEdit
+	class StorageManager
 	{
-		Q_OBJECT
 	public:
-		TextEdit (QWidget *parent = 0);
-	protected:
-		void keyPressEvent (QKeyEvent*);
-	private slots:
-		void deleteWord ();
-		void deleteBOL ();
-		void deleteEOL ();
-	signals:
-		void keyReturnPressed ();
-		void keyTabPressed ();
-		void clearAvailableNicks ();
-		void scroll (int);
+		StorageManager ();
 	};
 }
 }
