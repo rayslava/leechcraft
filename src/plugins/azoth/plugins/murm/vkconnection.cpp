@@ -45,6 +45,12 @@ namespace Azoth
 {
 namespace Murm
 {
+	namespace
+	{
+		const QString UserFields = "first_name,last_name,nickname,photo,photo_big,sex,"
+				"bdate,city,country,timezone,contacts,education";
+	}
+
 	VkConnection::VkConnection (const QByteArray& cookies, ICoreProxy_ptr proxy, Logger& logger)
 	: AuthMgr_ (new Util::SvcAuth::VkAuthManager ("3778319",
 			{ "messages", "notifications", "friends", "status", "photos" },
@@ -244,6 +250,26 @@ namespace Murm
 		AuthMgr_->GetAuthKey ();
 	}
 
+	void VkConnection::GetUserInfo (const QList<qulonglong>& ids)
+	{
+		auto nam = Proxy_->GetNetworkAccessManager ();
+		const auto& joined = CommaJoin (ids);
+		PreparedCalls_.push_back ([this, nam, joined] (const QString& key) -> QNetworkReply*
+			{
+				QUrl url ("https://api.vk.com/method/users.get");
+				url.addQueryItem ("access_token", key);
+				url.addQueryItem ("uids", joined);
+				url.addQueryItem ("fields", UserFields);
+				auto reply = nam->get (QNetworkRequest (url));
+				connect (reply,
+						SIGNAL (finished ()),
+						this,
+						SLOT (handleGotUserInfo ()));
+				return reply;
+			});
+		AuthMgr_->GetAuthKey ();
+	}
+
 	void VkConnection::GetMessageInfo (qulonglong id, MessageInfoSetter_f setter)
 	{
 		auto nam = Proxy_->GetNetworkAccessManager ();
@@ -319,6 +345,28 @@ namespace Murm
 				url.addQueryItem ("lid", QString::number (list.ID_));
 				url.addQueryItem ("name", list.Name_);
 				url.addQueryItem ("uids", joined);
+
+				auto reply = nam->get (QNetworkRequest (url));
+				connect (reply,
+						SIGNAL (finished ()),
+						reply,
+						SLOT (deleteLater ()));
+				return reply;
+			});
+		AuthMgr_->GetAuthKey ();
+	}
+
+	void VkConnection::SetNRIList (const QList<qulonglong>& ids)
+	{
+		const auto& joined = CommaJoin (ids);
+		auto nam = Proxy_->GetNetworkAccessManager ();
+
+		PreparedCalls_.push_back ([this, joined, nam] (const QString& key) -> QNetworkReply*
+			{
+				QUrl url ("https://api.vk.com/method/storage.set");
+				url.addQueryItem ("access_token", key);
+				url.addQueryItem ("key", "non_roster_items");
+				url.addQueryItem ("value", joined);
 
 				auto reply = nam->get (QNetworkRequest (url));
 				connect (reply,
@@ -480,18 +528,30 @@ namespace Murm
 	void VkConnection::PushFriendsRequest ()
 	{
 		auto nam = Proxy_->GetNetworkAccessManager ();
+
 		PreparedCalls_.push_back ([this, nam] (const QString& key) -> QNetworkReply*
 			{
 				QUrl friendsUrl ("https://api.vk.com/method/friends.get");
 				friendsUrl.addQueryItem ("access_token", key);
-				friendsUrl.addQueryItem ("fields",
-						"first_name,last_name,nickname,photo,photo_big,sex,"
-						"bdate,city,country,timezone,contacts,education");
+				friendsUrl.addQueryItem ("fields", UserFields);
 				auto reply = nam->get (QNetworkRequest (friendsUrl));
 				connect (reply,
 						SIGNAL (finished ()),
 						this,
 						SLOT (handleGotFriends ()));
+				return reply;
+			});
+
+		PreparedCalls_.push_back ([this, nam] (const QString& key) -> QNetworkReply*
+			{
+				QUrl url ("https://api.vk.com/method/storage.get");
+				url.addQueryItem ("access_token", key);
+				url.addQueryItem ("key", "non_roster_items");
+				auto reply = nam->get (QNetworkRequest (url));
+				connect (reply,
+						SIGNAL (finished ()),
+						this,
+						SLOT (handleGotNRI ()));
 				return reply;
 			});
 	}
@@ -721,24 +781,33 @@ namespace Murm
 		AuthMgr_->GetAuthKey ();
 	}
 
+	namespace
+	{
+		QList<UserInfo> ParseUsers (QNetworkReply *reply)
+		{
+			QList<UserInfo> users;
+
+			const auto& data = QJson::Parser ().parse (reply);
+			for (const auto& item : data.toMap () ["response"].toList ())
+			{
+				const auto& userMap = item.toMap ();
+				if (userMap.contains ("deactivated"))
+					continue;
+
+				users << UserMap2Info (userMap);
+			}
+
+			return users;
+		}
+	}
+
 	void VkConnection::handleGotFriends ()
 	{
 		auto reply = qobject_cast<QNetworkReply*> (sender ());
 		if (!CheckFinishedReply (reply))
 			return;
 
-		QList<UserInfo> users;
-
-		const auto& data = QJson::Parser ().parse (reply);
-		for (const auto& item : data.toMap () ["response"].toList ())
-		{
-			const auto& userMap = item.toMap ();
-			if (userMap.contains ("deactivated"))
-				continue;
-
-			users << UserMap2Info (userMap);
-		}
-
+		const auto& users = ParseUsers (reply);
 		emit gotUsers (users);
 
 		auto nam = Proxy_->GetNetworkAccessManager ();
@@ -756,6 +825,36 @@ namespace Murm
 			});
 
 		LPManager_->start ();
+	}
+
+	void VkConnection::handleGotNRI ()
+	{
+		auto reply = qobject_cast<QNetworkReply*> (sender ());
+		if (!CheckFinishedReply (reply))
+			return;
+
+		const auto& str = QJson::Parser ().parse (reply).toMap () ["response"].toString ();
+
+		QList<qulonglong> ids;
+		for (const auto& sub : str.split (",", QString::SkipEmptyParts))
+		{
+			bool ok = false;
+			const auto id = sub.toULongLong (&ok);
+			if (ok)
+				ids << id;
+		}
+
+		emit gotNRIList (ids);
+	}
+
+	void VkConnection::handleGotUserInfo ()
+	{
+		auto reply = qobject_cast<QNetworkReply*> (sender ());
+		if (!CheckFinishedReply (reply))
+			return;
+
+		const auto& users = ParseUsers (reply);
+		emit gotUsers (users);
 	}
 
 	void VkConnection::handleGotUnreadMessages ()

@@ -28,6 +28,7 @@
  **********************************************************************/
 
 #include "vkaccount.h"
+#include <stdexcept>
 #include <QUuid>
 #include <QIcon>
 #include <QtDebug>
@@ -79,6 +80,10 @@ namespace Murm
 				SIGNAL (gotUsers (QList<UserInfo>)),
 				this,
 				SLOT (handleUsers (QList<UserInfo>)));
+		connect (Conn_,
+				SIGNAL (gotNRIList (QList<qulonglong>)),
+				this,
+				SLOT (handleNRIList (QList<qulonglong>)));
 		connect (Conn_,
 				SIGNAL (userStateChanged (qulonglong, bool)),
 				this,
@@ -332,8 +337,30 @@ namespace Murm
 	{
 	}
 
-	void VkAccount::RemoveEntry (QObject*)
+	void VkAccount::RemoveEntry (QObject *entryObj)
 	{
+		auto entry = qobject_cast<VkEntry*> (entryObj);
+		if (!entry)
+		{
+			qWarning () << Q_FUNC_INFO
+					<< entry
+					<< "is not a VkEntry";
+			return;
+		}
+
+		if (entry->IsNonRoster ())
+		{
+			emit removedCLItems ({ entry });
+
+			const auto id = entry->GetInfo ().ID_;
+			Entries_.remove (id);
+			entry->deleteLater ();
+
+			NonRosterItems_.removeOne (id);
+			Conn_->SetNRIList (NonRosterItems_);
+
+			return;
+		}
 	}
 
 	QObject* VkAccount::GetTransferManager () const
@@ -382,6 +409,52 @@ namespace Murm
 	{
 	}
 
+	QObject* VkAccount::CreateNonRosterItem (const QString& idStr)
+	{
+		auto realId = idStr;
+		if (realId.startsWith ("id"))
+			realId = realId.remove (0, 2);
+
+		bool ok = false;
+		const auto id = realId.toULongLong (&ok);
+		if (!ok)
+			throw std::runtime_error (tr ("%1 is invalid VKontake ID")
+					.arg (idStr)
+					.toUtf8 ().constData ());
+
+		if (Entries_.contains (id))
+			return Entries_ [id];
+
+		const auto entry = CreateNonRosterItem (id);
+		emit gotCLItems ({ entry });
+
+		NonRosterItems_ << id;
+		Conn_->SetNRIList (NonRosterItems_);
+		Conn_->GetUserInfo ({ id });
+
+		return entry;
+	}
+
+	void VkAccount::TryPendingMessages ()
+	{
+		decltype (PendingMessages_) pending;
+		std::swap (pending, PendingMessages_);
+		for (const auto& info : pending)
+			handleMessage (info);
+	}
+
+	VkEntry* VkAccount::CreateNonRosterItem (qulonglong id)
+	{
+		UserInfo info;
+		info.ID_ = id;
+
+		auto entry = new VkEntry (info, this);
+		entry->SetNonRoster ();
+		Entries_ [id] = entry;
+
+		return entry;
+	}
+
 	void VkAccount::handleSelfInfo (const UserInfo& info)
 	{
 		handleUsers ({ info });
@@ -394,6 +467,7 @@ namespace Murm
 	{
 		QList<QObject*> newEntries;
 		QSet<int> newCountries;
+		bool hadNew = false;
 		for (const auto& info : infos)
 		{
 			if (Entries_.contains (info.ID_))
@@ -407,12 +481,36 @@ namespace Murm
 			newEntries << entry;
 
 			newCountries << info.Country_;
+
+			hadNew = true;
 		}
 
 		GeoResolver_->CacheCountries (newCountries.toList ());
 
 		if (!newEntries.isEmpty ())
 			emit gotCLItems (newEntries);
+
+		if (hadNew)
+			TryPendingMessages ();
+	}
+
+	void VkAccount::handleNRIList (const QList<qulonglong>& ids)
+	{
+		QList<qulonglong> toRequest;
+		QList<QObject*> objs;
+		for (auto id : ids)
+		{
+			if (Entries_.contains (id))
+				continue;
+
+			toRequest << id;
+			objs << CreateNonRosterItem (id);
+		}
+
+		emit gotCLItems (objs);
+		Conn_->GetUserInfo (toRequest);
+
+		NonRosterItems_ = toRequest;
 	}
 
 	void VkAccount::handleUserState (qulonglong id, bool isOnline)
@@ -455,6 +553,10 @@ namespace Murm
 				qWarning () << Q_FUNC_INFO
 						<< "message from unknown user"
 						<< from;
+
+				PendingMessages_ << info;
+
+				Conn_->GetUserInfo ({ from });
 				return;
 			}
 
@@ -524,10 +626,7 @@ namespace Murm
 			ChatEntries_ [info.ChatID_] = entry;
 			emit gotCLItems ({ entry });
 
-			decltype (PendingMessages_) pending;
-			std::swap (pending, PendingMessages_);
-			for (const auto& info : pending)
-				handleMessage (info);
+			TryPendingMessages ();
 		}
 		else
 			ChatEntries_ [info.ChatID_]->UpdateInfo (info);

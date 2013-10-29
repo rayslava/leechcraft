@@ -29,67 +29,24 @@
 
 #pragma once
 
-#include <QObject>
-#include <QHash>
+#include <QtPlugin>
 
-class QAction;
-class QMenu;
+class QString;
+class QObject;
 
 namespace LeechCraft
 {
 namespace Azoth
 {
-	class IAccount;
-	class ConsoleWidget;
-	class ServiceDiscoveryWidget;
-	class MicroblogsTab;
-
-	class AccountActionsManager : public QObject
+	class ISupportNonRoster
 	{
-		Q_OBJECT
-
-		QWidget *MW_;
-
-		QHash<IAccount*, ConsoleWidget*> Account2CW_;
-
-		QAction *AccountJoinConference_;
-		QAction *AccountManageBookmarks_;
-		QAction *AccountAddContact_;
-		QAction *AccountOpenNonRosterChat_;
-		QAction *AccountViewMicroblogs_;
-		QAction *AccountSetActivity_;
-		QAction *AccountSetMood_;
-		QAction *AccountSetLocation_;
-		QAction *AccountSD_;
-		QAction *AccountConsole_;
-		QAction *AccountUpdatePassword_;
-		QAction *AccountRename_;
-		QAction *AccountModify_;
 	public:
-		AccountActionsManager (QWidget*, QObject* = 0);
+		virtual ~ISupportNonRoster () {}
 
-		QList<QAction*> GetMenuActions (QMenu*, QObject*);
-	private slots:
-		void joinAccountConference ();
-		void joinAccountConfFromBM ();
-		void manageAccountBookmarks ();
-		void addAccountContact ();
-		void handleOpenNonRoster ();
-		void handleAccountMicroblogs ();
-		void handleAccountSetActivity ();
-		void handleAccountSetMood ();
-		void handleAccountSetLocation ();
-		void handleAccountSD ();
-		void handleAccountConsole ();
-		void handleUpdatePassword ();
-		void handleAccountRename ();
-		void handleAccountModify ();
-
-		void consoleRemoved (QWidget*);
-	signals:
-		void gotConsoleWidget (ConsoleWidget*);
-		void gotSDWidget (ServiceDiscoveryWidget*);
-		void gotMicroblogsTab (MicroblogsTab*);
+		virtual QObject* CreateNonRosterItem (const QString&) = 0;
 	};
 }
 }
+
+Q_DECLARE_INTERFACE (LeechCraft::Azoth::ISupportNonRoster,
+		"org.LeechCraft.Azoth.ISupportNonRoster/1.0");
