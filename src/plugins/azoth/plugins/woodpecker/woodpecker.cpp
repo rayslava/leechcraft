@@ -49,9 +49,11 @@ namespace Woodpecker
 		
 		XmlSettingsDialog_.reset (new Util::XmlSettingsDialog ());
 		XmlSettingsDialog_->RegisterObject (XmlSettingsManager::Instance (),
-											"azothwoodpeckersettings.xml");
-		
+						"azothwoodpeckersettings.xml");
+
 		Core::Instance ().SetProxy (proxy);
+
+		UserManager_ = new UserManager(this);
 		
 		HomeTC_ = 
 		{
@@ -257,7 +259,12 @@ namespace Woodpecker
 						<< "unknown context"
 						<< recInfo.Data_;
 		}	
-	}
+	};
+
+	UserManager* Plugin::GetUserManager()
+	{
+		return UserManager_;
+	};
 }
 }
 }
