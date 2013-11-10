@@ -34,35 +34,49 @@
 #include <QByteArray>
 #include <QUrl>
 #include <QMap>
+#include <QCoreApplication>
+
+class QFileInfo;
 
 namespace LeechCraft
 {
-namespace HttThare
+namespace HttHare
 {
 	class Connection;
 	typedef std::shared_ptr<Connection> Connection_ptr;
 
 	class RequestHandler
 	{
+		Q_DECLARE_TR_FUNCTIONS (LeechCraft::HttHare::RequestHandler)
+
 		const Connection_ptr Conn_;
 
 		QUrl Url_;
 		QMap<QString, QString> Headers_;
 
 		QByteArray ResponseLine_;
-		QByteArray ResponseHeaders_;
+		QList<QPair<QByteArray, QByteArray>> ResponseHeaders_;
+		QByteArray CookedRH_;
 		QByteArray ResponseBody_;
+
+		enum class Verb
+		{
+			Get,
+			Head
+		};
 	public:
 		RequestHandler (const Connection_ptr&);
 
 		void operator() (QByteArray);
 	private:
+		QString Tr (const char*);
+
 		void ErrorResponse (int, const QByteArray&, const QByteArray& = QByteArray ());
+		QByteArray MakeDirResponse (const QFileInfo&, const QString&, const QUrl&);
 
-		void HandleGet ();
-		void HandleHead ();
-
-		std::vector<boost::asio::const_buffer> ToBuffers () const;
+		void HandleRequest (Verb);
+		void DefaultWrite (Verb);
+		std::vector<boost::asio::const_buffer> ToBuffers (Verb);
 	};
 }
 }

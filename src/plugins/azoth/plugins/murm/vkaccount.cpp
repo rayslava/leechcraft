@@ -43,6 +43,7 @@
 #include "vkchatentry.h"
 #include "logger.h"
 #include "accountconfigdialog.h"
+#include "captchadialog.h"
 
 namespace LeechCraft
 {
@@ -59,7 +60,7 @@ namespace Murm
 	, PhotoStorage_ (new PhotoStorage (proxy->GetNetworkAccessManager (), ID_))
 	, Name_ (name)
 	, Logger_ (new Logger (ID_, this))
-	, Conn_ (new VkConnection (cookies, proxy, *Logger_))
+	, Conn_ (new VkConnection (name, cookies, proxy, *Logger_))
 	, GroupsMgr_ (new GroupsManager (Conn_))
 	, GeoResolver_ (new GeoResolver (Conn_, this))
 	{
@@ -110,6 +111,11 @@ namespace Murm
 				SIGNAL (chatUserRemoved (qulonglong, qulonglong)),
 				this,
 				SLOT (handleChatUserRemoved (qulonglong, qulonglong)));
+
+		connect (Conn_,
+				SIGNAL (captchaNeeded (QString, QUrl)),
+				this,
+				SLOT (handleCaptcha (QString, QUrl)));
 
 		connect (Logger_,
 				SIGNAL (gotConsolePacket (QByteArray, IHaveConsole::PacketDirection, QString)),
@@ -594,6 +600,30 @@ namespace Murm
 
 		qDeleteAll (ChatEntries_);
 		ChatEntries_.clear ();
+	}
+
+	void VkAccount::handleCaptcha (const QString& cid, const QUrl& url)
+	{
+		if (IsRequestingCaptcha_)
+		{
+			Conn_->HandleCaptcha (cid, {});
+			return;
+		}
+
+		auto dia = new CaptchaDialog (url, cid, CoreProxy_->GetNetworkAccessManager ());
+		connect (dia,
+				SIGNAL (gotCaptcha (QString, QString)),
+				this,
+				SLOT (handleCaptchaEntered (QString, QString)));
+		dia->show ();
+
+		IsRequestingCaptcha_ = true;
+	}
+
+	void VkAccount::handleCaptchaEntered (const QString& cid, const QString& value)
+	{
+		Conn_->HandleCaptcha (cid, value);
+		IsRequestingCaptcha_ = false;
 	}
 
 	void VkAccount::handleConfigDialogAccepted()

@@ -40,19 +40,25 @@ class QString;
 
 namespace LeechCraft
 {
-namespace HttThare
+namespace HttHare
 {
+	class IconResolver;
+	class TrManager;
+
 	class Server
 	{
 		boost::asio::io_service IoService_;
-		boost::asio::ip::tcp::acceptor Acceptor_;
-		boost::asio::ip::tcp::socket Socket_;
+		std::vector<std::unique_ptr<boost::asio::ip::tcp::acceptor>> Acceptors_;
 
 		StorageManager StorageMgr_;
 
 		std::vector<std::thread> Threads_;
+
+		IconResolver * const IconResolver_;
+		TrManager * const TrManager_;
 	public:
-		Server (const QString& address, const QString& port);
+		Server (const QList<QPair<QString, QString>>& addresses);
+		~Server ();
 
 		Server (const Server&) = delete;
 		Server& operator= (const Server&) = delete;

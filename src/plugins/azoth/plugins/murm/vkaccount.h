@@ -97,6 +97,8 @@ namespace Murm
 		QPointer<AccountConfigDialog> AccConfigDia_;
 
 		QList<qulonglong> NonRosterItems_;
+
+		bool IsRequestingCaptcha_ = false;
 	public:
 		VkAccount (const QString& name, VkProtocol *proto, ICoreProxy_ptr proxy,
 				const QByteArray& id, const QByteArray& cookies);
@@ -170,6 +172,9 @@ namespace Murm
 		void handleMarkOnline ();
 
 		void finishOffline ();
+
+		void handleCaptcha (const QString&, const QUrl&);
+		void handleCaptchaEntered (const QString&, const QString&);
 
 		void handleConfigDialogAccepted ();
 

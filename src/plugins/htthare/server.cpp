@@ -31,30 +31,58 @@
 #include <QString>
 #include <QtDebug>
 #include "connection.h"
+#include "iconresolver.h"
+#include "trmanager.h"
 
 namespace LeechCraft
 {
-namespace HttThare
+namespace HttHare
 {
 	namespace ip = boost::asio::ip;
 
-	Server::Server (const QString& address, const QString& port)
-	: Acceptor_ { IoService_ }
-	, Socket_ { IoService_ }
+	Server::Server (const QList<QPair<QString, QString>>& addresses)
+	: IconResolver_ { new IconResolver  }
+	, TrManager_ { new TrManager }
 	{
 		ip::tcp::resolver resolver { IoService_ };
-		const ip::tcp::endpoint endpoint = *resolver.resolve ({ address.toStdString (), port.toStdString () });
 
-		Acceptor_.open (endpoint.protocol ());
-		Acceptor_.set_option (ip::tcp::acceptor::reuse_address (true));
-		Acceptor_.bind (endpoint);
-		Acceptor_.listen ();
+		for (const auto& pair : addresses)
+		{
+			try
+			{
+				const ip::tcp::endpoint endpoint = *resolver.resolve ({ pair.first.toStdString (), pair.second.toStdString () });
+
+				std::unique_ptr<ip::tcp::acceptor> accPtr { new ip::tcp::acceptor { IoService_ } };
+				accPtr->open (endpoint.protocol ());
+				accPtr->set_option (ip::tcp::acceptor::reuse_address (true));
+				accPtr->bind (endpoint);
+				accPtr->listen ();
+
+				Acceptors_.emplace_back (std::move (accPtr));
+			}
+			catch (const std::exception& e)
+			{
+				qWarning () << Q_FUNC_INFO
+						<< "error binding"
+						<< pair
+						<< e.what ();
+			}
+		}
 
 		StartAccept ();
 	}
 
+	Server::~Server ()
+	{
+		if (!IoService_.stopped ())
+			Stop ();
+	}
+
 	void Server::Start ()
 	{
+		if (Acceptors_.empty ())
+			return;
+
 		for (auto i = 0; i < 2; ++i)
 			Threads_.emplace_back ([this] { IoService_.run (); });
 	}
@@ -69,19 +97,21 @@ namespace HttThare
 
 	void Server::StartAccept ()
 	{
-		Connection_ptr connection { new Connection { IoService_, StorageMgr_ } };
-		Acceptor_.async_accept (connection->GetSocket (),
-				[this, connection] (const boost::system::error_code& ec)
-				{
-					if (!ec)
-						connection->Start ();
-					else
-						qWarning () << Q_FUNC_INFO
-								<< "cannot accept:"
-								<< ec.message ().c_str ();
+		Connection_ptr connection { new Connection { IoService_, StorageMgr_, IconResolver_, TrManager_ } };
 
-					StartAccept ();
-				});
+		for (auto& acceptor : Acceptors_)
+			acceptor->async_accept (connection->GetSocket (),
+					[this, connection] (const boost::system::error_code& ec)
+					{
+						if (!ec)
+							connection->Start ();
+						else
+							qWarning () << Q_FUNC_INFO
+									<< "cannot accept:"
+									<< ec.message ().c_str ();
+
+						StartAccept ();
+					});
 	}
 }
 }

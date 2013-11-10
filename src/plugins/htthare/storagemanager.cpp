@@ -28,13 +28,35 @@
  **********************************************************************/
 
 #include "storagemanager.h"
+#include <QString>
+#include <QUrl>
+#include <QDir>
+#include <QtDebug>
 
 namespace LeechCraft
 {
-namespace HttThare
+namespace HttHare
 {
+	AccessDeniedException::~AccessDeniedException () noexcept
+	{
+	}
+
 	StorageManager::StorageManager ()
 	{
+	}
+
+	QString StorageManager::ResolvePath (QUrl url) const
+	{
+		if (url.path ().startsWith ("/"))
+			url.setPath (url.path ().mid (1));
+
+		const auto& path = QUrl::fromLocalFile (QDir::homePath () + '/')
+				.resolved (url).toLocalFile ();
+		const QFileInfo fi { path };
+		if (!fi.absoluteFilePath ().startsWith (QDir::homePath ()))
+			throw AccessDeniedException ();
+
+		return path;
 	}
 }
 }

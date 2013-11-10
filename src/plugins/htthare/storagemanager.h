@@ -29,14 +29,27 @@
 
 #pragma once
 
+#include <stdexcept>
+#include <QUrl>
+
+class QString;
+
 namespace LeechCraft
 {
-namespace HttThare
+namespace HttHare
 {
+	class AccessDeniedException : public std::exception
+	{
+	public:
+		~AccessDeniedException () noexcept;
+	};
+
 	class StorageManager
 	{
 	public:
 		StorageManager ();
+
+		QString ResolvePath (QUrl) const;
 	};
 }
 }

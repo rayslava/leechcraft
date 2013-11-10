@@ -34,24 +34,34 @@
 
 namespace LeechCraft
 {
-namespace HttThare
+namespace HttHare
 {
 	class StorageManager;
+	class IconResolver;
+	class TrManager;
 
 	class Connection : public std::enable_shared_from_this<Connection>
 	{
 		boost::asio::io_service::strand Strand_;
 		boost::asio::ip::tcp::socket Socket_;
+
 		const StorageManager& StorageMgr_;
+		IconResolver * const IconResolver_;
+		TrManager * const TrManager_;
+
 		boost::asio::streambuf Buf_;
 	public:
-		Connection (boost::asio::io_service&, const StorageManager&);
+		Connection (boost::asio::io_service&, const StorageManager&, IconResolver*, TrManager*);
 
 		Connection (const Connection&) = delete;
 		Connection& operator= (const Connection&) = delete;
 
 		boost::asio::ip::tcp::socket& GetSocket ();
 		boost::asio::io_service::strand& GetStrand ();
+		IconResolver* GetIconResolver () const;
+		TrManager* GetTrManager () const;
+
+		const StorageManager& GetStorageManager () const;
 
 		void Start ();
 	private:

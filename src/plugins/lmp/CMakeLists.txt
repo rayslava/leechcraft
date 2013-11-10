@@ -104,6 +104,9 @@ set (SRCS
 	playlistmodel.cpp
 	volumenotifycontroller.cpp
 	radiomanager.cpp
+	radiocustomstreams.cpp
+	radiocustomstation.cpp
+	radiocustomdialog.cpp
 	engine/audiosource.cpp
 	engine/output.cpp
 	engine/path.cpp
@@ -148,6 +151,7 @@ set (FORMS
 	albumartmanagerdialog.ui
 	volumeslider.ui
 	seekslider.ui
+	radiocustomdialog.ui
 	sync/cloudwidget.ui
 	sync/devicesbrowserwidget.ui
 	sync/transcodingparamswidget.ui

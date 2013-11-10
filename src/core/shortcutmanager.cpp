@@ -37,6 +37,7 @@
 #include <interfaces/iinfo.h>
 #include <interfaces/ihaveshortcuts.h>
 #include "keysequencer.h"
+#include "coreproxy.h"
 
 namespace LeechCraft
 {
@@ -128,10 +129,10 @@ namespace LeechCraft
 		QSettings settings ("Deviant", "Leechcraft");
 		settings.beginGroup ("Shortcuts");
 
-		auto deEdit = [] (const QList<QStandardItem*>& items)
+		auto deEdit = [] (const QList<QStandardItem*>& items) -> void
 		{
-			std::for_each (items.begin (), items.end (),
-				[] (decltype (items.front ()) item) { item->setEditable (false); });
+			for (const auto item : items)
+				item->setEditable (false);
 		};
 
 		auto parentFirst = new QStandardItem (objName);
@@ -148,14 +149,18 @@ namespace LeechCraft
 		settings.beginGroup (objName);
 		Q_FOREACH (const QString& name, info.keys ())
 		{
-			// FIXME use all the sequences here, not the first one
 			const auto& sequences = settings.value (name,
-					QVariant::fromValue<QKeySequences_t> (info [name].Seqs_)).value<QKeySequences_t> ();
+					QVariant::fromValue (info [name].Seqs_)).value<QKeySequences_t> ();
 
 			auto first = new QStandardItem (info [name].UserVisibleText_);
-			first->setIcon (info [name].Icon_);
+
+			auto icon = info [name].Icon_;
+			if (icon.isNull ())
+				icon = CoreProxy ().GetIcon ("configure-shortcuts");
+			first->setIcon (icon);
+
 			first->setData (name, Roles::OriginalName);
-			first->setData (QVariant::fromValue<QKeySequences_t> (sequences), Roles::Sequence);
+			first->setData (QVariant::fromValue (sequences), Roles::Sequence);
 
 			QList<QStandardItem*> itemRow;
 			itemRow << first;

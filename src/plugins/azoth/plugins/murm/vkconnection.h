@@ -68,12 +68,43 @@ namespace Murm
 
 		QByteArray LastCookies_;
 	public:
-		typedef std::function<QNetworkReply* (QString)> PreparedCall_f;
+		typedef QMap<QString, QString> UrlParams_t;
+
+		class PreparedCall_f
+		{
+			std::function<QNetworkReply* (QString, UrlParams_t)> Call_;
+
+			UrlParams_t Params_;
+		public:
+			PreparedCall_f () = default;
+
+			template<typename T>
+			PreparedCall_f (T c)
+			: Call_ (c)
+			{
+			}
+
+			QNetworkReply* operator() (const QString& key) const
+			{
+				return Call_ (key, Params_);
+			}
+
+			void ClearParams ()
+			{
+				Params_.clear ();
+			}
+
+			void AddParam (const QPair<QString, QString>& pair)
+			{
+				Params_ [pair.first] = pair.second;
+			}
+		};
 	private:
 		QList<PreparedCall_f> PreparedCalls_;
 		LeechCraft::Util::QueueManager *CallQueue_;
 
-		QList<QPair<QNetworkReply*, PreparedCall_f>> RunningCalls_;
+		typedef QList<QPair<QNetworkReply*, PreparedCall_f>> RunningCalls_t;
+		RunningCalls_t RunningCalls_;
 
 		EntryStatus Status_;
 		EntryStatus CurrentStatus_;
@@ -102,6 +133,8 @@ namespace Murm
 		};
 		QHash<QNetworkReply*, ChatRemoveInfo> Reply2ChatRemoveInfo_;
 
+		QHash<QString, PreparedCall_f> CaptchaId2Call_;
+
 		int APIErrorCount_ = 0;
 		bool ShouldRerunPrepared_ = false;
 
@@ -114,7 +147,7 @@ namespace Murm
 			Chat
 		};
 
-		VkConnection (const QByteArray&, ICoreProxy_ptr, Logger&);
+		VkConnection (const QString&, const QByteArray&, ICoreProxy_ptr, Logger&);
 
 		const QByteArray& GetCookies () const;
 
@@ -150,14 +183,26 @@ namespace Murm
 		void SetMarkingOnlineEnabled (bool);
 
 		void QueueRequest (PreparedCall_f);
+		static void AddParams (QUrl&, const UrlParams_t&);
+
+		void HandleCaptcha (const QString& cid, const QString& value);
 	private:
 		void PushFriendsRequest ();
+
+		RunningCalls_t::const_iterator FindRunning (QNetworkReply*) const;
+		RunningCalls_t::iterator FindRunning (QNetworkReply*);
+
+		void RescheduleRequest (QNetworkReply*);
+
 		bool CheckFinishedReply (QNetworkReply*);
+		bool CheckReplyData (const QVariant&, QNetworkReply*);
 	public slots:
 		void reauth ();
 	private slots:
 		void rerunPrepared ();
 		void callWithKey (const QString&);
+
+		void handleReplyDestroyed ();
 
 		void markOnline ();
 
@@ -204,6 +249,8 @@ namespace Murm
 		void chatUserRemoved (qulonglong, qulonglong);
 
 		void userStateChanged (qulonglong uid, bool online);
+
+		void captchaNeeded (const QString& sid, const QUrl& url);
 	};
 }
 }
