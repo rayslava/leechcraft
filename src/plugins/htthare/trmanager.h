@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2010-2013  Oleg Linkin <MaledictusDeMagog@gmail.com>
+ * Copyright (C) 2006-2013  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -29,64 +29,28 @@
 
 #pragma once
 
-#include <QDialog>
-#include <QNetworkReply>
-#include <QNetworkRequest>
-#include "ui_selectgroupsdialog.h"
+#include <QObject>
+#include <QMutex>
+#include <QMap>
 
-class QStandardItemModel;
+class QTranslator;
 
 namespace LeechCraft
 {
-namespace Blasq
+namespace HttHare
 {
-namespace DeathNote
-{
-	class FotoBilderAccount;
-
-	struct FriendsGroup
-	{
-		bool Public_;
-		QString Name_;
-		uint Id_;
-		uint SortOrder_;
-		uint RealId_;
-	};
-
-	struct ParsedMember
-	{
-		QString Name_;
-		QVariantList Value_;
-	};
-
-	class SelectGroupsDialog : public QDialog
+	class TrManager : public QObject
 	{
 		Q_OBJECT
 
-		Ui::SelectGroupsDialog Ui_;
-		QStandardItemModel *Model_;
-		QString Login_;
-		FotoBilderAccount *Account_;
-
+		QMutex MapLock_;
+		QMap<Qt::HANDLE, QMap<QString, QTranslator*>> Translators_;
 	public:
-		SelectGroupsDialog (const QString& login, FotoBilderAccount *acc,
-				QWidget *parent = 0);
+		TrManager (QObject* = 0);
 
-		uint GetSelectedGroupId () const;
-	private:
-		void RequestFriendsGroups ();
-		void FriendsGroupsRequest (const QString& challenge);
-		void GenerateChallenge ();
-		QString GetPassword () const;
-		QNetworkRequest CreateNetworkRequest ();
-
+		QString Translate (const QStringList& locales, const char *context, const char *src);
 	private slots:
-		void handleChallengeReplyFinished ();
-		void handleNetworkError (QNetworkReply::NetworkError error);
-		void handleRequestFriendsGroupsFinished ();
+		void purge ();
 	};
 }
 }
-}
-
-Q_DECLARE_METATYPE (LeechCraft::Blasq::DeathNote::ParsedMember)

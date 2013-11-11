@@ -29,9 +29,13 @@
 
 #include "htthare.h"
 #include <QIcon>
+#include <QEventLoop>
+#include <QTimer>
 #include <xmlsettingsdialog/xmlsettingsdialog.h>
+#include <util/util.h>
 #include "server.h"
 #include "xmlsettingsmanager.h"
+#include "addressesmodelmanager.h"
 
 namespace LeechCraft
 {
@@ -39,11 +43,25 @@ namespace HttHare
 {
 	void Plugin::Init (ICoreProxy_ptr proxy)
 	{
+		Util::InstallTranslator ("htthare");
+
+		qRegisterMetaType<AddrList_t> ("LeechCraft::HttHare::AddrList_t");
+		qRegisterMetaTypeStreamOperators<AddrList_t> ();
+
+		AddrMgr_ = new AddressesModelManager (this);
+		connect (AddrMgr_,
+				SIGNAL (addressesChanged ()),
+				this,
+				SLOT (reapplyAddresses ()));
+
 		XSD_.reset (new Util::XmlSettingsDialog);
 		XSD_->RegisterObject (&XmlSettingsManager::Instance (), "httharesettings.xml");
 
-		S_ = new Server ("localhost", "14801");
-		S_->Start ();
+		XSD_->SetDataSource ("AddressesDataView", AddrMgr_->GetModel ());
+
+		XmlSettingsManager::Instance ().RegisterObject ("EnableServer",
+				this, "handleEnableServerChanged");
+		handleEnableServerChanged ();
 	}
 
 	void Plugin::SecondInit ()
@@ -57,7 +75,7 @@ namespace HttHare
 
 	void Plugin::Release ()
 	{
-		S_->Stop ();
+		S_.reset ();
 	}
 
 	QString Plugin::GetName () const
@@ -78,6 +96,38 @@ namespace HttHare
 	Util::XmlSettingsDialog_ptr Plugin::GetSettingsDialog () const
 	{
 		return XSD_;
+	}
+
+	void Plugin::handleEnableServerChanged ()
+	{
+		const bool enable = XmlSettingsManager::Instance ().property ("EnableServer").toBool ();
+
+		if (enable == static_cast<bool> (S_))
+			return;
+
+		if (S_)
+			S_.reset ();
+		else
+		{
+			S_.reset (new Server { AddrMgr_->GetAddresses () });
+			S_->Start ();
+		}
+	}
+
+	void Plugin::reapplyAddresses ()
+	{
+		if (!S_)
+			return;
+
+		S_->Stop ();
+		S_.reset ();
+
+		QEventLoop loop;
+		QTimer::singleShot (100, &loop, SLOT (quit ()));
+		loop.exec ();
+
+		S_.reset (new Server { AddrMgr_->GetAddresses () });
+		S_->Start ();
 	}
 }
 }

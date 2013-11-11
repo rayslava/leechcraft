@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2010-2013  Oleg Linkin <MaledictusDeMagog@gmail.com>
+ * Copyright (C) 2010-2012  Oleg Linkin
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -27,66 +27,70 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#pragma once
-
-#include <QDialog>
-#include <QNetworkReply>
-#include <QNetworkRequest>
-#include "ui_selectgroupsdialog.h"
-
-class QStandardItemModel;
+#include "sendmessagedialog.h"
+#include <QMessageBox>
+#include <QPushButton>
+#include <util/util.h>
+#include "ljaccount.h"
+#include "ljprofile.h"
 
 namespace LeechCraft
 {
-namespace Blasq
+namespace Blogique
 {
-namespace DeathNote
+namespace Metida
 {
-	class FotoBilderAccount;
-
-	struct FriendsGroup
+	SendMessageDialog::SendMessageDialog (LJProfile *profile, QWidget *parent) 
+	: QDialog (parent)
+	, Account_ (0)
+	, Profile_ (profile)
 	{
-		bool Public_;
-		QString Name_;
-		uint Id_;
-		uint SortOrder_;
-		uint RealId_;
-	};
-
-	struct ParsedMember
+		Ui_.setupUi (this);
+		Account_ = qobject_cast<LJAccount*> (Profile_->GetParentAccount ());
+		Ui_.ButtonBox_->addButton (tr ("Send"), QDialogButtonBox::AcceptRole);
+	}
+	
+	void SendMessageDialog::accept ()
 	{
-		QString Name_;
-		QVariantList Value_;
-	};
+		if (Ui_.Addresses_->text ().isEmpty ())
+		{
+			QMessageBox::warning (this, "LeechCraft",
+					tr ("Please enter a valid username"));
+			return;
+		}
+		else if (Account_)
+		{
+			const auto& addresses = GetAddresses ();
+			if (addresses.count () == 1 && addresses.at (0) == Account_->GetOurLogin ())
+			{
+				QMessageBox::warning (this, "LeechCraft",
+					tr ("Stop trying to message yourself, livejournal is not that kind of service"));
+				return;
+			}
+		}
 
-	class SelectGroupsDialog : public QDialog
+		QDialog::accept ();
+	}
+
+	QStringList SendMessageDialog::GetAddresses () const
 	{
-		Q_OBJECT
+		return Ui_.Addresses_->text ().split (',');
+	}
 
-		Ui::SelectGroupsDialog Ui_;
-		QStandardItemModel *Model_;
-		QString Login_;
-		FotoBilderAccount *Account_;
+	void SendMessageDialog::SetAddresses (const QStringList& addresses)
+	{
+		Ui_.Addresses_->setText (addresses.join (","));
+	}
 
-	public:
-		SelectGroupsDialog (const QString& login, FotoBilderAccount *acc,
-				QWidget *parent = 0);
+	QString SendMessageDialog::GetSubject () const
+	{
+		return Ui_.Subject_->text ();
+	}
 
-		uint GetSelectedGroupId () const;
-	private:
-		void RequestFriendsGroups ();
-		void FriendsGroupsRequest (const QString& challenge);
-		void GenerateChallenge ();
-		QString GetPassword () const;
-		QNetworkRequest CreateNetworkRequest ();
-
-	private slots:
-		void handleChallengeReplyFinished ();
-		void handleNetworkError (QNetworkReply::NetworkError error);
-		void handleRequestFriendsGroupsFinished ();
-	};
+	QString SendMessageDialog::GetText () const
+	{
+		return Ui_.Text_->toPlainText ();
+	}
 }
 }
 }
-
-Q_DECLARE_METATYPE (LeechCraft::Blasq::DeathNote::ParsedMember)

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2010-2013  Oleg Linkin <MaledictusDeMagog@gmail.com>
+ * Copyright (C) 2006-2013  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -27,66 +27,63 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#pragma once
-
-#include <QDialog>
-#include <QNetworkReply>
-#include <QNetworkRequest>
-#include "ui_selectgroupsdialog.h"
-
-class QStandardItemModel;
+#include "trmanager.h"
+#include <QThread>
+#include <QTranslator>
+#include <QTimer>
+#include <util/util.h>
 
 namespace LeechCraft
 {
-namespace Blasq
+namespace HttHare
 {
-namespace DeathNote
-{
-	class FotoBilderAccount;
-
-	struct FriendsGroup
+	TrManager::TrManager (QObject *parent)
+	: QObject (parent)
 	{
-		bool Public_;
-		QString Name_;
-		uint Id_;
-		uint SortOrder_;
-		uint RealId_;
-	};
+		auto timer = new QTimer (this);
+		connect (timer,
+				SIGNAL (timeout ()),
+				this,
+				SLOT (purge ()));
+		timer->start (60 * 60 * 1000);
+	}
 
-	struct ParsedMember
+	QString TrManager::Translate (const QStringList& locales, const char* context, const char* src)
 	{
-		QString Name_;
-		QVariantList Value_;
-	};
+		MapLock_.lock ();
+		auto& map = Translators_ [QThread::currentThreadId ()];
+		MapLock_.unlock ();
 
-	class SelectGroupsDialog : public QDialog
+		for (auto locale : locales)
+		{
+			if (locale.size () > 2)
+				locale = locale.left (2);
+
+			if (locale == "ru")
+				locale = "ru_RU";
+
+			if (!map.contains (locale))
+				map [locale] = Util::LoadTranslator ("htthare", locale);
+
+			if (const auto transl = map [locale])
+			{
+				const auto& str = transl->translate (context, src);
+				if (!str.isEmpty ())
+					return str;
+			}
+		}
+
+		return QString::fromUtf8 (src);
+	}
+
+	void TrManager::purge ()
 	{
-		Q_OBJECT
-
-		Ui::SelectGroupsDialog Ui_;
-		QStandardItemModel *Model_;
-		QString Login_;
-		FotoBilderAccount *Account_;
-
-	public:
-		SelectGroupsDialog (const QString& login, FotoBilderAccount *acc,
-				QWidget *parent = 0);
-
-		uint GetSelectedGroupId () const;
-	private:
-		void RequestFriendsGroups ();
-		void FriendsGroupsRequest (const QString& challenge);
-		void GenerateChallenge ();
-		QString GetPassword () const;
-		QNetworkRequest CreateNetworkRequest ();
-
-	private slots:
-		void handleChallengeReplyFinished ();
-		void handleNetworkError (QNetworkReply::NetworkError error);
-		void handleRequestFriendsGroupsFinished ();
-	};
+		MapLock_.lock ();
+		for (const auto& threadMap : Translators_)
+			for (auto tr : threadMap)
+				tr->deleteLater ();
+		Translators_.clear ();
+		MapLock_.unlock ();
+	}
 }
 }
-}
-
-Q_DECLARE_METATYPE (LeechCraft::Blasq::DeathNote::ParsedMember)

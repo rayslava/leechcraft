@@ -29,6 +29,7 @@
 
 #pragma once
 
+#include <memory>
 #include <QObject>
 #include <interfaces/iinfo.h>
 #include <interfaces/ihavesettings.h>
@@ -38,6 +39,7 @@ namespace LeechCraft
 namespace HttHare
 {
 	class Server;
+	class AddressesModelManager;
 
 	class Plugin : public QObject
 				 , public IInfo
@@ -46,7 +48,9 @@ namespace HttHare
 		Q_OBJECT
 		Q_INTERFACES (IInfo IHaveSettings)
 
-		Server *S_;
+		std::shared_ptr<Server> S_;
+		AddressesModelManager *AddrMgr_;
+
 		Util::XmlSettingsDialog_ptr XSD_;
 	public:
 		void Init (ICoreProxy_ptr);
@@ -58,6 +62,9 @@ namespace HttHare
 		QIcon GetIcon () const;
 
 		Util::XmlSettingsDialog_ptr GetSettingsDialog () const;
+	private slots:
+		void handleEnableServerChanged ();
+		void reapplyAddresses ();
 	};
 }
 }

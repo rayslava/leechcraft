@@ -18,8 +18,11 @@ set (SRCS
 	connection.cpp
 	requesthandler.cpp
 	storagemanager.cpp
+	iconresolver.cpp
+	trmanager.cpp
+	addressesmodelmanager.cpp
 	)
-#CreateTrs("htthare" "en;ru_RU" COMPILED_TRANSLATIONS)
+CreateTrs("htthare" "en;ru_RU" COMPILED_TRANSLATIONS)
 CreateTrsUpTarget("htthare" "en;ru_RU" "${SRCS}" "${FORMS}" "httharesettings.xml")
 
 add_library (leechcraft_htthare SHARED
