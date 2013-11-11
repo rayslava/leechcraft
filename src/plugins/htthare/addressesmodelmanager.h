@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2010-2013  Oleg Linkin <MaledictusDeMagog@gmail.com>
+ * Copyright (C) 2006-2013  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -29,64 +29,41 @@
 
 #pragma once
 
-#include <QDialog>
-#include <QNetworkReply>
-#include <QNetworkRequest>
-#include "ui_selectgroupsdialog.h"
+#include <QObject>
+#include <QVariantList>
+#include <QModelIndexList>
 
 class QStandardItemModel;
+class QStandardItem;
 
 namespace LeechCraft
 {
-namespace Blasq
+namespace HttHare
 {
-namespace DeathNote
-{
-	class FotoBilderAccount;
+	typedef QList<QPair<QString, QString>> AddrList_t;
 
-	struct FriendsGroup
-	{
-		bool Public_;
-		QString Name_;
-		uint Id_;
-		uint SortOrder_;
-		uint RealId_;
-	};
-
-	struct ParsedMember
-	{
-		QString Name_;
-		QVariantList Value_;
-	};
-
-	class SelectGroupsDialog : public QDialog
+	class AddressesModelManager : public QObject
 	{
 		Q_OBJECT
 
-		Ui::SelectGroupsDialog Ui_;
-		QStandardItemModel *Model_;
-		QString Login_;
-		FotoBilderAccount *Account_;
-
+		QStandardItemModel * const Model_;
 	public:
-		SelectGroupsDialog (const QString& login, FotoBilderAccount *acc,
-				QWidget *parent = 0);
+		AddressesModelManager (QObject* = 0);
 
-		uint GetSelectedGroupId () const;
+		QAbstractItemModel* GetModel () const;
+		AddrList_t GetAddresses () const;
 	private:
-		void RequestFriendsGroups ();
-		void FriendsGroupsRequest (const QString& challenge);
-		void GenerateChallenge ();
-		QString GetPassword () const;
-		QNetworkRequest CreateNetworkRequest ();
-
+		void SaveSettings ();
+		void AppendRow (const QPair<QString, QString>&);
 	private slots:
-		void handleChallengeReplyFinished ();
-		void handleNetworkError (QNetworkReply::NetworkError error);
-		void handleRequestFriendsGroupsFinished ();
+		void updateAvailInterfaces ();
+	public slots:
+		void addRequested (const QString&, const QVariantList&);
+		void removeRequested (const QString&, const QModelIndexList&);
+	signals:
+		void addressesChanged ();
 	};
 }
 }
-}
 
-Q_DECLARE_METATYPE (LeechCraft::Blasq::DeathNote::ParsedMember)
+Q_DECLARE_METATYPE (LeechCraft::HttHare::AddrList_t)

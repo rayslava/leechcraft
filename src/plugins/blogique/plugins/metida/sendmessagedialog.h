@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2010-2013  Oleg Linkin <MaledictusDeMagog@gmail.com>
+ * Copyright (C) 2010-2012  Oleg Linkin
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -30,63 +30,34 @@
 #pragma once
 
 #include <QDialog>
-#include <QNetworkReply>
-#include <QNetworkRequest>
-#include "ui_selectgroupsdialog.h"
-
-class QStandardItemModel;
+#include "ui_sendmessagedialog.h"
 
 namespace LeechCraft
 {
-namespace Blasq
+namespace Blogique
 {
-namespace DeathNote
+namespace Metida
 {
-	class FotoBilderAccount;
-
-	struct FriendsGroup
-	{
-		bool Public_;
-		QString Name_;
-		uint Id_;
-		uint SortOrder_;
-		uint RealId_;
-	};
-
-	struct ParsedMember
-	{
-		QString Name_;
-		QVariantList Value_;
-	};
-
-	class SelectGroupsDialog : public QDialog
+	class LJAccount;
+	class LJProfile;
+	
+	class SendMessageDialog : public QDialog
 	{
 		Q_OBJECT
 
-		Ui::SelectGroupsDialog Ui_;
-		QStandardItemModel *Model_;
-		QString Login_;
-		FotoBilderAccount *Account_;
+		Ui::SendMessageDialog Ui_;
+		LJAccount *Account_;
+		LJProfile *Profile_;
 
 	public:
-		SelectGroupsDialog (const QString& login, FotoBilderAccount *acc,
-				QWidget *parent = 0);
-
-		uint GetSelectedGroupId () const;
-	private:
-		void RequestFriendsGroups ();
-		void FriendsGroupsRequest (const QString& challenge);
-		void GenerateChallenge ();
-		QString GetPassword () const;
-		QNetworkRequest CreateNetworkRequest ();
-
-	private slots:
-		void handleChallengeReplyFinished ();
-		void handleNetworkError (QNetworkReply::NetworkError error);
-		void handleRequestFriendsGroupsFinished ();
+		explicit SendMessageDialog (LJProfile *profile, QWidget *parent = 0);
+		void accept ();
+		
+		QStringList GetAddresses () const;
+		void SetAddresses (const QStringList& addresses);
+		QString GetSubject () const;
+		QString GetText () const;
 	};
 }
 }
 }
-
-Q_DECLARE_METATYPE (LeechCraft::Blasq::DeathNote::ParsedMember)
