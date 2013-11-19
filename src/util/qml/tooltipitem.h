@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2010-2013  Oleg Linkin <MaledictusDeMagog@gmail.com>
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -29,38 +29,73 @@
 
 #pragma once
 
-#include <functional>
-#include <Qt>
-#include <QMetaType>
+#include <QDeclarativeItem>
+#include <QTimer>
+#include <util/utilconfig.h>
 
 namespace LeechCraft
 {
-namespace Launchy
+namespace Util
 {
-	enum ModelRoles
+	/** @brief ToolTip for Qml objects.
+	 *
+	 * Using the tooltip is pretty easy.
+	 * First of all register tooltip in your widget:
+	 * \code{.cpp}
+	 * qmlRegisterType<Util::ToolTipItem> ("org.LC.common", 1, 0, "ToolTip");
+	 * \endcode
+	 *
+	 * Then in yout qml import this widget:
+	 * \code{.qml}
+	 * import org.LC.common 1.0
+	 * \endcode
+	 *
+	 * And now you can use tooltip:
+	 * \code{.qml}
+	 * Rectangle {
+	 *		anchors.fill: parent
+	 *
+	 *		MouseArea
+	 *		{
+	 *			anchors.fill: subjectText
+	 *			hoverEnabled: true
+	 *			ToolTip
+	 *			{
+	 *				anchors.fill: parent
+	 *				text: "tooltip text"
+	 *			}
+	 *		}
+	 *	}
+	 * \endcode
+	 */
+	class UTIL_API ToolTipItem : public QDeclarativeItem
 	{
-		CategoryName = Qt::UserRole + 1,
-		CategoryIcon,
-		CategoryType,
+		Q_OBJECT
+		Q_PROPERTY (QString text READ GetText WRITE SetText NOTIFY textChanged)
+		Q_PROPERTY (bool containsMouse READ ContainsMouse NOTIFY containsMouseChanged)
 
-		ItemName,
-		ItemIcon,
-		ItemDescription,
-		ItemID,
-		ItemCommand,
+		QTimer ShowTimer_;
+		QString Text_;
+		bool ContainsMouse_;
 
-		IsItemFavorite,
-		IsItemRecent,
-		ItemRecentPos,
+	public:
+		ToolTipItem (QDeclarativeItem *parent = 0);
 
-		ItemNativeCategories,
-		NativeCategories,
+		void SetText (const QString& text);
+		QString GetText () const;
+		bool ContainsMouse () const;
 
-		ExecutorFunctor
+		void ShowToolTip (const QString& text) const;
+	protected:
+		void hoverEnterEvent (QGraphicsSceneHoverEvent *event);
+		void hoverLeaveEvent (QGraphicsSceneHoverEvent *event);
+
+	public slots:
+		void showToolTip ();
+
+	signals:
+		void textChanged ();
+		void containsMouseChanged ();
 	};
-
-	typedef std::function<void ()> Executor_f;
 }
 }
-
-Q_DECLARE_METATYPE (LeechCraft::Launchy::Executor_f);

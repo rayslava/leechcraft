@@ -27,40 +27,65 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#pragma once
-
-#include <functional>
-#include <Qt>
-#include <QMetaType>
+#include "recentmanager.h"
+#include <QCoreApplication>
+#include <QSettings>
 
 namespace LeechCraft
 {
 namespace Launchy
 {
-	enum ModelRoles
+	RecentManager::RecentManager (QObject *parent)
+	: QObject (parent)
 	{
-		CategoryName = Qt::UserRole + 1,
-		CategoryIcon,
-		CategoryType,
+		Load ();
+	}
 
-		ItemName,
-		ItemIcon,
-		ItemDescription,
-		ItemID,
-		ItemCommand,
+	bool RecentManager::HasRecents () const
+	{
+		return !RecentList_.isEmpty ();
+	}
 
-		IsItemFavorite,
-		IsItemRecent,
-		ItemRecentPos,
+	bool RecentManager::IsRecent (const QString& item) const
+	{
+		return RecentList_.contains (item);
+	}
 
-		ItemNativeCategories,
-		NativeCategories,
+	int RecentManager::GetRecentOrder (const QString& item) const
+	{
+		return RecentList_.indexOf (item);
+	}
 
-		ExecutorFunctor
-	};
+	void RecentManager::AddRecent (const QString& item)
+	{
+		RecentList_.removeAll (item);
+		RecentList_.prepend (item);
 
-	typedef std::function<void ()> Executor_f;
+		const auto maxSize = 32;
+		if (RecentList_.size () > maxSize)
+			RecentList_.erase (RecentList_.begin () + 32, RecentList_.end ());
+
+		Save ();
+
+		emit recentListChanged ();
+	}
+
+	void RecentManager::Save () const
+	{
+		QSettings settings (QCoreApplication::organizationName (),
+				QCoreApplication::applicationName () + "_Launchy");
+		settings.beginGroup ("Recent");
+		settings.setValue ("IDs", RecentList_);
+		settings.endGroup ();
+	}
+
+	void RecentManager::Load ()
+	{
+		QSettings settings (QCoreApplication::organizationName (),
+				QCoreApplication::applicationName () + "_Launchy");
+		settings.beginGroup ("Recent");
+		RecentList_ = settings.value ("IDs").toStringList ();
+		settings.endGroup ();
+	}
 }
 }
-
-Q_DECLARE_METATYPE (LeechCraft::Launchy::Executor_f);
