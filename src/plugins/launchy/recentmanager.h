@@ -29,38 +29,31 @@
 
 #pragma once
 
-#include <functional>
-#include <Qt>
-#include <QMetaType>
+#include <QObject>
+#include <QStringList>
 
 namespace LeechCraft
 {
 namespace Launchy
 {
-	enum ModelRoles
+	class RecentManager : public QObject
 	{
-		CategoryName = Qt::UserRole + 1,
-		CategoryIcon,
-		CategoryType,
+		Q_OBJECT
 
-		ItemName,
-		ItemIcon,
-		ItemDescription,
-		ItemID,
-		ItemCommand,
+		QStringList RecentList_;
+	public:
+		RecentManager (QObject* = 0);
 
-		IsItemFavorite,
-		IsItemRecent,
-		ItemRecentPos,
+		bool HasRecents () const;
+		bool IsRecent (const QString&) const;
+		int GetRecentOrder (const QString&) const;
 
-		ItemNativeCategories,
-		NativeCategories,
-
-		ExecutorFunctor
+		void AddRecent (const QString&);
+	private:
+		void Save () const;
+		void Load ();
+	signals:
+		void recentListChanged ();
 	};
-
-	typedef std::function<void ()> Executor_f;
 }
 }
-
-Q_DECLARE_METATYPE (LeechCraft::Launchy::Executor_f);

@@ -136,10 +136,6 @@ namespace LMP
 				this,
 				SLOT (handleUpdateSourceQueue ()));
 
-		XmlSettingsManager::Instance ().RegisterObject ("TransitionTime",
-				this, "setTransitionTime");
-		setTransitionTime ();
-
 		XmlSettingsManager::Instance ().RegisterObject ("SingleTrackDisplayMask",
 				this, "refillPlaylist");
 
@@ -269,6 +265,15 @@ namespace LMP
 		std::for_each (sources.begin (), sources.end (),
 				[&parsedSources] (decltype (sources.front ()) path)
 					{ parsedSources += FileToSource (path); });
+
+		for (auto i = parsedSources.begin (); i != parsedSources.end (); )
+		{
+			if (Items_.contains (*i))
+				i = parsedSources.erase (i);
+			else
+				++i;
+		}
+
 		AddToPlaylistModel (parsedSources, sort);
 	}
 
@@ -1406,13 +1411,6 @@ namespace LMP
 	void Player::refillPlaylist ()
 	{
 		ReplaceQueue (GetQueue (), false);
-	}
-
-	void Player::setTransitionTime ()
-	{
-		const int time = XmlSettingsManager::Instance ()
-				.property ("TransitionTime").toInt ();
-		Source_->SetTransitionTime (time);
 	}
 }
 }

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2010-2013  Oleg Linkin <MaledictusDeMagog@gmail.com>
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -27,40 +27,70 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#pragma once
-
-#include <functional>
-#include <Qt>
-#include <QMetaType>
+#include "tooltipitem.h"
+#include <QToolTip>
+#include <QtDebug>
 
 namespace LeechCraft
 {
-namespace Launchy
+namespace Util
 {
-	enum ModelRoles
+	ToolTipItem::ToolTipItem (QDeclarativeItem *parent)
+	: QDeclarativeItem (parent)
+	, ContainsMouse_ (false)
 	{
-		CategoryName = Qt::UserRole + 1,
-		CategoryIcon,
-		CategoryType,
+		setAcceptHoverEvents (true);
+		connect (&ShowTimer_,
+				SIGNAL (timeout ()),
+				this,
+				SLOT (showToolTip ()));
+		ShowTimer_.setSingleShot (true);
 
-		ItemName,
-		ItemIcon,
-		ItemDescription,
-		ItemID,
-		ItemCommand,
+	}
 
-		IsItemFavorite,
-		IsItemRecent,
-		ItemRecentPos,
+	void ToolTipItem::SetText (const QString& text)
+	{
+		if (Text_ != text)
+		{
+			Text_ = text;
+			emit textChanged ();
+		}
+	}
 
-		ItemNativeCategories,
-		NativeCategories,
+	QString ToolTipItem::GetText () const
+	{
+		return Text_;
+	}
 
-		ExecutorFunctor
-	};
+	bool ToolTipItem::ContainsMouse () const
+	{
+		return ContainsMouse_;
+	}
 
-	typedef std::function<void ()> Executor_f;
+	void ToolTipItem::ShowToolTip (const QString& text) const
+	{
+		QToolTip::showText (cursor ().pos (), text);
+	}
+
+	void ToolTipItem::hoverEnterEvent (QGraphicsSceneHoverEvent *event)
+	{
+		ShowTimer_.start (1000);
+		ContainsMouse_ = true;
+		emit containsMouseChanged ();
+		QDeclarativeItem::hoverEnterEvent (event);
+	}
+
+	void ToolTipItem::hoverLeaveEvent (QGraphicsSceneHoverEvent *event)
+	{
+		ShowTimer_.stop ();
+		ContainsMouse_ = false;
+		emit containsMouseChanged ();
+		QDeclarativeItem::hoverLeaveEvent (event);
+	}
+
+	void ToolTipItem::showToolTip ()
+	{
+		ShowToolTip (Text_);
+	}
 }
 }
-
-Q_DECLARE_METATYPE (LeechCraft::Launchy::Executor_f);
