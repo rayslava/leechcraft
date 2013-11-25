@@ -203,6 +203,7 @@ namespace Azoth
 		Util::ShortcutManager* GetShortcutManager () const;
 		CustomStatusesManager* GetCustomStatusesManager () const;
 		CustomChatStyleManager* GetCustomChatStyleManager () const;
+		UnreadQueueManager* GetUnreadQueueManager () const;
 
 		void AddPlugin (QObject*);
 		void RegisterHookable (QObject*);
@@ -331,6 +332,8 @@ namespace Azoth
 		 * the given amount, which may be negative.
 		 */
 		void IncreaseUnreadCount (ICLEntry *entry, int amount = 1);
+
+		int GetUnreadCount (ICLEntry *entry) const;
 	private:
 		/** Adds the protocol object. The object must implement
 		 * IProtocolPlugin interface.
@@ -483,7 +486,7 @@ namespace Azoth
 
 		/** Removes the old unneeded variants.
 		 */
-		void handleVariantsChanged (const QStringList& newVariants);
+		void handleVariantsChanged ();
 
 		/** Handles ICLEntry's PEP-like (XEP-0163) event from the given
 		 * variant.

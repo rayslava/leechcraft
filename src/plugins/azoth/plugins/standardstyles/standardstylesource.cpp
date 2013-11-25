@@ -305,23 +305,23 @@ namespace StandardStyles
 		}
 
 		if (!statusIconName.isEmpty ())
-			string.prepend (QString ("<img src='%1' style='max-width: 1em; max-height: 1em;' id='%2'/>")
+			string.prepend (QString ("<img src='%1' style='max-width: 1em; max-height: 1em;' id='%2' class='deliveryStatusIcon' />")
 					.arg (GetStatusImage (statusIconName))
 					.arg (msgId));
 		string.append (body);
 
 		QWebElement elem = frame->findFirstElement ("body");
 
+		const auto isRead = Proxy_->IsMessageRead (msgObj);
 		if (!isActiveChat &&
-				!HasBeenAppended_ [frame])
+				!isRead && IsLastMsgRead_.value (frame, false))
 		{
 			auto hr = elem.findFirst ("hr[class=\"lastSeparator\"]");
 			if (!hr.isNull ())
 				hr.removeFromDocument ();
 			elem.appendInside ("<hr class=\"lastSeparator\" />");
-
-			HasBeenAppended_ [frame] = true;
 		}
+		IsLastMsgRead_ [frame] = isRead;
 
 		elem.appendInside (QString ("<div class='%1'>%2</div>")
 					.arg (divClass)
@@ -331,7 +331,7 @@ namespace StandardStyles
 
 	void StandardStyleSource::FrameFocused (QWebFrame *frame)
 	{
-		HasBeenAppended_ [frame] = false;
+		IsLastMsgRead_ [frame] = true;
 	}
 
 	QStringList StandardStyleSource::GetVariantsForPack (const QString&)
@@ -400,7 +400,7 @@ namespace StandardStyles
 
 	void StandardStyleSource::handleFrameDestroyed ()
 	{
-		HasBeenAppended_.remove (static_cast<QWebFrame*> (sender ()));
+		IsLastMsgRead_.remove (static_cast<QWebFrame*> (sender ()));
 		const QObject *snd = sender ();
 		for (QHash<QObject*, QWebFrame*>::iterator i = Msg2Frame_.begin ();
 				i != Msg2Frame_.end (); )

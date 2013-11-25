@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2010-2013  Oleg Linkin <MaledictusDeMagog@gmail.com>
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -27,29 +27,70 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#include "sysiconsprovider.h"
-#include <QIcon>
+#include "tooltipitem.h"
+#include <QToolTip>
+#include <QtDebug>
 
 namespace LeechCraft
 {
-namespace LMP
+namespace Util
 {
-	SysIconProvider::SysIconProvider (ICoreProxy_ptr proxy)
-	: QDeclarativeImageProvider (Pixmap)
-	, Proxy_ (proxy)
+	ToolTipItem::ToolTipItem (QDeclarativeItem *parent)
+	: QDeclarativeItem (parent)
+	, ContainsMouse_ (false)
 	{
+		setAcceptHoverEvents (true);
+		connect (&ShowTimer_,
+				SIGNAL (timeout ()),
+				this,
+				SLOT (showToolTip ()));
+		ShowTimer_.setSingleShot (true);
+
 	}
 
-	QPixmap SysIconProvider::requestPixmap (const QString& id, QSize *size, const QSize& requestedSize)
+	void ToolTipItem::SetText (const QString& text)
 	{
-		const auto& icon = Proxy_->GetIcon (id);
+		if (Text_ != text)
+		{
+			Text_ = text;
+			emit textChanged ();
+		}
+	}
 
-		const auto& getSize = requestedSize.width () > 2 && requestedSize.height () > 2 ?
-				requestedSize :
-				QSize (48, 48);
-		if (size)
-			*size = icon.actualSize (getSize);
-		return icon.pixmap (getSize);
+	QString ToolTipItem::GetText () const
+	{
+		return Text_;
+	}
+
+	bool ToolTipItem::ContainsMouse () const
+	{
+		return ContainsMouse_;
+	}
+
+	void ToolTipItem::ShowToolTip (const QString& text) const
+	{
+		QToolTip::showText (cursor ().pos (), text);
+	}
+
+	void ToolTipItem::hoverEnterEvent (QGraphicsSceneHoverEvent *event)
+	{
+		ShowTimer_.start (1000);
+		ContainsMouse_ = true;
+		emit containsMouseChanged ();
+		QDeclarativeItem::hoverEnterEvent (event);
+	}
+
+	void ToolTipItem::hoverLeaveEvent (QGraphicsSceneHoverEvent *event)
+	{
+		ShowTimer_.stop ();
+		ContainsMouse_ = false;
+		emit containsMouseChanged ();
+		QDeclarativeItem::hoverLeaveEvent (event);
+	}
+
+	void ToolTipItem::showToolTip ()
+	{
+		ShowToolTip (Text_);
 	}
 }
 }

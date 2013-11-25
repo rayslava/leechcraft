@@ -48,7 +48,7 @@ namespace TouchStreams
 
 		Util::InstallTranslator ("touchstreams");
 
-		Queue_ = new Util::QueueManager (400);
+		Queue_ = new Util::QueueManager (500);
 
 		AuthMgr_ = new Util::SvcAuth::VkAuthManager ("TouchStreams",
 				"3298289",
@@ -150,7 +150,10 @@ namespace TouchStreams
 	void Plugin::handlePushButton (const QString& name)
 	{
 		if (name == "AllowRequestsTriggered")
+		{
+			AuthMgr_->clearAuthData ();
 			AuthMgr_->reauth ();
+		}
 		else
 			qWarning () << Q_FUNC_INFO
 					<< "unknown name"

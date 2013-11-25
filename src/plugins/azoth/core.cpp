@@ -383,6 +383,11 @@ namespace Azoth
 		return CustomChatStyleManager_.get ();
 	}
 
+	UnreadQueueManager* Core::GetUnreadQueueManager () const
+	{
+		return UnreadQueueManager_.get ();
+	}
+
 	void Core::AddPlugin (QObject *plugin)
 	{
 		IPlugin2 *plugin2 = qobject_cast<IPlugin2*> (plugin);
@@ -1088,7 +1093,7 @@ namespace Azoth
 		connect (clEntry->GetQObject (),
 				SIGNAL (availableVariantsChanged (QStringList)),
 				this,
-				SLOT (handleVariantsChanged (QStringList)));
+				SLOT (handleVariantsChanged ()));
 		connect (clEntry->GetQObject (),
 				SIGNAL (availableVariantsChanged (const QStringList&)),
 				this,
@@ -1553,12 +1558,20 @@ namespace Azoth
 
 	void Core::IncreaseUnreadCount (ICLEntry* entry, int amount)
 	{
-		Q_FOREACH (QStandardItem *item, Entry2Items_ [entry])
+		for (auto item : Entry2Items_ [entry])
 			{
 				int prevValue = item->data (CLRUnreadMsgCount).toInt ();
 				item->setData (std::max (0, prevValue + amount), CLRUnreadMsgCount);
 				RecalculateUnreadForParents (item);
 			}
+	}
+
+	int Core::GetUnreadCount (ICLEntry *entry) const
+	{
+		const auto item = Entry2Items_.value (entry).value (0);
+		return item ?
+				item->data (CLRUnreadMsgCount).toInt () :
+				0;
 	}
 
 	namespace
@@ -2369,7 +2382,7 @@ namespace Azoth
 		HandleStatusChanged (status, entry, variant, true);
 	}
 
-	void Core::handleVariantsChanged (const QStringList& newVariants)
+	void Core::handleVariantsChanged ()
 	{
 		ICLEntry *entry = qobject_cast<ICLEntry*> (sender ());
 		if (!entry)

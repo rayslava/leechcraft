@@ -49,11 +49,13 @@
 #include <QTimer>
 #include <QCryptographicHash>
 #include <QTextCodec>
+#include <QtDeclarative>
 #include <interfaces/isyncable.h>
 #include <interfaces/ihaveshortcuts.h>
 #include <util/util.h>
 #include <util/structuresops.h>
 #include <util/sys/paths.h>
+#include <util/qml/tooltipitem.h>
 #include "debugmessagehandler.h"
 #include "tagsmanager.h"
 #include "mainwindow.h"
@@ -163,6 +165,7 @@ namespace LeechCraft
 		qRegisterMetaTypeStreamOperators<QKeySequences_t> ("QKeySequences_t");
 		qRegisterMetaTypeStreamOperators<TagsManager::TagsDictionary_t> ("LeechCraft::TagsManager::TagsDictionary_t");
 		qRegisterMetaTypeStreamOperators<Entity> ("LeechCraft::Entity");
+		qmlRegisterType<Util::ToolTipItem> ("org.LC.common", 1, 0, "ToolTip");
 
 		ParseCommandLine ();
 
@@ -210,12 +213,9 @@ namespace LeechCraft
 				this,
 				SLOT (handleLoadProgress (const QString&)));
 
-		auto mw = Core::Instance ().GetRootWindowsManager ()->MakeMainWindow ();
-		Core::Instance ().DelayedInit ();
-
-		Splash_->showMessage (tr ("Finalizing..."), Qt::AlignLeft | Qt::AlignBottom, QColor ("#FF3000"));
-
-		Splash_->finish (mw);
+		QTimer::singleShot (0,
+				this,
+				SLOT (finishInit ()));
 	}
 
 	const QStringList& Application::Arguments () const
@@ -488,6 +488,17 @@ namespace LeechCraft
 		XmlSettingsManager::Instance ()->RegisterObject ("Language",
 				this, "handleLanguage");
 		PreviousLangName_ = XmlSettingsManager::Instance ()->property ("Language").toString ();
+	}
+
+	void Application::finishInit ()
+	{
+		auto rwm = Core::Instance ().GetRootWindowsManager ();
+		rwm->Initialize ();
+		Core::Instance ().DelayedInit ();
+
+		Splash_->showMessage (tr ("Finalizing..."), Qt::AlignLeft | Qt::AlignBottom, QColor ("#FF3000"));
+
+		Splash_->finish (rwm->GetMainWindow (0));
 	}
 
 	void Application::handleQuit ()

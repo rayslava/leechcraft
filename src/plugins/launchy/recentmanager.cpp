@@ -27,22 +27,65 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#pragma once
-
-#include <QDeclarativeImageProvider>
-#include <interfaces/core/icoreproxy.h>
+#include "recentmanager.h"
+#include <QCoreApplication>
+#include <QSettings>
 
 namespace LeechCraft
 {
-namespace LMP
+namespace Launchy
 {
-	class SysIconProvider : public QDeclarativeImageProvider
+	RecentManager::RecentManager (QObject *parent)
+	: QObject (parent)
 	{
-		ICoreProxy_ptr Proxy_;
-	public:
-		SysIconProvider (ICoreProxy_ptr);
+		Load ();
+	}
 
-		QPixmap requestPixmap (const QString&, QSize*, const QSize&);
-	};
+	bool RecentManager::HasRecents () const
+	{
+		return !RecentList_.isEmpty ();
+	}
+
+	bool RecentManager::IsRecent (const QString& item) const
+	{
+		return RecentList_.contains (item);
+	}
+
+	int RecentManager::GetRecentOrder (const QString& item) const
+	{
+		return RecentList_.indexOf (item);
+	}
+
+	void RecentManager::AddRecent (const QString& item)
+	{
+		RecentList_.removeAll (item);
+		RecentList_.prepend (item);
+
+		const auto maxSize = 32;
+		if (RecentList_.size () > maxSize)
+			RecentList_.erase (RecentList_.begin () + 32, RecentList_.end ());
+
+		Save ();
+
+		emit recentListChanged ();
+	}
+
+	void RecentManager::Save () const
+	{
+		QSettings settings (QCoreApplication::organizationName (),
+				QCoreApplication::applicationName () + "_Launchy");
+		settings.beginGroup ("Recent");
+		settings.setValue ("IDs", RecentList_);
+		settings.endGroup ();
+	}
+
+	void RecentManager::Load ()
+	{
+		QSettings settings (QCoreApplication::organizationName (),
+				QCoreApplication::applicationName () + "_Launchy");
+		settings.beginGroup ("Recent");
+		RecentList_ = settings.value ("IDs").toStringList ();
+		settings.endGroup ();
+	}
 }
 }
