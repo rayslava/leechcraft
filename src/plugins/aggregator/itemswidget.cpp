@@ -1439,8 +1439,9 @@ namespace Aggregator
 		{
 			QString html;
 			QUrl link;
-			Q_FOREACH (const QModelIndex& selIndex,
-					Impl_->Ui_.Items_->selectionModel ()->selectedRows ())
+
+			const auto& rows = Impl_->Ui_.Items_->selectionModel ()->selectedRows ();
+			for (const auto& selIndex : rows)
 			{
 				const QModelIndex& sindex = Impl_->
 						ItemsFilterModel_->mapToSource (selIndex);
@@ -1456,10 +1457,6 @@ namespace Aggregator
 			Impl_->Ui_.ItemView_->SetHtml (QString (), QUrl ());
 			Impl_->Ui_.ItemView_->SetHtml (preHtml + html + "</body></html>", link);
 
-			const QModelIndex& sourceIndex =
-					Impl_->Ui_.Items_->currentIndex ();
-			const QModelIndex& cIndex =
-					Impl_->ItemsFilterModel_->mapToSource (sourceIndex);
 			if (html.isEmpty ())
 			{
 				Impl_->ActionItemCommentsSubscribe_->setEnabled (false);
@@ -1469,6 +1466,12 @@ namespace Aggregator
 			}
 			else
 			{
+				auto sourceIndex = Impl_->Ui_.Items_->currentIndex ();
+				if (!sourceIndex.isValid ())
+					sourceIndex = rows.value (0);
+
+				const auto& cIndex = Impl_->ItemsFilterModel_->mapToSource (sourceIndex);
+
 				Selected (cIndex);
 
 				QString commentsRSS = GetItem (cIndex)->CommentsLink_;
