@@ -38,8 +38,11 @@
 #include <qjson/parser.h>
 #include <interfaces/media/iradiostationprovider.h>
 #include <util/svcauth/vkauthmanager.h>
+#include <util/svcauth/vkcaptchadialog.h>
 #include <util/queuemanager.h>
+#include <util/util.h>
 #include "albumsmanager.h"
+#include "xmlsettingsmanager.h"
 
 namespace LeechCraft
 {
@@ -69,6 +72,9 @@ namespace TouchStreams
 		QTimer::singleShot (1000,
 				this,
 				SLOT (refetchFriends ()));
+
+		XmlSettingsManager::Instance ().RegisterObject ("RequestFriendsData",
+				this, "refetchFriends");
 	}
 
 	QStandardItem* FriendsManager::GetRootItem () const
@@ -103,6 +109,10 @@ namespace TouchStreams
 
 	void FriendsManager::refetchFriends ()
 	{
+		if (!XmlSettingsManager::Instance ()
+				.property ("RequestFriendsData").toBool ())
+			return;
+
 		auto nam = Proxy_->GetNetworkAccessManager ();
 		RequestQueue_.push_back ([this, nam] (const QString& key) -> void
 			{
@@ -173,24 +183,58 @@ namespace TouchStreams
 			auto nam = Proxy_->GetNetworkAccessManager ();
 			RequestQueue_.push_back ([this, nam, code, theseUsersMap] (const QString& key) -> void
 				{
-					QUrl url ("https://api.vk.com/method/execute");
+					auto f = [=] (const QMap<QString, QString>& map) -> QNetworkReply*
+					{
+						QUrl url ("https://api.vk.com/method/execute");
 
-					auto query = "access_token=" + QUrl::toPercentEncoding (key.toUtf8 ());
-					query += '&';
-					query += "code=" + QUrl::toPercentEncoding (code.toUtf8 ());
+						auto query = "access_token=" + QUrl::toPercentEncoding (key.toUtf8 ());
+						query += '&';
+						query += "code=" + QUrl::toPercentEncoding (code.toUtf8 ());
 
-					QNetworkRequest req (url);
-					req.setHeader (QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-					auto reply = nam->post (req, query);
-					connect (reply,
-							SIGNAL (finished ()),
-							this,
-							SLOT (handleExecuted ()));
+						for (auto i = map.begin (); i != map.end (); ++i)
+							query += '&' + i.key () + '=' + QUrl::toPercentEncoding (i->toUtf8 ());
 
-					Reply2Users_ [reply] = theseUsersMap;
+						QNetworkRequest req (url);
+						req.setHeader (QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+						auto reply = nam->post (req, query);
+						connect (reply,
+								SIGNAL (finished ()),
+								this,
+								SLOT (handleExecuted ()));
+
+						Reply2Users_ [reply] = theseUsersMap;
+
+						return reply;
+					};
+					Reply2Func_ [f ({})] = f;
 				});
 		}
 		AuthMgr_->GetAuthKey ();
+	}
+
+	void FriendsManager::handleCaptchaEntered (const QString& cid, const QString& value)
+	{
+		if (Queue_->IsPaused ())
+			Queue_->Resume ();
+
+		if (!CaptchaReplyMaker_)
+			return;
+
+		if (value.isEmpty ())
+			return;
+
+		decltype (CaptchaReplyMaker_) maker;
+		std::swap (maker, CaptchaReplyMaker_);
+		Queue_->Schedule ([cid, value, maker, this] () -> void
+				{
+					const auto& map = Util::MakeMap<QString, QString> ({
+							{ "captcha_sid", cid },
+							{ "captcha_key", value }
+						});
+					Reply2Func_ [maker (map)] = maker;
+				},
+				nullptr,
+				Util::QueuePriority::High);
 	}
 
 	void FriendsManager::handleExecuted ()
@@ -199,8 +243,40 @@ namespace TouchStreams
 		reply->deleteLater ();
 
 		const auto& usersMap = Reply2Users_.take (reply);
+		const auto& reqFunc = Reply2Func_.take (reply);
 
 		const auto& data = QJson::Parser ().parse (reply).toMap ();
+
+		if (data.contains ("error"))
+		{
+			const auto& errMap = data ["error"].toMap ();
+			if (errMap ["error_code"].toULongLong () == 14)
+			{
+				qDebug () << Q_FUNC_INFO
+						<< "captcha requested";
+				if (Queue_->IsPaused ())
+					return;
+
+				Queue_->Pause ();
+
+				auto captchaDialog = new Util::SvcAuth::VkCaptchaDialog (errMap,
+						Proxy_->GetNetworkAccessManager ());
+				captchaDialog->show ();
+				connect (captchaDialog,
+						SIGNAL (gotCaptcha (QString, QString)),
+						this,
+						SLOT (handleCaptchaEntered (QString, QString)));
+				CaptchaReplyMaker_ = std::move (reqFunc);
+			}
+			else
+			{
+				qWarning () << Q_FUNC_INFO
+						<< "error"
+						<< errMap;
+				return;
+			}
+		}
+
 		for (const auto& userDataVar : data ["response"].toList ())
 		{
 			const auto& userData = userDataVar.toMap ();

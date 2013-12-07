@@ -48,7 +48,10 @@ namespace TouchStreams
 
 		Util::InstallTranslator ("touchstreams");
 
-		Queue_ = new Util::QueueManager (500);
+		XSD_.reset (new Util::XmlSettingsDialog);
+		XSD_->RegisterObject (&XmlSettingsManager::Instance (), "touchstreamssettings.xml");
+
+		Queue_ = new Util::QueueManager (10000);
 
 		AuthMgr_ = new Util::SvcAuth::VkAuthManager ("TouchStreams",
 				"3298289",
@@ -63,9 +66,6 @@ namespace TouchStreams
 
 		AlbumsMgr_ = new AlbumsManager (AuthMgr_, Queue_, proxy, this);
 		FriendsMgr_ = new FriendsManager (AuthMgr_, Queue_, proxy, this);
-
-		XSD_.reset (new Util::XmlSettingsDialog);
-		XSD_->RegisterObject (&XmlSettingsManager::Instance (), "touchstreamssettings.xml");
 
 		connect (XSD_.get (),
 				SIGNAL (pushButtonClicked (QString)),

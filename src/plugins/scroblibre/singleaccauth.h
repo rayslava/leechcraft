@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2010-2013  Oleg Linkin
+ * Copyright (C) 2006-2013  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -27,30 +27,48 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#include "recentcommentsview.h"
-#include <QGraphicsObject>
+#pragma once
+
+#include <QObject>
+#include <QUrl>
+#include <interfaces/core/icoreproxy.h>
+#include "submitinfo.h"
 
 namespace LeechCraft
 {
-namespace Blogique
+namespace Scroblibre
 {
-namespace Metida
-{
-	RecentCommentsView::RecentCommentsView (QWidget *parent)
-	: QDeclarativeView (parent)
+	class SingleAccAuth : public QObject
 	{
-	}
+		Q_OBJECT
 
-	void RecentCommentsView::setItemCursor (QGraphicsObject *object, const QString& shape)
-	{
-		Q_ASSERT (object);
+		const ICoreProxy_ptr Proxy_;
+		const QUrl BaseURL_;
+		const QString Login_;
 
-		Qt::CursorShape cursor = (shape == "PointingHandCursor") ?
-			Qt::PointingHandCursor :
-			Qt::ArrowCursor;
+		QString SID_;
+		QUrl NowPlayingUrl_;
+		QUrl SubmissionsUrl_;
 
-		object->setCursor (QCursor (cursor));
-	}
-}
+		bool ReauthScheduled_ = false;
+
+		QList<SubmitInfo> Queue_;
+		SubmitInfo LastSubmit_;
+	public:
+		SingleAccAuth (const QUrl& url, const QString& login, ICoreProxy_ptr, QObject*);
+
+		void SetNP (const SubmitInfo&);
+		void Submit (const SubmitInfo&);
+	private:
+		void LoadQueue ();
+		void SaveQueue () const;
+	private slots:
+		void reauth (bool failed = false);
+
+		void rotateSubmitQueue ();
+
+		void handleHSFinished ();
+		void handleSubmission ();
+	};
 }
 }

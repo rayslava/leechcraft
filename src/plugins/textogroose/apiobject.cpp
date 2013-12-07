@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2010-2013  Oleg Linkin
+ * Copyright (C) 2006-2013  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -27,29 +27,33 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#pragma once
-
-#include <QDeclarativeView>
-
-class QGraphicsObject;
+#include "apiobject.h"
 
 namespace LeechCraft
 {
-namespace Blogique
+namespace Textogroose
 {
-namespace Metida
-{
-	class RecentCommentsView : public QDeclarativeView
+	ApiObject::ApiObject (const Media::LyricsQuery& query, IScript_ptr script)
+	: Query_ { query }
+	, Script_ { script }
 	{
-		Q_OBJECT
+	}
 
-	public:
-		explicit RecentCommentsView (QWidget *parent = 0);
+	void ApiObject::handleFinished (const QVariantMap& map)
+	{
+		handleFinished (QVariantList { map });
+	}
 
-	public slots:
-		void setItemCursor (QGraphicsObject *object, const QString& shape);
-	};
+	void ApiObject::handleFinished (const QVariantList& varList)
+	{
+		QList<Media::LyricsResultItem> results;
+		for (const auto& var : varList)
+		{
+			const auto& map = var.toMap ();
+			results.append ({ map ["provider"].toString (), map ["lyrics"].toString () });
+		}
+
+		emit finished (this, { Query_, results });
+	}
 }
 }
-}
-

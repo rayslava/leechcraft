@@ -1,8 +1,137 @@
 This file lists only more or less major changes, refer to `git log` for
 the rest.
 
-Links to the corresponding development digests are also given for the
-relevant blocks of changes, so one could easily lookup
+!!! 0.6.0
+* Core: fixed showing toolbar after last tab is closed.
+* Core: fixed reapplying color theme, explicitly setting palette on all
+  widgets.
+* Core: check if there is a tab before activating it on DnD.
+* Core: set default locale according to language settings.
+* Util: fixed a possible use-after-free error in ResourceLoader on large
+  pixmaps.
+* XSD: don't count an item with just set datasource as changed.
+* AN: fixed three bugs that led to rules being considered modified when
+  they weren't.
+* Aggregator: feed URL string can already be encoded, check for it.
+* Aggregator: fixed tooltip cleanup code, removing tags like font, span,
+  div, p, h{1,2,3,4,5,6} tags.
+* Aggregator: don't notify about zero something.
+* Azoth: fixed a rare XML parsing issue.
+* Azoth: cancel roster search on Esc or as soon as search text is empty.
+* Azoth AdiumStyles: don't segfault on unknown entries.
+* Azoth Autoidler: handle only Online and Free to Chat statuses.
+* Azoth p100q: fixed bookmarks label in settings.
+* Azoth Vader: fixed compatibility with crappy clients not knowing about
+  BOM.
+* Azoth Vader: fixed microblog status encoding.
+* Azoth Xoox: fixed restoring file logging settings.
+* Azoth Xoox: fixed cancelling connecting to the server if there is a
+  network error.
+* Azoth Xoox: added *.jpeg and *.bmp masks to avatar filter.
+* Dolozhee: set proper stretch on widgets.
+* LastFMScrobble: fixed leaking attend markers.
+* LastFMScrobble: fixed leaking recent releases.
+* Launchy: use own settings instead of messing with LMP.
+* Liznoo: try autostarting UPower if it's unavailable.
+* LMP: properly handle playlists on DnD.
+* LMP: similarity label now is always under artist name.
+* LMP: consider arbitrary-named album art if it's a single image.
+* LMP: album-art autofetching now made optional.
+* LMP: format datetimes according to locale settings.
+* LMP Graffiti: fixed CUE splitting.
+* LMP Graffiti: fixed linking issues with primary LMP library.
+* LMP Graffiti: fixed garbage in plugin icon.
+* Poshuku: set target="_blank" on links in widgets requested by other
+  plugins.
+* Poshuku: fixed freezing on garbage collection with large history
+  databases.
+* Poshuku CW: don't complain about unsupported filters.
+* Summary: fixed leaking context menu actions.
+
+!!! 0.5.99
+* AN: fixed a typo in user string.
+* AN: updated English and Russian translations.
+* Azoth: auto-request logs for MUC participants as well.
+* Azoth: fixed font zooming in fixed-font MUCs.
+* Azoth CH: don't test the entry type, leave that to core.
+* LMP: fixed a segfault on removable device removal in sync widget.
+* Lemon: added Qwt 6.1 compatibility.
+* Liznoo: added Qwt 6.1 compatibility.
+* Monocle Mu: depend on openjpeg and jbig2dec, required by mupdf.
+* Poshuku CleanWeb: fixed a rare segfault.
+
+!!! 0.5.98
+* Core: first show unassociated dock widgets.
+* Core: fixed some segfaults on tab closes.
+* Core: fixed notifications about current tab changes.
+* Core: fixed reusing IDs for jobs.
+* AN: moved "Update" button to a saner place.
+* AN: check if current rule is modified & suggest saving.
+* AN: fixed overlay text drawing on notification icons.
+* Aggregator: always save provider for delegated jobs.
+* Aggregator: download the rest of the feeds after killing a stall.
+* Azoth: fixed several rare segfaults.
+* Azoth: don't send "Paused" typing state after sending a message.
+* Azoth: take user-entered groups into account in RIEX.
+* Azoth: show JIDs in all users list.
+* Azoth: show contact JID in chat tab entry info line.
+* Azoth: activate first item in users list by default.
+* Azoth: don't try sending contact ID to another on DnD.
+* Azoth: change tab name after entry renaming.
+* Azoth MetaContacts: don't suggest unifying with MUC entries.
+* Azoth Xoox: properly handle server errors on form fetching.
+* Azoth Xoox: fetch versions for variant-less items as well.
+* Kinotify: fixed leaking state machine on each notification.
+* LMP: fixed broken synchronization symbol fixing.
+* LMP: temporary files are always removed after sync.
+* LMP: metadata is now mapped properly from the source.
+* Monocle: only render those pages that are actually visible.
+* Monocle: don't set negative scales.
+* Monocle: immediate scrolling to current page on load.
+* Monocle: menu is shown only if mouse moved with a button pressed.
+* Monocle Seen: safeguard against rendering a bunch of small images.
+* TSM: fixed occasional segfaults on tab closes.
+* Vrooby: proper partition naming in UDisks2 backend.
+
+!!! 0.5.97
+* Core: fixed colors for QML buttons (mucn neater now).
+* Core: properly handle META key in shortcuts dialog.
+* Core: properly set default string codec, fixes debug messages encoding.
+* Util: fixed memory leak with QML and ColorThemeProxy.
+* Util: fixed rectangle fitting algorithm.
+* Azoth: fixed chat entry destruction on chat tab close.
+* HotSensors: take text color from the QML theme.
+* LackMan: fixed a typo in SQL query.
+* Launchy: extended known category aliases for Multimedia.
+* Monocle: keep page position on resize.
+* NSM: fixed icons for tab context menu actions.
+* TPI: update job name as well.
+* TPI: don't show internal tasks.
+* Vrooby: close the device popup on hoverout.
+
+!!! 0.5.96
+* Core: keep tab icon along tab moves between windows.
+* Core: fixed toolbar handling on tab moves between windows.
+* Core: fixed file locking threading issues.
+* Core: fixed network disk cache expiration handling.
+* Core: proper handling of forcefully closed unassociated dock widgets.
+* Core: don't show actions with empty text in popup menus.
+* Azoth: fixed autoscrolling.
+* Azoth: application-wide users list shortcut.
+* Azoth: case-insensitive users list filtering.
+* Azoth: use proper icon for voice calls.
+* Azoth Acetamide: made the channels list dialog non-modal.
+* Azoth Acetamide: allow joining to channels while the list is fetched.
+* Blogique: fixed progress indicator.
+* Blogique Hestia: fixed autoupdating entries in local blog.
+* Monocle Postrus: fixed FindLibSpectre.cmake for upcoming CMake.
+* LMP: fix rare segfaults on queue clearing.
+* LMP: clear last song data on player clearing.
+* LMP: support drags from filesystem browser.
+* LMP: replace queue on playlist activation.
+* LMP: properly restore play mode check state.
+* Popishu: fixed caret line background color.
+* VB: don't own conversation by the buddy, fixes multiple segfaults.
 
 !!! 0.5.95
 * Overall: Use Qt's Q_DECL_IMPORT\EXPORT defines.

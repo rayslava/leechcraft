@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2010-2013  Oleg Linkin
+ *  Copyright (C) 2010-2013  Oleg Linkin <MaledicutsDeMagog@gmail.com>
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -29,45 +29,34 @@
 
 #pragma once
 
-#include <QWidget>
-#include <interfaces/blogique/iblogiquesidewidget.h>
-#include "profiletypes.h"
-#include "ui_recentcommentssidewidget.h"
+#include <QStandardItemModel>
 
 namespace LeechCraft
 {
 namespace Blogique
 {
-namespace Metida
-{
-	class LJAccount;
-	class RecentCommentsModel;
-
-	class RecentCommentsSideWidget : public QWidget
-								, public IBlogiqueSideWidget
+	class CommentsModel : public QStandardItemModel
 	{
 		Q_OBJECT
-		Q_INTERFACES (LeechCraft::Blogique::IBlogiqueSideWidget)
-
-		Ui::RecentCommentsWidget Ui_;
-		LJAccount *LJAccount_;
-		RecentCommentsModel *RecentCommentsModel_;
 
 	public:
-		explicit RecentCommentsSideWidget (QWidget* parent = 0);
 
-		QString GetName () const;
-		SideWidgetType GetWidgetType () const;
-		QVariantMap GetPostOptions () const;
-		void SetPostOptions (const QVariantMap& map);
-		QVariantMap GetCustomData () const;
-		void SetCustomData (const QVariantMap& map);
-		void SetAccount (QObject *accountObj);
+		enum CommentRoles
+		{
+			AccountID = Qt::UserRole + 1,
+			EntrySubject,
+			EntryUrl,
+			EntryID,
+			CommentSubject,
+			CommentBody,
+			CommentAuthor,
+			CommentDate,
+			CommentUrl,
+			CommentID
+		};
 
-	public slots:
-		void handleGotRecentComents (const QList<LJCommentEntry>& comments);
-		void handleLinkActivated (const QString& link);
+		explicit CommentsModel (QObject *parent = 0);
 	};
 }
 }
-}
+

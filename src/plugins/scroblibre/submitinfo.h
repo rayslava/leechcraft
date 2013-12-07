@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2010-2013  Oleg Linkin
+ * Copyright (C) 2006-2013  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -27,25 +27,29 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#include "recentcommentsmodel.h"
+#pragma once
+
+#include <QDateTime>
+#include <interfaces/media/audiostructs.h>
 
 namespace LeechCraft
 {
-namespace Blogique
+namespace Scroblibre
 {
-namespace Metida
-{
-	RecentCommentsModel::RecentCommentsModel (QObject *parent)
-	: QStandardItemModel (parent)
+	struct SubmitInfo
 	{
-		QHash<int, QByteArray> roleNames;
-		roleNames [NodeSubject] = "nodeSubject";
-		roleNames [NodeUrl] = "nodeUrl";
-		roleNames [CommentBody] = "commentBody";
-		roleNames [CommentInfo] = "commentInfo";
-		setRoleNames (roleNames);
-	}
+		Media::AudioInfo Info_;
+		QDateTime TS_;
 
-}
+		SubmitInfo ();
+		SubmitInfo (const Media::AudioInfo&);
+		SubmitInfo (const Media::AudioInfo&, const QDateTime&);
+
+		SubmitInfo& operator= (const Media::AudioInfo&);
+
+		void Clear ();
+
+		bool IsValid () const;
+	};
 }
 }
