@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2010-2013  Oleg Linkin
+ * Copyright (C) 2006-2013  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -27,25 +27,33 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#include "recentcommentsmodel.h"
+#include "apiobject.h"
 
 namespace LeechCraft
 {
-namespace Blogique
+namespace Textogroose
 {
-namespace Metida
-{
-	RecentCommentsModel::RecentCommentsModel (QObject *parent)
-	: QStandardItemModel (parent)
+	ApiObject::ApiObject (const Media::LyricsQuery& query, IScript_ptr script)
+	: Query_ { query }
+	, Script_ { script }
 	{
-		QHash<int, QByteArray> roleNames;
-		roleNames [NodeSubject] = "nodeSubject";
-		roleNames [NodeUrl] = "nodeUrl";
-		roleNames [CommentBody] = "commentBody";
-		roleNames [CommentInfo] = "commentInfo";
-		setRoleNames (roleNames);
 	}
 
-}
+	void ApiObject::handleFinished (const QVariantMap& map)
+	{
+		handleFinished (QVariantList { map });
+	}
+
+	void ApiObject::handleFinished (const QVariantList& varList)
+	{
+		QList<Media::LyricsResultItem> results;
+		for (const auto& var : varList)
+		{
+			const auto& map = var.toMap ();
+			results.append ({ map ["provider"].toString (), map ["lyrics"].toString () });
+		}
+
+		emit finished (this, { Query_, results });
+	}
 }
 }

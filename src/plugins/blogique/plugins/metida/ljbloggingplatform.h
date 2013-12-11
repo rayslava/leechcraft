@@ -56,7 +56,6 @@ namespace Metida
 		QAction *FirstSeparator_;
 
 		QTimer *MessageCheckingTimer_;
-		QTimer *CommentsCheckingTimer_;
 
 		enum BloqiqueSidePosition
 		{
@@ -97,10 +96,7 @@ namespace Metida
 		void handleAccountValidated (bool validated);
 		void handleMessageChecking ();
 		void handleMessageUpdateIntervalChanged ();
-		void handleCommentsChecking ();
 		void checkForMessages ();
-		void checkForComments ();
-
 	signals:
 		void accountAdded (QObject *account);
 		void accountRemoved (QObject *account);

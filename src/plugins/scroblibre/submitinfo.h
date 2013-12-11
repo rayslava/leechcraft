@@ -27,29 +27,29 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#include "sysiconsprovider.h"
-#include <QIcon>
+#pragma once
+
+#include <QDateTime>
+#include <interfaces/media/audiostructs.h>
 
 namespace LeechCraft
 {
-namespace LMP
+namespace Scroblibre
 {
-	SysIconProvider::SysIconProvider (ICoreProxy_ptr proxy)
-	: QDeclarativeImageProvider (Pixmap)
-	, Proxy_ (proxy)
+	struct SubmitInfo
 	{
-	}
+		Media::AudioInfo Info_;
+		QDateTime TS_;
 
-	QPixmap SysIconProvider::requestPixmap (const QString& id, QSize *size, const QSize& requestedSize)
-	{
-		const auto& icon = Proxy_->GetIcon (id);
+		SubmitInfo ();
+		SubmitInfo (const Media::AudioInfo&);
+		SubmitInfo (const Media::AudioInfo&, const QDateTime&);
 
-		const auto& getSize = requestedSize.width () > 2 && requestedSize.height () > 2 ?
-				requestedSize :
-				QSize (48, 48);
-		if (size)
-			*size = icon.actualSize (getSize);
-		return icon.pixmap (getSize);
-	}
+		SubmitInfo& operator= (const Media::AudioInfo&);
+
+		void Clear ();
+
+		bool IsValid () const;
+	};
 }
 }

@@ -126,21 +126,62 @@ namespace LeechCraft
 				QTabBar::LeftSide;
 	}
 
-	QSize SeparateTabBar::tabSizeHint (int index) const
+	void SeparateTabBar::UpdateComputedWidths () const
 	{
-		auto result = QTabBar::tabSizeHint (index);
-		const int tc = count ();
-		if (index == tc - 1)
-			result.setWidth (AddTabButton_ ?
-					AddTabButton_->width () + style ()->pixelMetric (QStyle::PM_TabBarTabHSpace):
-					30);
-		else
+		const auto cnt = count ();
+		ComputedWidths_.resize (cnt);
+
+		const auto maxTabWidth = width () / 4;
+
+		struct TabInfo
 		{
-			const int target = std::min (size ().width () / (tc + 1), 200);
-			if (result.width () > target)
-				result.setWidth (target);
+			int Idx_;
+			int WidthHint_;
+		};
+		QVector<TabInfo> infos;
+		for (int i = 0; i < cnt - 1; ++i)
+			infos.push_back ({ i, std::min (QTabBar::tabSizeHint (i).width (), maxTabWidth) });
+		std::sort (infos.begin (), infos.end (),
+				[] (const TabInfo& l, const TabInfo& r) { return l.WidthHint_ < r.WidthHint_; });
+
+		const auto hspace = std::max (style ()->pixelMetric (QStyle::PM_TabBarTabHSpace), 10);
+		const auto btnWidth = AddTabButton_ ? AddTabButton_->sizeHint ().width () + hspace : 30;
+
+		auto remainder = width () - btnWidth;
+
+		while (!infos.isEmpty ())
+		{
+			auto currentMax = remainder / infos.size ();
+			if (infos.front ().WidthHint_ > currentMax)
+				break;
+
+			const auto& info = infos.front ();
+			remainder -= info.WidthHint_;
+			ComputedWidths_ [info.Idx_] = info.WidthHint_;
+			infos.pop_front ();
 		}
 
+		if (infos.isEmpty ())
+			return;
+
+		const auto uniform = remainder / infos.size ();
+		for (const auto& info : infos)
+			ComputedWidths_ [info.Idx_] = uniform;
+	}
+
+	void SeparateTabBar::tabLayoutChange ()
+	{
+		ComputedWidths_.clear ();
+		QTabBar::tabLayoutChange ();
+	}
+
+	QSize SeparateTabBar::tabSizeHint (int index) const
+	{
+		if (ComputedWidths_.isEmpty ())
+			UpdateComputedWidths ();
+
+		auto result = QTabBar::tabSizeHint (index);
+		result.setWidth (ComputedWidths_.value (index));
 		return result;
 	}
 
