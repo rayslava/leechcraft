@@ -46,17 +46,6 @@ namespace Woodpecker
 	TwitterUser::TwitterUser (const qulonglong id, const QString& name,
 				  QObject *parent)
 	: QObject (parent)
-	, ID_ (id)
-	, Username_ (name)
-	, Http_ (Core::Instance ().GetCoreProxy ()->GetNetworkAccessManager ())
-	{
-	}
-
-	TwitterUser::TwitterUser (const TwitterUser& original)
-	: QObject ()
-	, ID_ (original.GetID ())
-	, Username_ (original.GetUsername ())
-	, Avatar_ (original.GetAvatar ())
 	, Http_ (Core::Instance ().GetCoreProxy ()->GetNetworkAccessManager ())
 	{
 	}
@@ -66,16 +55,16 @@ namespace Woodpecker
 		QNetworkReply *reply = qobject_cast<QNetworkReply*> (sender ());
 		if (!reply)
 			return;
-		
+
 		if (reply->error ())
 		{
 			qWarning () << Q_FUNC_INFO << "Avatar downloading problem: " << reply->error ();
 			reply->deleteLater ();
 			return;
 		}
-		
+
 		const auto& data = reply->readAll ();
-		
+
 		if (!data.isNull ())
 		{
 			Avatar_.loadFromData (data);
@@ -91,6 +80,11 @@ namespace Woodpecker
 				SIGNAL (finished ()),
 				this,
 				SLOT (avatarDownloaded ()));
+	}
+
+	void TwitterUser::SetUsername (const QString& username)
+	{
+		Username_ = username;
 	}
 
 	QString TwitterUser::GetUsername () const
@@ -110,4 +104,3 @@ namespace Woodpecker
 }
 }
 }
-

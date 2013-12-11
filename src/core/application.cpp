@@ -56,6 +56,11 @@
 #include <util/structuresops.h>
 #include <util/sys/paths.h>
 #include <util/qml/tooltipitem.h>
+
+#ifdef WITH_QWT
+#include <util/qml/plotitem.h>
+#endif
+
 #include "debugmessagehandler.h"
 #include "tagsmanager.h"
 #include "mainwindow.h"
@@ -165,7 +170,16 @@ namespace LeechCraft
 		qRegisterMetaTypeStreamOperators<QKeySequences_t> ("QKeySequences_t");
 		qRegisterMetaTypeStreamOperators<TagsManager::TagsDictionary_t> ("LeechCraft::TagsManager::TagsDictionary_t");
 		qRegisterMetaTypeStreamOperators<Entity> ("LeechCraft::Entity");
+
 		qmlRegisterType<Util::ToolTipItem> ("org.LC.common", 1, 0, "ToolTip");
+
+		qRegisterMetaType<QList<QPointF>> ("QList<QPointF>");
+#ifdef WITH_QWT
+		qmlRegisterType<Util::PlotItem> ("org.LC.common", 1, 0, "Plot");
+#else
+		qmlRegisterUncreatableType<QObject> ("org.LC.common", 1, 0, "Plot",
+				"LeechCraft core has been built without Qwt support, Plot item is not available.");
+#endif
 
 		ParseCommandLine ();
 

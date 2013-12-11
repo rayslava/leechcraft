@@ -203,6 +203,7 @@ namespace Azoth
 		Util::ShortcutManager* GetShortcutManager () const;
 		CustomStatusesManager* GetCustomStatusesManager () const;
 		CustomChatStyleManager* GetCustomChatStyleManager () const;
+		UnreadQueueManager* GetUnreadQueueManager () const;
 
 		void AddPlugin (QObject*);
 		void RegisterHookable (QObject*);
@@ -564,10 +565,7 @@ namespace Azoth
 		 */
 		void showVCard ();
 
-		/** Handles the number of unread messages for the given contact
-		 * list entry identified by the entryID.
-		 */
-		void handleClearUnreadMsgCount (const QString& entryID);
+		void handleClearUnreadMsgCount (QObject*);
 
 		void handleGotSDSession (QObject*);
 

@@ -58,7 +58,7 @@ namespace Woodpecker
 	{
 		Q_OBJECT
 		Q_INTERFACES (IInfo IHaveTabs IHaveSettings IHaveRecoverableTabs IPlugin2)
-		
+
 		QList<QPair<TabClassInfo, std::function<void (TabClassInfo)>>> TabClasses_;
 		Util::XmlSettingsDialog_ptr XmlSettingsDialog_;
 		UserManager * UserManager_;
@@ -85,9 +85,9 @@ namespace Woodpecker
 		void TabOpenRequested (const QByteArray&);
 		Util::XmlSettingsDialog_ptr GetSettingsDialog () const;
 		void RecoverTabs (const QList<TabRecoverInfo>& infos);
-		
+
 		/** @brief Create new tab with certain parameters
-		 * 
+		 *
 		 * @param[in] tc New tab class
 		 * @param[in] name Tab creation menu caption
 		 * @param[in] mode Twitter API connection mode
@@ -96,8 +96,6 @@ namespace Woodpecker
 		void AddTab (const TabClassInfo& tc, const QString& name = QString (),
 					 const FeedMode mode = FeedMode::HomeTimeline,
 					 const KQOAuthParameters& params = KQOAuthParameters ());
-		
-		UserManager* GetUserManager();
 
 	signals:
 		void addNewTab (const QString&, QWidget*);

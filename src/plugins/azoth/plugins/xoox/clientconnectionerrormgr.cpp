@@ -130,7 +130,6 @@ namespace Xoox
 		case QXmppStanza::Error::NotAllowed:
 			return tr ("Action is not allowed.");
 		case QXmppStanza::Error::NotAuthorized:
-			emit serverAuthFailed ();
 			return tr ("Not authorized.");
 		case QXmppStanza::Error::PaymentRequired:
 			return tr ("Payment required.");
@@ -229,6 +228,8 @@ namespace Xoox
 		case QXmppClient::XmppStreamError:
 			str = tr ("error while connecting: ");
 			str += HandleErrorCondition (Client_->xmppStreamError ());
+			if (Client_->xmppStreamError () == QXmppStanza::Error::NotAuthorized)
+				emit serverAuthFailed ();
 			break;
 		case QXmppClient::NoError:
 			str = tr ("no error.");

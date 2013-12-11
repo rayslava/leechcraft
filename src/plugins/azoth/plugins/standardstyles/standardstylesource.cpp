@@ -312,15 +312,19 @@ namespace StandardStyles
 
 		QWebElement elem = frame->findFirstElement ("body");
 
-		if (!isActiveChat &&
-				!HasBeenAppended_ [frame])
+		if (msg->GetMessageType () == IMessage::MTChatMessage ||
+			msg->GetMessageType () == IMessage::MTMUCMessage)
 		{
-			auto hr = elem.findFirst ("hr[class=\"lastSeparator\"]");
-			if (!hr.isNull ())
-				hr.removeFromDocument ();
-			elem.appendInside ("<hr class=\"lastSeparator\" />");
-
-			HasBeenAppended_ [frame] = true;
+			const auto isRead = Proxy_->IsMessageRead (msgObj);
+			if (!isActiveChat &&
+					!isRead && IsLastMsgRead_.value (frame, false))
+			{
+				auto hr = elem.findFirst ("hr[class=\"lastSeparator\"]");
+				if (!hr.isNull ())
+					hr.removeFromDocument ();
+				elem.appendInside ("<hr class=\"lastSeparator\" />");
+			}
+			IsLastMsgRead_ [frame] = isRead;
 		}
 
 		elem.appendInside (QString ("<div class='%1'>%2</div>")
@@ -331,7 +335,7 @@ namespace StandardStyles
 
 	void StandardStyleSource::FrameFocused (QWebFrame *frame)
 	{
-		HasBeenAppended_ [frame] = false;
+		IsLastMsgRead_ [frame] = true;
 	}
 
 	QStringList StandardStyleSource::GetVariantsForPack (const QString&)
@@ -400,7 +404,7 @@ namespace StandardStyles
 
 	void StandardStyleSource::handleFrameDestroyed ()
 	{
-		HasBeenAppended_.remove (static_cast<QWebFrame*> (sender ()));
+		IsLastMsgRead_.remove (static_cast<QWebFrame*> (sender ()));
 		const QObject *snd = sender ();
 		for (QHash<QObject*, QWebFrame*>::iterator i = Msg2Frame_.begin ();
 				i != Msg2Frame_.end (); )

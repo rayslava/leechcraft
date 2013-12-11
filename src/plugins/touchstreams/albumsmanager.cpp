@@ -32,6 +32,7 @@
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QStandardItem>
+#include <QIcon>
 #include <QTimer>
 #include <QtDebug>
 #include <qjson/parser.h>
@@ -67,6 +68,7 @@ namespace TouchStreams
 	, Queue_ (queue)
 	, AlbumsRootItem_ (new QStandardItem (tr ("VKontakte: your audio")))
 	{
+		AlbumsRootItem_->setIcon (QIcon (":/touchstreams/resources/images/vk.svg"));
 		AlbumsRootItem_->setEditable (false);
 
 		QTimer::singleShot (1000,
@@ -74,6 +76,22 @@ namespace TouchStreams
 				SLOT (refetchAlbums ()));
 
 		AuthMgr_->ManageQueue (&RequestQueue_);
+	}
+
+	AlbumsManager::AlbumsManager (qlonglong id, const QVariant& albums, const QVariant& tracks,
+			Util::SvcAuth::VkAuthManager *authMgr, Util::QueueManager *queue, ICoreProxy_ptr proxy, QObject *parent)
+	: QObject (parent)
+	, Proxy_ (proxy)
+	, UserID_ (id)
+	, AuthMgr_ (authMgr)
+	, Queue_ (queue)
+	, AlbumsRootItem_ (new QStandardItem (tr ("VKontakte: your audio")))
+	{
+		AlbumsRootItem_->setEditable (false);
+		AuthMgr_->ManageQueue (&RequestQueue_);
+
+		HandleAlbums (albums);
+		HandleTracks (tracks);
 	}
 
 	AlbumsManager::~AlbumsManager ()
@@ -115,39 +133,14 @@ namespace TouchStreams
 		return nullptr;
 	}
 
-	void AlbumsManager::refetchAlbums ()
+	bool AlbumsManager::HandleAlbums (const QVariant& albumsListVar)
 	{
-		RequestQueue_.append ({
-				[this] (const QString& key) -> void
-				{
-					QUrl url ("https://api.vk.com/method/audio.getAlbums");
-					url.addQueryItem ("access_token", key);
-					url.addQueryItem ("count", "100");
-					if (UserID_ >= 0)
-						url.addQueryItem ("uid", QString::number (UserID_));
+		auto albumsList = albumsListVar.toList ();
 
-					auto nam = Proxy_->GetNetworkAccessManager ();
-					connect (nam->get (QNetworkRequest (url)),
-							SIGNAL (finished ()),
-							this,
-							SLOT (handleAlbumsFetched ()));
-				},
-				Util::QueuePriority::Normal
-			});
-		AuthMgr_->GetAuthKey ();
-	}
-
-	void AlbumsManager::handleAlbumsFetched ()
-	{
-		auto reply = qobject_cast<QNetworkReply*> (sender ());
-		reply->deleteLater ();
-
-		const auto& data = QJson::Parser ().parse (reply).toMap ();
-		auto albumsList = data ["response"].toList ();
 		if (albumsList.isEmpty ())
 		{
 			emit finished (this);
-			return;
+			return false;
 		}
 
 		albumsList.removeFirst ();
@@ -183,33 +176,12 @@ namespace TouchStreams
 			AlbumsRootItem_->appendRow (item);
 		}
 
-		RequestQueue_.prepend ({
-				[this] (const QString& key) -> void
-				{
-					QUrl url ("https://api.vk.com/method/audio.get");
-					url.addQueryItem ("access_token", key);
-					url.addQueryItem ("count", "1000");
-					if (UserID_ >= 0)
-						url.addQueryItem ("uid", QString::number (UserID_));
-
-					auto nam = Proxy_->GetNetworkAccessManager ();
-					connect (nam->get (QNetworkRequest (url)),
-							SIGNAL (finished ()),
-							this,
-							SLOT (handleTracksFetched ()));
-				},
-				Util::QueuePriority::High
-			});
-		AuthMgr_->GetAuthKey ();
+		return true;
 	}
 
-	void AlbumsManager::handleTracksFetched ()
+	bool AlbumsManager::HandleTracks (const QVariant& tracksListVar)
 	{
-		auto reply = qobject_cast<QNetworkReply*> (sender ());
-		reply->deleteLater ();
-
-		const auto& data = QJson::Parser ().parse (reply).toMap ();
-		auto tracksList = data ["response"].toList ();
+		auto tracksList = tracksListVar.toList ();
 
 		QHash<qlonglong, QList<Media::AudioInfo>> album2urls;
 		for (const auto& trackVar : tracksList)
@@ -248,6 +220,68 @@ namespace TouchStreams
 			auto item = Albums_ [i.key ()].Item_;
 			item->setData (QVariant::fromValue (i.value ()), Media::RadioItemRole::TracksInfos);
 		}
+
+		return true;
+	}
+
+	void AlbumsManager::refetchAlbums ()
+	{
+		RequestQueue_.append ({
+				[this] (const QString& key) -> void
+				{
+					QUrl url ("https://api.vk.com/method/audio.getAlbums");
+					url.addQueryItem ("access_token", key);
+					url.addQueryItem ("count", "100");
+					if (UserID_ >= 0)
+						url.addQueryItem ("uid", QString::number (UserID_));
+
+					auto nam = Proxy_->GetNetworkAccessManager ();
+					connect (nam->get (QNetworkRequest (url)),
+							SIGNAL (finished ()),
+							this,
+							SLOT (handleAlbumsFetched ()));
+				},
+				Util::QueuePriority::Normal
+			});
+		AuthMgr_->GetAuthKey ();
+	}
+
+	void AlbumsManager::handleAlbumsFetched ()
+	{
+		auto reply = qobject_cast<QNetworkReply*> (sender ());
+		reply->deleteLater ();
+
+		const auto& data = QJson::Parser ().parse (reply).toMap ();
+		HandleAlbums (data ["response"]);
+
+		RequestQueue_.prepend ({
+				[this] (const QString& key) -> void
+				{
+					QUrl url ("https://api.vk.com/method/audio.get");
+					url.addQueryItem ("access_token", key);
+					url.addQueryItem ("count", "1000");
+					if (UserID_ >= 0)
+						url.addQueryItem ("uid", QString::number (UserID_));
+
+					auto nam = Proxy_->GetNetworkAccessManager ();
+					connect (nam->get (QNetworkRequest (url)),
+							SIGNAL (finished ()),
+							this,
+							SLOT (handleTracksFetched ()));
+				},
+				Util::QueuePriority::High
+			});
+		AuthMgr_->GetAuthKey ();
+	}
+
+	void AlbumsManager::handleTracksFetched ()
+	{
+		auto reply = qobject_cast<QNetworkReply*> (sender ());
+		reply->deleteLater ();
+
+		const auto& data = QJson::Parser ().parse (reply).toMap ();
+		auto tracksList = data ["response"].toList ();
+		HandleTracks (data ["response"]);
 
 		emit finished (this);
 	}

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2010-2013  Oleg Linkin
+ * Copyright (C) 2006-2013  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -27,29 +27,54 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#pragma once
-
+#include "stdartistactionsmanager.h"
 #include <QDeclarativeView>
-
-class QGraphicsObject;
+#include <QGraphicsObject>
+#include <util/util.h>
+#include "core.h"
+#include "previewhandler.h"
 
 namespace LeechCraft
 {
-namespace Blogique
+namespace LMP
 {
-namespace Metida
-{
-	class RecentCommentsView : public QDeclarativeView
+	StdArtistActionsManager::StdArtistActionsManager (QDeclarativeView *view, QObject* parent)
+	: QObject (parent)
 	{
-		Q_OBJECT
+		connect (view->rootObject (),
+				SIGNAL (bookmarkArtistRequested (QString, QString, QString)),
+				this,
+				SLOT (handleBookmark (QString, QString, QString)));
+		connect (view->rootObject (),
+				SIGNAL (previewRequested (QString)),
+				Core::Instance ().GetPreviewHandler (),
+				SLOT (previewArtist (QString)));
+		connect (view->rootObject (),
+				SIGNAL (linkActivated (QString)),
+				this,
+				SLOT (handleLink (QString)));
+		connect (view->rootObject (),
+				SIGNAL (browseInfo (QString)),
+				&Core::Instance (),
+				SIGNAL (artistBrowseRequested (QString)));
+	}
 
-	public:
-		explicit RecentCommentsView (QWidget *parent = 0);
+	void StdArtistActionsManager::handleBookmark (const QString& name, const QString& page, const QString& tags)
+	{
+		auto e = Util::MakeEntity (tr ("Check out \"%1\"").arg (name),
+				QString (),
+				FromUserInitiated | OnlyHandle,
+				"x-leechcraft/todo-item");
+		e.Additional_ ["TodoBody"] = tags + "<br />" + QString ("<a href='%1'>%1</a>").arg (page);
+		e.Additional_ ["Tags"] = QStringList ("music");
+		Core::Instance ().SendEntity (e);
+	}
 
-	public slots:
-		void setItemCursor (QGraphicsObject *object, const QString& shape);
-	};
+	void StdArtistActionsManager::handleLink (const QString& link)
+	{
+		Core::Instance ().SendEntity (Util::MakeEntity (QUrl (link),
+					QString (),
+					FromUserInitiated | OnlyHandle));
+	}
 }
 }
-}
-

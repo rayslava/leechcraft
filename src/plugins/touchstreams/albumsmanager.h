@@ -76,6 +76,8 @@ namespace TouchStreams
 	public:
 		AlbumsManager (Util::SvcAuth::VkAuthManager*, Util::QueueManager*, ICoreProxy_ptr, QObject* = 0);
 		AlbumsManager (qlonglong, Util::SvcAuth::VkAuthManager*, Util::QueueManager*, ICoreProxy_ptr, QObject* = 0);
+		AlbumsManager (qlonglong, const QVariant& albums, const QVariant& tracks,
+				Util::SvcAuth::VkAuthManager*, Util::QueueManager*, ICoreProxy_ptr, QObject* = 0);
 		~AlbumsManager ();
 
 		QStandardItem* GetRootItem () const;
@@ -83,6 +85,9 @@ namespace TouchStreams
 		quint32 GetTracksCount () const;
 
 		QStandardItem* RefreshItems (const QList<QStandardItem*>&);
+	private:
+		bool HandleAlbums (const QVariant&);
+		bool HandleTracks (const QVariant&);
 	public slots:
 		void refetchAlbums ();
 		void handleAlbumsFetched ();

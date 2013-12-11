@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2010-2013  Oleg Linkin
+ * Copyright (C) 2006-2013  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -27,32 +27,34 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#pragma once
-
-#include <QStandardItemModel>
+#include "util.h"
+#include <QUrl>
+#include <QtDebug>
 
 namespace LeechCraft
 {
-namespace Blogique
+namespace Scroblibre
 {
-namespace Metida
-{
-	class RecentCommentsModel : public QStandardItemModel
+	QUrl ServiceToUrl (const QString& service)
 	{
-		Q_OBJECT
+		if (service == "libre.fm")
+			return { "http://turtle.libre.fm/" };
 
-	public:
-		enum CommentRoles
-		{
-			NodeSubject = Qt::UserRole + 1,
-			NodeUrl,
-			CommentBody,
-			CommentInfo
-		};
+		qWarning () << Q_FUNC_INFO
+				<< "unknown service"
+				<< service;
+		return {};
+	}
 
-		explicit RecentCommentsModel (QObject *parent = 0);
-	};
+	QString UrlToService (const QUrl& url)
+	{
+		if (url == QUrl ("http://turtle.libre.fm/"))
+			return "libre.fm";
+
+		qWarning () << Q_FUNC_INFO
+				<< "unknown url"
+				<< url;
+		return url.host ();
+	}
 }
 }
-}
-
