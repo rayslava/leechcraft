@@ -205,6 +205,7 @@ namespace Azoth
 	, CLModel_ (new CLModel (this))
 	, ChatTabsManager_ (new ChatTabsManager (this))
 	, ActionsManager_ (new ActionsManager (this))
+	, Avatar2TooltipSrcCache_ (2 * 1024 * 1024)
 	, ItemIconManager_ (new AnimatedIconManager<QStandardItem*> ([] (QStandardItem *it, const QIcon& ic)
 						{ it->setIcon (ic); }))
 	, SmilesOptionsModel_ (new SourceTrackingModel<IEmoticonResourceSource> (QStringList (tr ("Smile pack"))))
@@ -1318,24 +1319,35 @@ namespace Azoth
 		}
 	}
 
-	QString Core::MakeTooltipString (ICLEntry *entry) const
+	QString Core::MakeTooltipString (ICLEntry *entry)
 	{
 		QString tip = "<table border='0'><tr><td>";
 
 		if (entry->GetEntryType () != ICLEntry::ETMUC)
 		{
 			const int avatarSize = 75;
-			const int minAvatarSize = 32;
+
 			auto avatar = entry->GetAvatar ();
 			if (avatar.isNull ())
 				avatar = GetDefaultAvatar (avatarSize);
 
-			if (std::max (avatar.width (), avatar.height ()) > avatarSize)
-				avatar = avatar.scaled (avatarSize, avatarSize, Qt::KeepAspectRatio, Qt::FastTransformation);
-			else if (std::max (avatar.width (), avatar.height ()) < minAvatarSize)
-				avatar = avatar.scaled (minAvatarSize, minAvatarSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-			tip += "<img src='" + Util::GetAsBase64Src (avatar) + "' />";
+			QString data;
+			if (auto dataPtr = Avatar2TooltipSrcCache_ [avatar])
+				data = *dataPtr;
+			else
+			{
+				const int minAvatarSize = 32;
 
+				if (std::max (avatar.width (), avatar.height ()) > avatarSize)
+					avatar = avatar.scaled (avatarSize, avatarSize, Qt::KeepAspectRatio, Qt::FastTransformation);
+				else if (std::max (avatar.width (), avatar.height ()) < minAvatarSize)
+					avatar = avatar.scaled (minAvatarSize, minAvatarSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+				data = Util::GetAsBase64Src (avatar);
+				Avatar2TooltipSrcCache_.insert (avatar, new QString (data), data.size ());
+			}
+
+			tip += "<img src='" + data + "' />";
 			tip += "</td><td>";
 		}
 
@@ -1384,11 +1396,11 @@ namespace Azoth
 
 		auto cleanupBR = [&tip] ()
 		{
-			tip = tip.simplified ();
+			tip = tip.trimmed ();
 			while (tip.endsWith ("<br />"))
 			{
 				tip.chop (6);
-				tip = tip.simplified ();
+				tip = tip.trimmed ();
 			}
 		};
 

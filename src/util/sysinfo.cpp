@@ -51,6 +51,125 @@ namespace SysInfo
 
 	typedef QPair<QString, QString> SplitInfo_t;
 
+	namespace Linux
+	{
+		QString GetLSBName ()
+		{
+			QProcess proc;
+
+			proc.start (QString ("/bin/sh"),
+						QStringList ("-c") << "lsb_release -ds", QIODevice::ReadOnly);
+			if (proc.waitForStarted ())
+			{
+				QTextStream stream (&proc);
+				QString ret;
+				while (proc.waitForReadyRead ())
+					ret += stream.readAll ();
+				proc.close ();
+				if (!ret.isEmpty ())
+					return ret.remove ('"').trimmed ();
+			}
+
+			return {};
+		}
+
+		QString GetEtcOsName ()
+		{
+			QFile file ("/etc/os-release");
+			if (!file.open (QIODevice::ReadOnly))
+				return {};
+
+			QString name;
+			QString version;
+			QString pretty;
+
+			while (file.canReadLine ())
+			{
+				const auto& str = QString::fromUtf8 (file.readLine ());
+				const auto eqPos = str.indexOf ('=');
+				if (eqPos <= 0)
+					continue;
+
+				const auto& id = str.left (eqPos);
+				if (id == "NAME")
+					name = str.mid (eqPos + 1);
+				else if (id == "VERSION")
+					version = str.mid (eqPos + 1);
+				else if (id == "PRETTY_NAME")
+					pretty = str.mid (eqPos + 1);
+			}
+
+			if (!name.isEmpty () && !version.isEmpty ())
+				return name + " " + version;
+
+			return !pretty.isEmpty () ? pretty : name;
+		}
+
+		QString GetEtcName ()
+		{
+			struct OsInfo_t
+			{
+				QString path;
+				QString name;
+			} OsInfo [] =
+			{
+				{ "/etc/mandrake-release", "Mandrake Linux" },
+				{ "/etc/debian_version", "Debian GNU/Linux" },
+				{ "/etc/gentoo-release", "Gentoo Linux" },
+				{ "/etc/exherbo-release", "Exherbo" },
+				{ "/etc/arch-release", "Arch Linux" },
+				{ "/etc/slackware-version", "Slackware Linux" },
+				{ "/etc/pld-release", "" },
+				{ "/etc/lfs-release", "LFS" },
+				{ "/etc/SuSE-release", "SuSE linux" },
+				{ "/etc/conectiva-release", "Connectiva" },
+				{ "/etc/.installed", "" },
+				{ "/etc/redhat-release", "" },
+				{ "", "" }
+			};
+			OsInfo_t *osptr = OsInfo;
+			while (!osptr->path.isEmpty ())
+			{
+				QFileInfo fi (osptr->path);
+				if (fi.exists ())
+				{
+					QFile f (osptr->path);
+					f.open (QIODevice::ReadOnly);
+					QString data = QString (f.read (1024)).trimmed ();
+					if (osptr->name.isEmpty ())
+						return data;
+					else
+						return QString ("%1 (%2)")
+								.arg (osptr->name)
+								.arg (data);
+				}
+				++osptr;
+			}
+
+			return {};
+		}
+	}
+
+	namespace
+	{
+		void Normalize (QString& osName)
+		{
+			auto trimQuotes = [&osName]
+			{
+				if (osName.startsWith ('"') && osName.endsWith ('"'))
+					osName = osName.mid (1, osName.size () - 1);
+			};
+
+			trimQuotes ();
+
+			const QString nameMarker ("NAME=");
+			if (osName.startsWith (nameMarker))
+				osName = osName.mid (nameMarker.size ());
+
+			trimQuotes ();
+		}
+	}
+
 	QPair<QString, QString> GetOSNameSplit ()
 	{
 #if defined(Q_OS_MAC)
@@ -101,64 +220,15 @@ namespace SysInfo
 		else if (v == QSysInfo::WV_NT_based)
 			return SplitInfo_t ("Windows", "NT-based");
 #else
-		QString osName;
-
-		QProcess proc;
-		proc.start (QString ("/bin/sh"),
-					QStringList ("-c") << "lsb_release -ds", QIODevice::ReadOnly);
-		if (proc.waitForStarted ())
-		{
-			QTextStream stream (&proc);
-			QString ret;
-			while (proc.waitForReadyRead ())
-				ret += stream.readAll ();
-			proc.close ();
-			if (!ret.isEmpty ())
-				osName = ret.remove ('"').trimmed ();
-		}
+		auto osName = Linux::GetEtcOsName ();
 
 		if (osName.isEmpty ())
-		{
-			struct OsInfo_t
-			{
-				QString path;
-				QString name;
-			} OsInfo [] =
-			{
-				{ "/etc/mandrake-release", "Mandrake Linux" },
-				{ "/etc/debian_version", "Debian GNU/Linux" },
-				{ "/etc/gentoo-release", "Gentoo Linux" },
-				{ "/etc/exherbo-release", "Exherbo" },
-				{ "/etc/arch-release", "Arch Linux" },
-				{ "/etc/slackware-version", "Slackware Linux" },
-				{ "/etc/pld-release", "" },
-				{ "/etc/lfs-release", "LFS" },
-				{ "/etc/SuSE-release", "SuSE linux" },
-				{ "/etc/conectiva-release", "Connectiva" },
-				{ "/etc/.installed", "" },
-				{ "/etc/redhat-release", "" },
-				{ "", "" }
-			};
-			OsInfo_t *osptr = OsInfo;
-			while (!osptr->path.isEmpty ())
-			{
-				QFileInfo fi (osptr->path);
-				if (fi.exists ())
-				{
-					QFile f (osptr->path);
-					f.open (QIODevice::ReadOnly);
-					QString data = QString (f.read (1024)).trimmed ();
-					if (osptr->name.isEmpty ())
-						osName = data;
-					else
-						osName = QString ("%1 (%2)")
-								.arg (osptr->name)
-								.arg (data);
-					break;
-				}
-				++osptr;
-			}
-		}
+			osName = Linux::GetEtcName ();
+
+		if (osName.isEmpty ())
+			osName = Linux::GetLSBName ();
+
+		Normalize (osName);
 
 		utsname u;
 		uname (&u);

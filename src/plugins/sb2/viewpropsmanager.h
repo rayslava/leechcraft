@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2010-2013  Oleg Linkin <MaledictusDeMagog@gmail.com>
+ * Copyright (C) 2006-2013  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -27,72 +27,27 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#include "deathnote.h"
-#include <util/util.h>
-#include "fotobilderservice.h"
+#pragma once
+
+#include <QObject>
 
 namespace LeechCraft
 {
-namespace Blasq
+namespace SB2
 {
-namespace DeathNote
-{
-	void Plugin::Init (ICoreProxy_ptr proxy)
-	{
-		Util::InstallTranslator ("blasq_deathnote");
+	class ViewManager;
+	class ViewSettingsManager;
 
-		Service_ = new FotoBilderService (proxy);
-		connect (Service_,
-				SIGNAL (gotEntity (LeechCraft::Entity)),
-				this,
-				SIGNAL (gotEntity (LeechCraft::Entity)));
-		connect (Service_,
-				SIGNAL (delegateEntity (LeechCraft::Entity, int*, QObject**)),
-				this,
-				SIGNAL (delegateEntity (LeechCraft::Entity, int*, QObject**)));
-	}
-
-	void Plugin::SecondInit ()
+	class ViewPropsManager : public QObject
 	{
-	}
+		Q_OBJECT
 
-	QByteArray Plugin::GetUniqueID () const
-	{
-		return "org.LeechCraft.Blasq.DeathNote";
-	}
-
-	void Plugin::Release ()
-	{
-	}
-
-	QString Plugin::GetName () const
-	{
-		return "Blasq DeathNote";
-	}
-
-	QString Plugin::GetInfo () const
-	{
-		return tr ("LiveJournal FotoBilder support module for Blasq.");
-	}
-
-	QIcon Plugin::GetIcon () const
-	{
-		return QIcon ();
-	}
-
-	QSet<QByteArray> Plugin::GetPluginClasses () const
-	{
-		QSet<QByteArray> result;
-		result << "org.LeechCraft.Blasq.ServicePlugin";
-		return result;
-	}
-
-	QList<IService*> Plugin::GetServices () const
-	{
-		return { Service_ };
-	}
+		ViewManager * const ViewMgr_;
+		ViewSettingsManager * const VSM_;
+	public:
+		ViewPropsManager (ViewManager*, ViewSettingsManager*, QObject* = 0);
+	private slots:
+		void hoverInTimeoutChanged ();
+	};
 }
 }
-}
-
-LC_EXPORT_PLUGIN (leechcraft_blasq_deathnote, LeechCraft::Blasq::DeathNote::Plugin);

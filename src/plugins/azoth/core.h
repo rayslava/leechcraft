@@ -129,6 +129,8 @@ namespace Azoth
 		typedef QHash<ICLEntry*, QImage> Entry2SmoothAvatarCache_t;
 		Entry2SmoothAvatarCache_t Entry2SmoothAvatarCache_;
 
+		QCache<QImage, QString> Avatar2TooltipSrcCache_;
+
 		AnimatedIconManager<QStandardItem*> *ItemIconManager_;
 
 		QMap<State, int> StateCounter_;
@@ -378,7 +380,7 @@ namespace Azoth
 		/** Creates the tooltip text for the roster entry to be shown in
 		 * the tree.
 		 */
-		QString MakeTooltipString (ICLEntry *entry) const;
+		QString MakeTooltipString (ICLEntry *entry);
 
 		void RebuildTooltip (ICLEntry *entry);
 
