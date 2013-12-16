@@ -368,7 +368,7 @@ namespace Metida
 			elem.setAttribute ("style", "overflow:auto;border-width:2px;border-style:solid;border-radius:5px;margin-left:3em;padding:2em 2em;");
 			elem.setAttribute ("id", "embedTag");
 			elem.setAttribute ("name", id);
-			auto textElem = elem.ownerDocument ().createTextNode (tr ("Embeded: %1")
+			auto textElem = elem.ownerDocument ().createTextNode (tr ("Embedded: %1")
 					.arg (id));
 			elem.appendChild (textElem);
 		};
@@ -474,7 +474,7 @@ namespace Metida
 		auto rootWM = Core::Instance ().GetCoreProxy ()->GetRootWindowsManager ();
 		QString name = QInputDialog::getText (rootWM->GetPreferredWindow (),
 				tr ("Add LJ User"),
-				tr ("Enter LJ user name"));
+				tr ("Enter LJ user name:"));
 		if (name.isEmpty ())
 			return;
 

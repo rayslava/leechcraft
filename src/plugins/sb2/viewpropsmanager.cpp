@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2010-2013  Oleg Linkin <MaledictusDeMagog@gmail.com>
+ * Copyright (C) 2006-2013  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -27,72 +27,30 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#include "deathnote.h"
-#include <util/util.h>
-#include "fotobilderservice.h"
+#include "viewpropsmanager.h"
+#include <xmlsettingsdialog/basesettingsmanager.h>
+#include "viewsettingsmanager.h"
+#include "viewmanager.h"
+#include "sbview.h"
+#include <QDeclarativeContext>
 
 namespace LeechCraft
 {
-namespace Blasq
+namespace SB2
 {
-namespace DeathNote
-{
-	void Plugin::Init (ICoreProxy_ptr proxy)
+	ViewPropsManager::ViewPropsManager (ViewManager *view, ViewSettingsManager *vsm, QObject *parent)
+	: QObject (parent)
+	, ViewMgr_ (view)
+	, VSM_ (vsm)
 	{
-		Util::InstallTranslator ("blasq_deathnote");
-
-		Service_ = new FotoBilderService (proxy);
-		connect (Service_,
-				SIGNAL (gotEntity (LeechCraft::Entity)),
-				this,
-				SIGNAL (gotEntity (LeechCraft::Entity)));
-		connect (Service_,
-				SIGNAL (delegateEntity (LeechCraft::Entity, int*, QObject**)),
-				this,
-				SIGNAL (delegateEntity (LeechCraft::Entity, int*, QObject**)));
+		VSM_->GetXSM ()->RegisterObject ("CommonHoverInTimeout", this, "hoverInTimeoutChanged");
+		hoverInTimeoutChanged ();
 	}
 
-	void Plugin::SecondInit ()
+	void ViewPropsManager::hoverInTimeoutChanged ()
 	{
-	}
-
-	QByteArray Plugin::GetUniqueID () const
-	{
-		return "org.LeechCraft.Blasq.DeathNote";
-	}
-
-	void Plugin::Release ()
-	{
-	}
-
-	QString Plugin::GetName () const
-	{
-		return "Blasq DeathNote";
-	}
-
-	QString Plugin::GetInfo () const
-	{
-		return tr ("LiveJournal FotoBilder support module for Blasq.");
-	}
-
-	QIcon Plugin::GetIcon () const
-	{
-		return QIcon ();
-	}
-
-	QSet<QByteArray> Plugin::GetPluginClasses () const
-	{
-		QSet<QByteArray> result;
-		result << "org.LeechCraft.Blasq.ServicePlugin";
-		return result;
-	}
-
-	QList<IService*> Plugin::GetServices () const
-	{
-		return { Service_ };
+		const auto timeout = VSM_->GetXSM ()->property ("CommonHoverInTimeout").toInt ();
+		ViewMgr_->GetView ()->rootContext ()->setContextProperty ("commonHoverInTimeout", timeout);
 	}
 }
 }
-}
-
-LC_EXPORT_PLUGIN (leechcraft_blasq_deathnote, LeechCraft::Blasq::DeathNote::Plugin);
