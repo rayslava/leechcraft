@@ -29,6 +29,7 @@
 
 #include "devmon.h"
 #include <QIcon>
+#include <util/util.h>
 #include "udevbackend.h"
 
 namespace LeechCraft
@@ -37,6 +38,8 @@ namespace Devmon
 {
 	void Plugin::Init (ICoreProxy_ptr proxy)
 	{
+		Util::InstallTranslator ("devmon");
+
 		Backend_ = new UDevBackend (proxy);
 	}
 
@@ -61,7 +64,7 @@ namespace Devmon
 
 	QString Plugin::GetInfo () const
 	{
-		return tr ("Devices monitor plugin.");
+		return tr ("USB non-storage devices monitor plugin.");
 	}
 
 	QIcon Plugin::GetIcon () const
