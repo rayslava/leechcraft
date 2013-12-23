@@ -104,19 +104,20 @@ namespace CleanWeb
 
 	struct FilterItem
 	{
-		QByteArray OrigString_;
 		RegExp RegExp_;
-		QByteArrayMatcher PlainMatcher_;
+		QByteArray PlainMatcher_;
 		FilterOption Option_;
 	};
+
+	typedef std::shared_ptr<FilterItem> FilterItem_ptr;
 
 	QDataStream& operator<< (QDataStream&, const FilterItem&);
 	QDataStream& operator>> (QDataStream&, FilterItem&);
 
 	struct Filter
 	{
-		QList<FilterItem> Filters_;
-		QList<FilterItem> Exceptions_;
+		QList<FilterItem_ptr> Filters_;
+		QList<FilterItem_ptr> Exceptions_;
 
 		SubscriptionData SD_;
 

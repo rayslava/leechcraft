@@ -29,6 +29,7 @@
 
 #include "gacts.h"
 #include <QIcon>
+#include <util/util.h>
 #include <qxtglobalshortcut.h>
 #include <interfaces/entitytesthandleresult.h>
 
@@ -38,6 +39,7 @@ namespace GActs
 {
 	void Plugin::Init (ICoreProxy_ptr)
 	{
+		Util::InstallTranslator ("gacts");
 	}
 
 	void Plugin::SecondInit ()
@@ -121,9 +123,13 @@ namespace GActs
 
 	void Plugin::handleReceiverDeleted ()
 	{
-		Q_FOREACH (auto sh, RegisteredShortcuts_.values ())
-			if (sh->parent () == sender ())
-				RegisteredShortcuts_.remove (RegisteredShortcuts_.key (sh));
+		for (auto i = RegisteredShortcuts_.begin (); i != RegisteredShortcuts_.end (); )
+		{
+			if ((*i)->parent () != sender ())
+				++i;
+			else
+				i = RegisteredShortcuts_.erase (i);
+		}
 	}
 }
 }
