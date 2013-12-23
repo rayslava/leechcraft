@@ -45,6 +45,7 @@ namespace Woodpecker
 {
 	void Plugin::Init (ICoreProxy_ptr proxy)
 	{
+		UserManager_ = new UserManager(this);
 		Util::InstallTranslator ("azoth_woodpecker");
 
 		XmlSettingsDialog_.reset (new Util::XmlSettingsDialog ());
@@ -257,6 +258,11 @@ namespace Woodpecker
 						<< "unknown context"
 						<< recInfo.Data_;
 		}
+	}
+
+	UserManager* Plugin::GetUserManager()
+	{
+		return UserManager_;
 	}
 }
 }

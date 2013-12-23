@@ -66,8 +66,7 @@ namespace Woodpecker
 		qulonglong GetId () const;
 		void SetId (qulonglong id);
 
-		TwitterUser_ptr GetAuthor () const;
-		void setAuthor (TwitterUser_ptr newAuthor);
+		TwitterUser * GetAuthor () const;
 
 		QDateTime GetDateTime () const;
 		void SetDateTime (const QDateTime& datetime);

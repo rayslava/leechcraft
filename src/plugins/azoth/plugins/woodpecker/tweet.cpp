@@ -151,14 +151,9 @@ namespace Woodpecker
 		Document_.setHtml (html);
 	}
 
-	TwitterUser* Tweet::GetAuthor () const
+	TwitterUser * Tweet::GetAuthor () const
 	{
 		return Author_;
-	}
-
-	void Tweet::setAuthor (TwitterUser_ptr newAuthor)
-	{
-		Author_ = newAuthor;
 	}
 
 	QDateTime Tweet::GetDateTime () const
@@ -184,11 +179,6 @@ namespace Woodpecker
 	qulonglong Tweet::GetId () const
 	{
 		return Id_;
-	}
-
-	void Tweet::SetId (qulonglong id)
-	{
-		Id_ = id;
 	}
 }
 }

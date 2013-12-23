@@ -151,14 +151,12 @@ namespace Woodpecker
 			};
 
 			tempTweet->GetAuthor ()->DownloadAvatar (userMap ["profile_image_url"].toString ());
-			connect (tempTweet->GetAuthor ().get (),
+			connect (tempTweet->GetAuthor (),
 					SIGNAL (userAvatarReady ()),
 					parent (),
 					SLOT (setUpdateReady ()));
 			tempTweet->SetDateTime (locale.toDateTime (tweetMap ["created_at"].toString (),
 					"ddd MMM dd HH:mm:ss +0000 yyyy"));
-			tempTweet->SetId (tweetMap ["id"].toULongLong ());
-
 			result.push_back (tempTweet);
 		}
 

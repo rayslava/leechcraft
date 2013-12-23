@@ -86,6 +86,7 @@ namespace Woodpecker
 		QString ConsumerKeySecret_;
 		QSettings *Settings_;
 		FeedMode LastRequestMode_;
+		Plugin * const ParentPlugin_;
 
 		void SignedRequest (TwitterRequest req,
 				KQOAuthRequest::RequestHttpMethod method = KQOAuthRequest::GET,

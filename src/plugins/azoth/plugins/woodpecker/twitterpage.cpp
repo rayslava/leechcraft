@@ -62,7 +62,7 @@ namespace Woodpecker
 		Delegate_ = new TwitDelegate (Ui_.TwitList_, ParentPlugin_);
 		Ui_.TwitList_->setItemDelegate (Delegate_);
 
-		Interface_ = new TwitterInterface (this);
+		Interface_ = new TwitterInterface (plugin, this);
 		connect (Interface_,
 				SIGNAL (tweetsReady (QList<Tweet_ptr>)),
 				this,
