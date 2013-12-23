@@ -12,12 +12,6 @@ include_directories (
 	${Boost_INCLUDE_DIR}
 	${LEECHCRAFT_INCLUDE_DIR}
 	)
-set (HEADERS
-	core.h
-	glance.h
-	glanceitem.h
-	glanceshower.h
-	)
 set (SRCS
 	core.cpp
 	glance.cpp
@@ -25,9 +19,7 @@ set (SRCS
 	glanceshower.cpp
 	)
 CreateTrs ("glance" "en;es;ru_RU;tt;uk_UA" COMPILED_TRANSLATIONS)
-if (NOT LC_NO_MOC)
-	QT4_WRAP_CPP (MOC_SRCS ${HEADERS})
-endif ()
+CreateTrsUpTarget("glance" "en;ru_RU" "${SRCS}" "" "")
 
 set (GLANCE_RESOURCES glanceresources.qrc)
 QT4_ADD_RESOURCES (GLANCE_RCCS ${GLANCE_RESOURCES})
@@ -36,11 +28,9 @@ add_library (leechcraft_glance SHARED
 	${GLANCE_RCCS}
 	${COMPILED_TRANSLATIONS}
 	${SRCS}
-	${MOC_SRCS}
 	)
 target_link_libraries (leechcraft_glance
 	${QT_LIBRARIES}
 	${LEECHCRAFT_LIBRARIES}
 	)
 install (TARGETS leechcraft_glance DESTINATION ${LC_PLUGINS_DEST})
-install (FILES ${COMPILED_TRANSLATIONS} DESTINATION ${LC_TRANSLATIONS_DEST})
