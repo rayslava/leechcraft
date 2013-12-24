@@ -27,7 +27,7 @@ include_directories (
 	${QJSON_INCLUDE_DIR}
 	${QTKOAUTH_INCLUDE_DIR}
 	)
-set (WOODPECKER_SRCS
+set (WOODPECKER_SRCS usermanager.cpp
 	core.cpp
 	tweet.cpp
 	twitdelegate.cpp
@@ -36,6 +36,7 @@ set (WOODPECKER_SRCS
 	twitteruser.cpp
 	woodpecker.cpp
 	xmlsettingsmanager.cpp
+	usermanager.cpp
 	)
 set (WOODPECKER_RESOURCES
 	woodpeckerresources.qrc

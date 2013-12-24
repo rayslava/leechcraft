@@ -37,6 +37,7 @@
 #include <util/util.h>
 #include "core.h"
 #include "xmlsettingsmanager.h"
+#include "twitteruser.h"
 
 namespace LeechCraft
 {
@@ -44,8 +45,9 @@ namespace Azoth
 {
 namespace Woodpecker
 {
-	TwitterInterface::TwitterInterface (QObject *parent)
+	TwitterInterface::TwitterInterface (Plugin *plugin, QObject *parent)
 	: QObject (parent)
+	, ParentPlugin_ (plugin)
 	{
 		HttpClient_ = Core::Instance ().GetCoreProxy ()->GetNetworkAccessManager ();
 		OAuthRequest_ = new KQOAuthRequest (this);
@@ -112,7 +114,6 @@ namespace Woodpecker
 			const auto& tweetMap = answers [i].toMap ();
 			const auto& userMap = tweetMap ["user"].toMap ();
 			QString text = tweetMap ["text"].toString ();
-			Tweet_ptr tempTweet (new Tweet ());
 
 			const auto& entities = tweetMap.value ("entities").toMap ();
 			for (const auto& media : entities.value ("media").toList ())
@@ -134,19 +135,28 @@ namespace Woodpecker
 					qWarning () << Q_FUNC_INFO << "Found photo without an url";
 					continue;
 				}
-			}
+			};
 
-			tempTweet->SetText (text);
-			tempTweet->GetAuthor ()->SetUsername (userMap ["screen_name"].toString ());
+			const auto& username = userMap ["screen_name"].toString ();
+			const auto userid = userMap ["id"].toInt ();
+			const auto twitid = tweetMap ["id"].toULongLong ();
+			Tweet_ptr tempTweet;
+			if (auto user = ParentPlugin_->GetUserManager ()->GetUser(userid))
+				tempTweet = std::make_shared<Tweet> (text, twitid, user);
+			else
+			{
+				TwitterUser tempUser(userid, username, ParentPlugin_->GetUserManager ());
+				tempTweet = std::make_shared<Tweet> (text, twitid, 
+					ParentPlugin_->GetUserManager ()->AddUser(tempUser));
+			};
+
 			tempTweet->GetAuthor ()->DownloadAvatar (userMap ["profile_image_url"].toString ());
-			connect (tempTweet->GetAuthor ().get (),
+			connect (tempTweet->GetAuthor (),
 					SIGNAL (userAvatarReady ()),
 					parent (),
 					SLOT (setUpdateReady ()));
 			tempTweet->SetDateTime (locale.toDateTime (tweetMap ["created_at"].toString (),
 					"ddd MMM dd HH:mm:ss +0000 yyyy"));
-			tempTweet->SetId (tweetMap ["id"].toULongLong ());
-
 			result.push_back (tempTweet);
 		}
 

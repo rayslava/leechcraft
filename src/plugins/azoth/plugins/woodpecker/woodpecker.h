@@ -37,8 +37,10 @@
 #include <interfaces/ihavesettings.h>
 #include <interfaces/structures.h>
 #include <interfaces/ihaverecoverabletabs.h>
-#include "xmlsettingsmanager.h"
 #include "twitterinterface.h"
+#include "tweet.h"
+#include "xmlsettingsmanager.h"
+#include "usermanager.h"
 
 class QTranslator;
 
@@ -49,17 +51,18 @@ namespace Azoth
 namespace Woodpecker
 {
 	class Plugin	: public QObject
-					, public IInfo
-					, public IHaveTabs
-					, public IHaveSettings
-					, public IHaveRecoverableTabs
-					, public IPlugin2
+			, public IInfo
+			, public IHaveTabs
+			, public IHaveSettings
+			, public IHaveRecoverableTabs
+			, public IPlugin2
 	{
 		Q_OBJECT
 		Q_INTERFACES (IInfo IHaveTabs IHaveSettings IHaveRecoverableTabs IPlugin2)
 
 		QList<QPair<TabClassInfo, std::function<void (TabClassInfo)>>> TabClasses_;
 		Util::XmlSettingsDialog_ptr XmlSettingsDialog_;
+		UserManager * UserManager_;
 
 		void MakeTab (QWidget*, const TabClassInfo&);
 
@@ -94,6 +97,8 @@ namespace Woodpecker
 		void AddTab (const TabClassInfo& tc, const QString& name = QString (),
 					 const FeedMode mode = FeedMode::HomeTimeline,
 					 const KQOAuthParameters& params = KQOAuthParameters ());
+
+		UserManager* GetUserManager ();
 
 	signals:
 		void addNewTab (const QString&, QWidget*);
