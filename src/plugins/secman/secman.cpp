@@ -30,6 +30,7 @@
 #include "secman.h"
 #include <QIcon>
 #include <QAction>
+#include <util/util.h>
 #include <interfaces/entitytesthandleresult.h>
 #include "core.h"
 #include "contentsdisplaydialog.h"
@@ -42,12 +43,14 @@ namespace SecMan
 {
 	void Plugin::Init (ICoreProxy_ptr)
 	{
+		Util::InstallTranslator ("secman");
+
+#ifdef SECMAN_EXPOSE_CONTENTSDISPLAY
 		auto displayContentsAction = new QAction (tr ("Display storages' contents"), this);
 		connect (displayContentsAction,
 				SIGNAL (triggered ()),
 				this,
 				SLOT (handleDisplayContents ()));
-#ifdef SECMAN_EXPOSE_CONTENTSDISPLAY
 		MenuActions_ ["tools"] << displayContentsAction;
 #endif
 	}
@@ -72,7 +75,7 @@ namespace SecMan
 
 	QString Plugin::GetInfo () const
 	{
-		return tr ("Security and personal data manager for LeechCraft");
+		return tr ("Secure data storage for other LeechCraft modules.");
 	}
 
 	QIcon Plugin::GetIcon () const

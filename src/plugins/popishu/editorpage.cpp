@@ -72,6 +72,7 @@ namespace Popishu
 	: QWidget (parent)
 	, Toolbar_ (new QToolBar)
 	, Modified_ (false)
+	, DoctypeDetected_ (false)
 	, DefaultMsgHandler_ (0)
 	, WrappedObject_ (0)
 	, TemporaryDocument_ (false)
@@ -304,13 +305,13 @@ namespace Popishu
 			return;
 
 		Ui_.TextEditor_->setLexer (GetLexerByLanguage (language));
+		emit languageChanged (language);
+		DoctypeDetected_ = true;
 	}
 
 	void EditorPage::selectDoctype (QAction *action)
 	{
-		QString name = action->text ();
-		Ui_.TextEditor_->setLexer (GetLexerByLanguage (name));
-		emit languageChanged (name);
+		SetLanguage (action->text ());
 	}
 
 	void EditorPage::on_ActionNew__triggered ()
@@ -322,6 +323,8 @@ namespace Popishu
 
 		emit changeTabName (this, QString ("%1 - Popishu")
 				.arg (tr ("Untitled")));
+
+		DoctypeDetected_ = false;
 	}
 
 	void EditorPage::on_ActionOpen__triggered ()
@@ -616,7 +619,7 @@ namespace Popishu
 
 	void EditorPage::checkProperDoctypeAction (const QString& language)
 	{
-		Q_FOREACH (QAction *act, DoctypeMenu_->actions ())
+		for (QAction *act : DoctypeMenu_->actions ())
 		{
 			act->blockSignals (true);
 			act->setChecked (act->text () == language);
@@ -677,8 +680,14 @@ namespace Popishu
 
 		file.write (Ui_.TextEditor_->text ().toUtf8 ());
 
-		Ui_.TextEditor_->setLexer (GetLexerByLanguage (GetLanguage (Filename_)));
-		emit languageChanged (GetLanguage (Filename_));
+		if (!DoctypeDetected_)
+		{
+			const auto& language = GetLanguage (Filename_);
+			const auto lexer = GetLexerByLanguage (language);
+			Ui_.TextEditor_->setLexer (lexer);
+			emit languageChanged (language);
+			DoctypeDetected_ = lexer;
+		}
 
 		Modified_ = false;
 
@@ -703,8 +712,11 @@ namespace Popishu
 		Ui_.TextEditor_->setText (QString::fromUtf8 (file
 					.readAll ().constData ()));
 
-		Ui_.TextEditor_->setLexer (GetLexerByLanguage (GetLanguage (Filename_)));
-		emit languageChanged (GetLanguage (Filename_));
+		const auto& language = GetLanguage (Filename_);
+		const auto lexer = GetLexerByLanguage (language);
+		Ui_.TextEditor_->setLexer (lexer);
+		DoctypeDetected_ = lexer;
+		emit languageChanged (language);
 
 		Modified_ = false;
 

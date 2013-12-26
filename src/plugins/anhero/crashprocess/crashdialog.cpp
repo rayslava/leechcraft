@@ -38,6 +38,7 @@
 #include <util/sysinfo.h>
 #include "appinfo.h"
 #include "gdblauncher.h"
+#include "highlighter.h"
 
 namespace LeechCraft
 {
@@ -56,6 +57,8 @@ namespace CrashProcess
 		Ui_.RestartBox_->setEnabled (!Info_.ExecLine_.isEmpty ());
 		Ui_.TraceDisplay_->setFont (QFont ("Terminus [Courier New]"));
 
+		new Highlighter (Ui_.TraceDisplay_);
+
 		connect (Ui_.Reload_,
 				SIGNAL (released ()),
 				this,
@@ -63,6 +66,14 @@ namespace CrashProcess
 		reload ();
 
 		show ();
+	}
+
+	void CrashDialog::SetFormat ()
+	{
+		auto doc = Ui_.TraceDisplay_->document ();
+		auto frameFmt = doc->rootFrame ()->frameFormat ();
+		frameFmt.setBackground ({ "#dddddd" });
+		doc->rootFrame ()->setFrameFormat (frameFmt);
 	}
 
 	void CrashDialog::WriteTrace (const QString& filename)
@@ -120,15 +131,47 @@ namespace CrashProcess
 		Ui_.TraceDisplay_->append (part);
 	}
 
+	namespace
+	{
+		template<typename T>
+		std::reverse_iterator<T> MakeReverse (T t)
+		{
+			return std::reverse_iterator<T> { t };
+		}
+	}
+
 	void CrashDialog::handleFinished (int code)
 	{
 		Ui_.TraceDisplay_->append ("\n\nGDB exited with code " + QString::number (code));
 		SetInteractionAllowed (true);
+
+		auto lines = Ui_.TraceDisplay_->toPlainText ().split ("\n");
+
+		const auto pos = std::find_if (lines.begin (), lines.end (),
+				[] (const QString& line) { return line.contains ("signal handler called"); });
+		if (pos == lines.end ())
+			return;
+
+		const auto lastThread = std::find_if (MakeReverse (pos), MakeReverse (lines.begin ()),
+				[] (const QString& text) { return text.startsWith ("Thread "); });
+		if (lastThread == MakeReverse (lines.end ()))
+			return;
+
+		lines.erase (lastThread.base (), pos);
+
+		Ui_.TraceDisplay_->clear ();
+
+		SetFormat ();
+
+		for (const auto& line : lines)
+			Ui_.TraceDisplay_->append (line);
 	}
 
 	void CrashDialog::reload ()
 	{
 		Ui_.TraceDisplay_->clear ();
+
+		SetFormat ();
 
 		auto l = new GDBLauncher (Info_.PID_, Info_.Path_);
 		connect (l,
