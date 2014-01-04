@@ -31,7 +31,7 @@
 #include <cmath>
 #include <QtDebug>
 #include <QTimer>
-#include <gst/gst.h>
+#include "../gstfix.h"
 #include "path.h"
 #include "../xmlsettingsmanager.h"
 
@@ -106,7 +106,7 @@ namespace LMP
 
 	void Output::AddToPath (Path *path)
 	{
-		path->SetAudioBin (Bin_);
+		path->SetOutputBin (Bin_);
 	}
 
 	void Output::PostAdd (Path*)

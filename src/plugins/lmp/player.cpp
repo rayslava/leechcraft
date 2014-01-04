@@ -53,6 +53,7 @@
 #include "engine/audiosource.h"
 #include "engine/output.h"
 #include "engine/path.h"
+#include "effectsmanager.h"
 
 namespace LeechCraft
 {
@@ -117,7 +118,7 @@ namespace LMP
 	Player::Player (QObject *parent)
 	: QObject (parent)
 	, PlaylistModel_ (new PlaylistModel (this))
-	, Source_ (new SourceObject (this))
+	, Source_ (new SourceObject (Category::Music, this))
 	, Output_ (new Output (this))
 	, Path_ (new Path (Source_, Output_))
 	, RadioItem_ (nullptr)
@@ -126,6 +127,8 @@ namespace LMP
 	{
 		qRegisterMetaType<QList<AudioSource>> ("QList<AudioSource>");
 		qRegisterMetaType<StringPair_t> ("StringPair_t");
+
+		new EffectsManager (Path_, this);
 
 		connect (Source_,
 				SIGNAL (currentSourceChanged (AudioSource)),

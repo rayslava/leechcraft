@@ -29,6 +29,7 @@
 
 #include "sysnotify.h"
 #include <QIcon>
+#include <util/util.h>
 #include <interfaces/entitytesthandleresult.h>
 #include "notificationmanager.h"
 
@@ -36,8 +37,10 @@ namespace LeechCraft
 {
 namespace Sysnotify
 {
-	void Plugin::Init (ICoreProxy_ptr proxy)
+	void Plugin::Init (ICoreProxy_ptr)
 	{
+		Util::InstallTranslator ("sysnotify");
+
 		Manager_.reset (new NotificationManager (this));
 	}
 
@@ -62,7 +65,7 @@ namespace Sysnotify
 
 	QString Plugin::GetInfo () const
 	{
-		return tr ("");
+		return tr ("Notifies about LeechCraft events via Desktop Notifications.");
 	}
 
 	QIcon Plugin::GetIcon () const

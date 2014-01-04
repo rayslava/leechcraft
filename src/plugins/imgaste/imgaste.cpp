@@ -30,6 +30,7 @@
 #include "imgaste.h"
 #include <QIcon>
 #include <QBuffer>
+#include <util/util.h>
 #include <interfaces/entitytesthandleresult.h>
 #include "hostingservice.h"
 #include "poster.h"
@@ -40,6 +41,7 @@ namespace Imgaste
 {
 	void Plugin::Init (ICoreProxy_ptr proxy)
 	{
+		Util::InstallTranslator ("imgaste");
 		Proxy_ = proxy;
 	}
 
@@ -63,7 +65,7 @@ namespace Imgaste
 
 	QString Plugin::GetInfo () const
 	{
-		return tr ("Simple image uploader to services like dump.bitcheese.net.");
+		return tr ("Simple image uploader to imagebin services like dump.bitcheese.net.");
 	}
 
 	QIcon Plugin::GetIcon () const

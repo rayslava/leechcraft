@@ -30,6 +30,7 @@
 #pragma once
 
 #include <QObject>
+#include "pathelement.h"
 
 typedef struct _GstElement GstElement;
 typedef struct _GstPad GstPad;
@@ -41,6 +42,7 @@ namespace LMP
 	class Path;
 
 	class Output : public QObject
+				 , public PathElement
 	{
 		Q_OBJECT
 
@@ -54,11 +56,11 @@ namespace LMP
 	public:
 		Output (QObject* = 0);
 
-		void AddToPath (Path*);
-		void PostAdd (Path*);
-
 		double GetVolume () const;
 		bool IsMuted () const;
+	protected:
+		void AddToPath (Path*);
+		void PostAdd (Path*);
 	private:
 		void ScheduleSaveVolume ();
 	public slots:

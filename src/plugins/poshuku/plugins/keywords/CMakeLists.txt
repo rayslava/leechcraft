@@ -6,12 +6,6 @@ set (KEYWORDS_SRCS
 	editkeyworddialog.cpp
 	xmlsettingsmanager.cpp
 	)
-set (KEYWORDS_HEADERS
-	keywords.h
-	keywordsmanagerwidget.h
-	editkeyworddialog.h
-	xmlsettingsmanager.h
-	)
 set (KEYWORDS_FORMS
 	keywordsmanagerwidget.ui
 	editkeyworddialog.ui
@@ -20,14 +14,14 @@ set (KEYWORDS_RESOURCES
 	poshukukeywordsresources.qrc
 	)
 
-if (NOT LC_NO_MOC)
-	QT4_WRAP_CPP (KEYWORDS_MOC_SRCS ${KEYWORDS_HEADERS})
-endif ()
+CreateTrs ("poshuku_keywords" "en;ru_RU" KEYWORDS_COMPILED_TRANSLATIONS)
+CreateTrsUpTarget("poshuku_keywords" "en;ru_RU" "${KEYWORDS_SRCS}" "${KEYWORDS_FORMS}" "poshukukeywordssettings.xml")
+
 QT4_WRAP_UI (KEYWORDS_UIS_H ${KEYWORDS_FORMS})
 QT4_ADD_RESOURCES (KEYWORDS_RCCS ${KEYWORDS_RESOURCES})
 add_library (leechcraft_poshuku_keywords SHARED
+	${KEYWORDS_COMPILED_TRANSLATIONS}
 	${KEYWORDS_SRCS}
-	${KEYWORDS_MOC_SRCS}
 	${KEYWORDS_UIS_H}
 	${KEYWORDS_RCCS}
 	)

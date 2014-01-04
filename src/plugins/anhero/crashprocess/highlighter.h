@@ -27,52 +27,29 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#include "captchadialog.h"
-#include <QNetworkAccessManager>
-#include <QNetworkRequest>
-#include <QNetworkReply>
+#pragma once
+
+#include <QSyntaxHighlighter>
 
 namespace LeechCraft
 {
-namespace Azoth
+namespace AnHero
 {
-namespace Murm
+namespace CrashProcess
 {
-	CaptchaDialog::CaptchaDialog (const QUrl& url,
-			const QString& cid, QNetworkAccessManager *manager, QWidget *parent)
-	: QDialog (parent)
-	, Cid_ (cid)
+	class Highlighter : public QSyntaxHighlighter
 	{
-		Ui_.setupUi (this);
+	public:
+		Highlighter (QTextEdit*);
 
-		auto reply = manager->get (QNetworkRequest (url));
-		connect (reply,
-				SIGNAL (finished ()),
-				this,
-				SLOT (handleGotImage ()));
-	}
-
-	void CaptchaDialog::done (int r)
-	{
-		QDialog::done (r);
-
-		if (r == DialogCode::Rejected)
-			emit gotCaptcha (Cid_, {});
-		else
-			emit gotCaptcha (Cid_, Ui_.Text_->text ());
-
-		deleteLater ();
-	}
-
-	void CaptchaDialog::handleGotImage ()
-	{
-		auto reply = qobject_cast<QNetworkReply*> (sender ());
-		reply->deleteLater ();
-
-		QPixmap px;
-		px.loadFromData (reply->readAll ());
-		Ui_.ImageLabel_->setPixmap (px);
-	}
+		void highlightBlock (const QString& text) override;
+	private:
+		void ParseBTLine (const QString&);
+		void ParseFunction (const QString&, int);
+		void ParseCFunction (const QString&, int);
+		void ParseCppFunction (const QString&, int, int);
+		void ParseRest (const QString&, int);
+	};
 }
 }
 }

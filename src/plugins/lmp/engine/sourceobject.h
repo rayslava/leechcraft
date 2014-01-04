@@ -29,16 +29,20 @@
 
 #pragma once
 
+#include <memory>
 #include <QObject>
 #include <QStringList>
 #include <QMap>
 #include <QMutex>
 #include <QWaitCondition>
 #include "audiosource.h"
+#include "pathelement.h"
 
 typedef struct _GstElement GstElement;
 typedef struct _GstPad GstPad;
 typedef struct _GstMessage GstMessage;
+
+typedef std::shared_ptr<GstMessage> GstMessage_ptr;
 
 namespace LeechCraft
 {
@@ -62,11 +66,21 @@ namespace LMP
 		Playing
 	};
 
+	enum class Category
+	{
+		Music,
+		Notification
+	};
+
 	class MsgPopThread;
+
+	class Path;
 
 	class SourceObject : public QObject
 	{
 		Q_OBJECT
+
+		friend class Path;
 
 		GstElement *Dec_;
 
@@ -104,7 +118,7 @@ namespace LMP
 	private:
 		SourceState OldState_;
 	public:
-		SourceObject (QObject* = 0);
+		SourceObject (Category, QObject* = 0);
 		~SourceObject ();
 
 		SourceObject (const SourceObject&) = delete;
@@ -144,9 +158,9 @@ namespace LMP
 		void SetupSource ();
 
 		void AddToPath (Path*);
-		void PostAdd (Path*);
+		void SetSink (GstElement*);
 	private slots:
-		void handleMessage (GstMessage*);
+		void handleMessage (GstMessage_ptr);
 		void updateTotalTime ();
 		void handleTick ();
 	signals:

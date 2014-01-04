@@ -34,6 +34,7 @@
 #include <QDomDocument>
 #include <interfaces/core/icoreproxy.h>
 #include <interfaces/poshuku/iurlcompletionmodel.h>
+#include <util/util.h>
 
 namespace LeechCraft
 {
@@ -43,6 +44,8 @@ namespace Autosearch
 {
 	void Plugin::Init (ICoreProxy_ptr proxy)
 	{
+		Util::InstallTranslator ("poshuku_autosearch");
+
 		Proxy_ = proxy;
 	}
 
@@ -84,7 +87,7 @@ namespace Autosearch
 	void Plugin::hookURLCompletionNewStringRequested (IHookProxy_ptr,
 			QObject *model,
 			const QString& string,
-			int historyItems)
+			int)
 	{
 		if (Model2Reply_.contains (model))
 		{

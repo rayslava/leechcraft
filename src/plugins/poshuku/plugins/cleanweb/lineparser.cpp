@@ -97,20 +97,19 @@ namespace CleanWeb
 			return options;
 		}
 
-		void ParseWithOption (QString actualLine, FilterOption f, QList<FilterItem>& items)
+		void ParseWithOption (QString actualLine, FilterOption f, QList<FilterItem_ptr>& items)
 		{
 			if (actualLine.startsWith ('/') &&
 					actualLine.endsWith ('/'))
 			{
 				actualLine = actualLine.mid (1, actualLine.size () - 2);
 				f.MatchType_ = FilterOption::MTRegexp;
-				const FilterItem item
-				{
-					actualLine.toUtf8 (),
-					RegExp (actualLine, f.Case_),
-					QByteArrayMatcher (),
-					f
-				};
+				const FilterItem_ptr item (new FilterItem
+						{
+							RegExp (actualLine, f.Case_),
+							{},
+							f
+						});
 				items << item;
 				return;
 			}
@@ -199,20 +198,18 @@ namespace CleanWeb
 				f.MatchType_ = FilterOption::MTRegexp;
 			}
 
+			const auto& casedOrigStr = (f.Case_ == Qt::CaseSensitive ?
+					actualLine :
+					actualLine.toLower ()).toUtf8 ();
 			const auto& itemRx = f.MatchType_ == FilterOption::MTRegexp ?
 					RegExp (actualLine, f.Case_) :
 					RegExp ();
-			const QByteArrayMatcher matcher = f.MatchType_ == FilterOption::MTPlain ?
-					QByteArrayMatcher (actualLine.toUtf8 ()) :
-					QByteArrayMatcher ();
-			const FilterItem item
-			{
-				(f.Case_ == Qt::CaseSensitive ? actualLine : actualLine.toLower ()).toUtf8 (),
-				itemRx,
-				matcher,
-				f
-			};
-
+			const FilterItem_ptr item (new FilterItem
+					{
+						itemRx,
+						casedOrigStr,
+						f
+					});
 			items << item;
 		}
 	}

@@ -19,6 +19,7 @@ include_directories (
 	)
 set (SRCS
 	lackman.cpp
+	lackmantab.cpp
 	core.cpp
 	repoinfo.cpp
 	repoinfofetcher.cpp
@@ -37,13 +38,15 @@ set (SRCS
 	stringfiltermodel.cpp
 	updatesnotificationmanager.cpp
 	)
-CreateTrs ("lackman" "de;en;es;fr;it;ru_RU;uk_UA" COMPILED_TRANSLATIONS)
 set (RESOURCES
 	lackmanresources.qrc
 	)
 set (FORMS
-	lackman.ui
+	lackmantab.ui
 	)
+
+CreateTrs ("lackman" "de;en;es;fr;it;ru_RU;uk_UA" COMPILED_TRANSLATIONS)
+CreateTrsUpTarget("lackman" "en;ru_RU" "${SRCS}" "${FORMS}" "lackmansettings.xml")
 
 QT4_WRAP_UI (UIS_H ${FORMS})
 QT4_ADD_RESOURCES (RCCS ${RESOURCES})

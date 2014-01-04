@@ -29,34 +29,21 @@
 
 #pragma once
 
-#include <QDialog>
-#include "ui_captchadialog.h"
-
-class QNetworkAccessManager;
-class QUrl;
+#include <QObject>
 
 namespace LeechCraft
 {
-namespace Azoth
+namespace LMP
 {
-namespace Murm
-{
-	class CaptchaDialog : public QDialog
+	enum class SourceState;
+
+	class NotificationPlayer : public QObject
 	{
 		Q_OBJECT
-
-		Ui::CaptchaDialog Ui_;
-
-		const QString Cid_;
 	public:
-		CaptchaDialog (const QUrl&, const QString&, QNetworkAccessManager*, QWidget* = 0);
-
-		void done (int) override;
+		NotificationPlayer (const QString&, QObject* = 0);
 	private slots:
-		void handleGotImage ();
-	signals:
-		void gotCaptcha (const QString& cid, const QString& value);
+		void handleStateChanged (SourceState, SourceState);
 	};
-}
 }
 }
