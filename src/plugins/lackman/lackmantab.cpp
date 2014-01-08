@@ -29,10 +29,12 @@
 
 #include "lackmantab.h"
 #include <QStringListModel>
+#include <QShortcut>
 #include <util/shortcuts/shortcutmanager.h>
 #include <util/tags/tagscompleter.h>
 #include <util/util.h>
 #include <interfaces/core/itagsmanager.h>
+#include <interfaces/core/ipluginsmanager.h>
 #include "core.h"
 #include "typefilterproxymodel.h"
 #include "stringfiltermodel.h"
@@ -40,7 +42,8 @@
 #include "packagesdelegate.h"
 #include "pendingmanager.h"
 #include "storage.h"
-#include <interfaces/core/ipluginsmanager.h>
+
+Q_DECLARE_METATYPE (QModelIndex)
 
 namespace LeechCraft
 {
@@ -103,6 +106,8 @@ namespace LackMan
 
 		Ui_.PackagesTree_->setModel (FilterString_);
 		Ui_.PackagesTree_->setItemDelegate (new PackagesDelegate (Ui_.PackagesTree_));
+
+		BuildPackageTreeShortcuts ();
 
 		auto setColWidth = [this] (int col, const QString& sample)
 		{
@@ -201,6 +206,13 @@ namespace LackMan
 		Ui_.SearchLine_->setText (string);
 	}
 
+	void LackManTab::BuildPackageTreeShortcuts ()
+	{
+		new QShortcut (QString ("K"), this, SLOT (navigateUp ()));
+		new QShortcut (QString ("J"), this, SLOT (navigateDown ()));
+		new QShortcut (QString ("Space"), this, SLOT (toggleSelected ()));
+	}
+
 	void LackManTab::BuildActions ()
 	{
 		UpdateAll_ = new QAction (tr ("Update all repos"), this);
@@ -244,6 +256,42 @@ namespace LackMan
 		Toolbar_->addSeparator ();
 		Toolbar_->addAction (Apply_);
 		Toolbar_->addAction (Cancel_);
+	}
+
+	void LackManTab::navigateUp ()
+	{
+		auto idx = Ui_.PackagesTree_->currentIndex ();
+		idx = idx.sibling (idx.row () - 1, 0);
+		if (!idx.isValid ())
+			return;
+
+		Ui_.PackagesTree_->setCurrentIndex (idx);
+	}
+
+	void LackManTab::navigateDown ()
+	{
+		auto idx = Ui_.PackagesTree_->currentIndex ();
+		idx = idx.sibling (idx.row () + 1, 0);
+		if (!idx.isValid ())
+			return;
+
+		Ui_.PackagesTree_->setCurrentIndex (idx);
+	}
+
+	void LackManTab::toggleSelected ()
+	{
+		auto idx = Ui_.PackagesTree_->currentIndex ();
+		if (!idx.isValid ())
+			return;
+
+		idx = idx.sibling (idx.row (), PackagesModel::Columns::Upd);
+		if (!(idx.flags () & Qt::ItemIsUserCheckable))
+			idx = idx.sibling (idx.row (), PackagesModel::Columns::Inst);
+
+		const auto state = idx.data (Qt::CheckStateRole).toInt ();
+		Ui_.PackagesTree_->model ()->setData (idx,
+				state == Qt::Checked ? Qt::Unchecked : Qt::Checked,
+				Qt::CheckStateRole);
 	}
 
 	void LackManTab::handlePackageSelected (const QModelIndex& index)
@@ -319,6 +367,86 @@ namespace LackMan
 	void LackManTab::handleTagsUpdated (const QStringList& tags)
 	{
 		TagsModel_->setStringList (tags);
+	}
+
+	void LackManTab::toggleInstall ()
+	{
+		auto idx = sender ()->property ("Index").value<QModelIndex> ();
+		idx = idx.sibling (idx.row (), PackagesModel::Inst);
+
+		Ui_.PackagesTree_->model ()->setData (idx,
+				idx.data (Qt::CheckStateRole).toInt () == Qt::Checked ?
+						Qt::Unchecked :
+						Qt::Checked,
+				Qt::CheckStateRole);
+	}
+
+	void LackManTab::toggleUpgrade ()
+	{
+		auto idx = sender ()->property ("Index").value<QModelIndex> ();
+		idx = idx.sibling (idx.row (), PackagesModel::Upd);
+
+		Ui_.PackagesTree_->model ()->setData (idx,
+				idx.data (Qt::CheckStateRole).toInt () == Qt::Checked ?
+						Qt::Unchecked :
+						Qt::Checked,
+				Qt::CheckStateRole);
+	}
+
+	void LackManTab::selectAllForInstall ()
+	{
+		const auto model = Ui_.PackagesTree_->model ();
+		for (auto i = 0, rc = model->rowCount (); i < rc; ++i)
+			model->setData (model->index (i, PackagesModel::Columns::Inst),
+					Qt::Checked, Qt::CheckStateRole);
+	}
+
+	void LackManTab::selectNoneForInstall ()
+	{
+		const auto model = Ui_.PackagesTree_->model ();
+		for (auto i = 0, rc = model->rowCount (); i < rc; ++i)
+			model->setData (model->index (i, PackagesModel::Columns::Inst),
+					Qt::Unchecked, Qt::CheckStateRole);
+	}
+
+	void LackManTab::on_PackagesTree__customContextMenuRequested (const QPoint& point)
+	{
+		QMenu menu;
+
+		const auto& idx = Ui_.PackagesTree_->indexAt (point);
+
+		if (idx.isValid ())
+		{
+			auto checked = [&idx] (PackagesModel::Columns col) -> bool
+			{
+				return idx.sibling (idx.row (), col).data (Qt::CheckStateRole).toInt () == Qt::Checked;
+			};
+
+			const auto installed = idx.data (PackagesModel::PMRInstalled).toBool ();
+			auto installAction = menu.addAction (installed ? tr ("Uninstall") : tr ("Install"),
+					this,
+					SLOT (toggleInstall ()));
+			installAction->setCheckable (true);
+			installAction->setChecked (installed ^ checked (PackagesModel::Inst));
+			installAction->setProperty ("Index", QVariant::fromValue (idx));
+
+			if (idx.data (PackagesModel::PMRUpgradable).toBool ())
+			{
+				auto upgradeAction = menu.addAction (tr ("Upgrade"),
+						this,
+						SLOT (toggleUpgrade ()));
+				upgradeAction->setCheckable (true);
+				upgradeAction->setChecked (checked (PackagesModel::Upd));
+				upgradeAction->setProperty ("Index", QVariant::fromValue (idx));
+			}
+
+			menu.addSeparator ();
+		}
+
+		menu.addAction (tr ("Mark all for installation"), this, SLOT (selectAllForInstall ()));
+		menu.addAction (tr ("Unmark all for installation"), this, SLOT (selectNoneForInstall ()));
+
+		menu.exec (Ui_.PackagesTree_->viewport ()->mapToGlobal (point));
 	}
 
 	void LackManTab::on_PackageStatus__currentIndexChanged (int index)

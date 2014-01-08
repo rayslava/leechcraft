@@ -29,17 +29,36 @@
 
 #pragma once
 
-#include <QStringList>
-#include "engine/audiosource.h"
-#include "playlist.h"
+#include <memory>
+#include <QObject>
+#include "hunspell/hunspell.hxx"
+
+class QTextCodec;
 
 namespace LeechCraft
 {
-namespace LMP
+namespace Azoth
 {
-namespace XSPF
+namespace Rosenthal
 {
-	Playlist Read2Sources (const QString&);
+	class KnownDictsManager;
+
+	class Checker : public QObject
+	{
+		Q_OBJECT
+
+		std::unique_ptr<Hunspell> Hunspell_;
+		QTextCodec *Codec_ = nullptr;
+
+		const KnownDictsManager * const KnownMgr_;
+	public:
+		Checker (const KnownDictsManager*, QObject* = 0);
+
+		QStringList GetPropositions (const QString&) const;
+		bool IsCorrect (const QString&) const;
+	public slots:
+		void setLanguages (const QStringList&);
+	};
 }
 }
 }

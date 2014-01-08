@@ -48,7 +48,7 @@ namespace LeechCraft
 {
 namespace CSTP
 {
-	Task::Task (const QUrl& url)
+	Task::Task (const QUrl& url, const QVariantMap& params)
 	: URL_ (url)
 	, Done_ (-1)
 	, Total_ (0)
@@ -57,6 +57,8 @@ namespace CSTP
 	, UpdateCounter_ (0)
 	, Timer_ (new QTimer (this))
 	, CanChangeName_ (true)
+	, Referer_ (params ["Referer"].toUrl ())
+	, Params_ (params)
 	{
 		StartTime_.start ();
 
@@ -112,13 +114,36 @@ namespace CSTP
 			if (tof->size ())
 				req.setRawHeader ("Range", QString ("bytes=%1-").arg (tof->size ()).toLatin1 ());
 			req.setRawHeader ("User-Agent", ua.toLatin1 ());
-			req.setRawHeader ("Referer", QString (QString ("http://") + URL_.host ()).toLatin1 ());
+
+			if (Referer_.isEmpty ())
+				req.setRawHeader ("Referer", QString (QString ("http://") + URL_.host ()).toLatin1 ());
+			else
+				req.setRawHeader ("Referer", Referer_.toEncoded ());
+
 			req.setRawHeader ("Host", URL_.host ().toLatin1 ());
+			req.setRawHeader ("Origin", URL_.scheme ().toLatin1 () + "://" + URL_.host ().toLatin1 ());
 			req.setRawHeader ("Accept", "*/*");
 
 			StartTime_.restart ();
-			QNetworkAccessManager *nam = Core::Instance ().GetNetworkAccessManager ();
-			Reply_.reset (nam->get (req));
+
+			auto nam = Core::Instance ().GetNetworkAccessManager ();
+
+			switch (Params_.value ("Operation", QNetworkAccessManager::GetOperation).toInt ())
+			{
+			case QNetworkAccessManager::GetOperation:
+				Reply_.reset (nam->get (req));
+				break;
+			case QNetworkAccessManager::PostOperation:
+				req.setHeader (QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+				Reply_.reset (nam->post (req, QByteArray {}));
+				break;
+			default:
+				qWarning () << Q_FUNC_INFO
+						<< "unsupported operation"
+						<< Params_ ["Operation"];
+				handleError ();
+				return;
+			}
 		}
 		else
 		{
@@ -399,6 +424,7 @@ namespace CSTP
 
 		Reply_.reset ();
 
+		Referer_ = URL_;
 		URL_ = QUrl::fromEncoded (newUrl);
 		Start (To_);
 	}

@@ -54,6 +54,7 @@ namespace LMP
 	enum class SourceError
 	{
 		MissingPlugin,
+		SourceNotFound,
 		Other
 	};
 
@@ -97,6 +98,10 @@ namespace LMP
 		qint64 LastCurrentTime_;
 
 		uint PrevSoupRank_;
+
+		QMutex BusDrainMutex_;
+		QWaitCondition BusDrainWC_;
+		bool IsDrainingMsgs_ = false;
 
 		MsgPopThread *PopThread_;
 	public:

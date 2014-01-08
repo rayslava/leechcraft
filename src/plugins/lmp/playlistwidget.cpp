@@ -55,6 +55,7 @@
 #include "sortingcriteriadialog.h"
 #include "util.h"
 #include "palettefixerfilter.h"
+#include "engine/sourceobject.h"
 
 namespace LeechCraft
 {
@@ -871,7 +872,9 @@ namespace LMP
 						QMessageBox::Yes | QMessageBox::No) != QMessageBox::Yes)
 			return;
 
-		mgr->SaveCustomPlaylist (name, Player_->GetQueue ());
+		Playlist playlist { Player_->GetQueue () };
+		playlist.SetProperty (Player_->GetSourceObject ()->GetCurrentSource (), "Current", true);
+		mgr->SaveCustomPlaylist (name, playlist);
 	}
 
 	void PlaylistWidget::loadFromDisk ()

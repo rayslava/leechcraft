@@ -32,12 +32,13 @@
 #include <functional>
 #include <QString>
 #include "engine/audiosource.h"
+#include "playlist.h"
 
 namespace LeechCraft
 {
 namespace LMP
 {
-	typedef std::function<QList<AudioSource> (const QString&)> PlaylistParser_f;
+	typedef std::function<Playlist (const QString&)> PlaylistParser_f;
 
 	PlaylistParser_f MakePlaylistParser (const QString& filename);
 }

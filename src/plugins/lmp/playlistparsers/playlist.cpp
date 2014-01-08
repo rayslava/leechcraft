@@ -27,19 +27,86 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#pragma once
-
-#include <QStringList>
-#include "engine/audiosource.h"
 #include "playlist.h"
+#include <algorithm>
 
 namespace LeechCraft
 {
 namespace LMP
 {
-namespace XSPF
-{
-	Playlist Read2Sources (const QString&);
-}
+	Playlist::Playlist (const QList<AudioSource>& sources)
+	{
+		Playlist_.reserve (sources.size ());
+		for (const auto& src : sources)
+			Playlist_.append ({ src, {} });
+	}
+
+	Playlist::const_iterator Playlist::begin () const
+	{
+		return Playlist_.begin ();
+	}
+
+	Playlist::iterator Playlist::begin ()
+	{
+		return Playlist_.begin ();
+	}
+
+	Playlist::const_iterator Playlist::end () const
+	{
+		return Playlist_.end ();
+	}
+
+	Playlist::iterator Playlist::end ()
+	{
+		return Playlist_.end ();
+	}
+
+	Playlist::iterator Playlist::erase (iterator it)
+	{
+		return Playlist_.erase (it);
+	}
+
+	Playlist& Playlist::Append (const PlaylistItem& item)
+	{
+		Playlist_ << item;
+		return *this;
+	}
+
+	Playlist& Playlist::operator+= (const AudioSource& src)
+	{
+		Playlist_.append ({ src, {} });
+		return *this;
+	}
+
+	Playlist& Playlist::operator+= (const Playlist& playlist)
+	{
+		Playlist_ << playlist.Playlist_;
+		return *this;
+	}
+
+	QList<AudioSource> Playlist::ToSources () const
+	{
+		QList<AudioSource> result;
+		result.reserve (Playlist_.size ());
+		for (const auto& item : Playlist_)
+			result << item.Source_;
+		return result;
+	}
+
+	bool Playlist::IsEmpty () const
+	{
+		return Playlist_.isEmpty ();
+	}
+
+	bool Playlist::SetProperty (const AudioSource& src, const QString& key, const QVariant& value)
+	{
+		const auto srcPos = std::find_if (Playlist_.begin (), Playlist_.end (),
+				[&src] (const PlaylistItem& item) { return item.Source_ == src; });
+		if (srcPos == Playlist_.end ())
+			return false;
+
+		srcPos->Additional_ [key] = value;
+		return true;
+	}
 }
 }

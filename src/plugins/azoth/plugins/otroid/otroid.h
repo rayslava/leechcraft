@@ -106,8 +106,9 @@ namespace OTRoid
 		QString GetVisibleEntryName (const QString& accId, const QString& entryId);
 
 		void CreatePrivkey (const char*, const char*);
-
 #if OTRL_VERSION_MAJOR >= 4
+		void CreateInstag (const char*, const char*);
+
 		void SetPollTimerInterval (unsigned int seconds);
 #endif
 	private:

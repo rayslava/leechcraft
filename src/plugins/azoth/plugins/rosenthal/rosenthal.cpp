@@ -33,13 +33,15 @@
 #include <QTextEdit>
 #include <QContextMenuEvent>
 #include <QMenu>
-#include <QTextCodec>
 #include <QTranslator>
 #include <util/util.h>
+#include <interfaces/core/icoreproxy.h>
+#include <interfaces/core/ientitymanager.h>
 #include <xmlsettingsdialog/xmlsettingsdialog.h>
-#include "hunspell/hunspell.hxx"
 #include "highlighter.h"
+#include "checker.h"
 #include "xmlsettingsmanager.h"
+#include "knowndictsmanager.h"
 
 namespace LeechCraft
 {
@@ -47,18 +49,26 @@ namespace Azoth
 {
 namespace Rosenthal
 {
-	void Plugin::Init (ICoreProxy_ptr)
+	void Plugin::Init (ICoreProxy_ptr proxy)
 	{
+		Proxy_ = proxy;
+
 		Translator_.reset (Util::InstallTranslator ("azoth_rosenthal"));
 
 		SettingsDialog_.reset (new Util::XmlSettingsDialog);
 		SettingsDialog_->RegisterObject (&XmlSettingsManager::Instance (),
 				"azothrosenthalsettings.xml");
 
-		XmlSettingsManager::Instance ().RegisterObject ("CustomLocales",
-				this, "handleCustomLocalesChanged");
+		connect (SettingsDialog_.get (),
+				SIGNAL (pushButtonClicked (QString)),
+				this,
+				SLOT (handlePushButtonClicked (QString)));
 
-		ReinitHunspell ();
+		auto knownMgr = new KnownDictsManager;
+		SettingsDialog_->SetDataSource ("Dictionaries", knownMgr->GetModel ());
+		SettingsDialog_->SetDataSource ("PrimaryLanguage", knownMgr->GetEnabledModel ());
+
+		Checker_ = new Checker (knownMgr, this);
 	}
 
 	void Plugin::SecondInit ()
@@ -72,7 +82,8 @@ namespace Rosenthal
 
 	void Plugin::Release ()
 	{
-		Hunspell_.reset ();
+		delete Checker_;
+		Checker_ = nullptr;
 	}
 
 	QString Plugin::GetName () const
@@ -131,11 +142,11 @@ namespace Rosenthal
 
 		QMenu *menu = edit->createStandardContextMenu (curPos);
 
-		const QStringList& words = GetPropositions (word);
+		const auto& words = Checker_->GetPropositions (word);
 		if (!words.isEmpty ())
 		{
 			QList<QAction*> acts;
-			Q_FOREACH (const QString& word, words)
+			for (const auto& word : words)
 			{
 				QAction *act = new QAction (word, menu);
 				acts << act;
@@ -157,68 +168,23 @@ namespace Rosenthal
 		return true;
 	}
 
-	void Plugin::ReinitHunspell ()
+	void Plugin::handlePushButtonClicked (const QString& name)
 	{
-		const QString& userSetting = XmlSettingsManager::Instance ()
-				.property ("CustomLocales").toString ();
-		const QStringList& userLocales = userSetting.split (' ', QString::SkipEmptyParts);
+		if (name != "InstallDicts")
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "unknown button"
+					<< name;
+			return;
+		}
 
-		const QString& locale = userLocales.value (0, Util::GetLocaleName ());
+		auto e = Util::MakeEntity ("ListPackages",
+				QString (),
+				FromUserInitiated,
+				"x-leechcraft/package-manager-action");
+		e.Additional_ ["Tags"] = QStringList ("dicts");
 
-		QString base;
-		QStringList candidates (Util::CreateIfNotExists ("data/dicts/myspell/").absolutePath ());
-#ifdef Q_OS_WIN32
-		candidates << qApp->applicationDirPath () + "/myspell/";
-#else
-		candidates << "/usr/local/share/myspell/"
-				<< "/usr/share/myspell/"
-				<< "/usr/local/share/myspell/dicts/"
-				<< "/usr/share/myspell/dicts/"
-				<< "/usr/local/share/hunspell/"
-				<< "/usr/share/hunspell/";
-#endif
-		Q_FOREACH (base, candidates)
-			if (QFile::exists (base + locale + ".aff"))
-				break;
-
-		QByteArray baBase = (base + locale).toLatin1 ();
-		Hunspell_.reset (new Hunspell (baBase + ".aff", baBase + ".dic"));
-
-		if (!locale.startsWith ("en_"))
-			Hunspell_->add_dic ((base + "en_GB.dic").toLatin1 ());
-
-		if (userLocales.size () > 1)
-			Q_FOREACH (const QString& loc, userLocales)
-			{
-				if (loc == locale ||
-						loc == "en_GB")
-					continue;
-
-				Hunspell_->add_dic ((base + loc + ".dic").toLatin1 ());
-			}
-
-		Q_FOREACH (Highlighter *hl, Highlighters_)
-			hl->UpdateHunspell (Hunspell_);
-	}
-
-	QStringList Plugin::GetPropositions (const QString& word)
-	{
-		QTextCodec *codec = QTextCodec::codecForName (Hunspell_->get_dic_encoding ());
-		const QByteArray& encoded = codec->fromUnicode (word);
-		if (Hunspell_->spell (encoded.data ()))
-			return QStringList ();
-
-		char **wlist = 0;
-		const int ns = Hunspell_->suggest (&wlist, encoded.data ());
-		if (!ns || !wlist)
-			return QStringList ();
-
-		QStringList result;
-		for (int i = 0; i < std::min (ns, 10); ++i)
-			result << codec->toUnicode (wlist [i]);
-		Hunspell_->free_list (&wlist, ns);
-
-		return result;
+		Proxy_->GetEntityManager ()->HandleEntity (e);
 	}
 
 	void Plugin::hookChatTabCreated (LeechCraft::IHookProxy_ptr,
@@ -229,7 +195,7 @@ namespace Rosenthal
 				"getMsgEdit",
 				Q_RETURN_ARG (QTextEdit*, edit));
 
-		Highlighter *hl = new Highlighter (Hunspell_, edit->document ());
+		Highlighter *hl = new Highlighter (Checker_, edit->document ());
 		Highlighters_ << hl;
 		connect (hl,
 				SIGNAL (destroyed (QObject*)),
@@ -256,11 +222,6 @@ namespace Rosenthal
 	void Plugin::handleHighlighterDestroyed ()
 	{
 		Highlighters_.removeAll (static_cast<Highlighter*> (sender ()));
-	}
-
-	void Plugin::handleCustomLocalesChanged ()
-	{
-		ReinitHunspell ();
 	}
 }
 }

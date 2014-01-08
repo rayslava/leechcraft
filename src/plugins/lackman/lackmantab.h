@@ -86,11 +86,23 @@ namespace LackMan
 		void SetFilterTags (const QStringList&);
 		void SetFilterString (const QString&);
 	private:
+		void BuildPackageTreeShortcuts ();
 		void BuildActions ();
 	private slots:
+		void navigateUp ();
+		void navigateDown ();
+		void toggleSelected ();
+
 		void handlePackageSelected (const QModelIndex&);
 		void handleFetchListUpdated (const QList<int>&);
 		void handleTagsUpdated (const QStringList&);
+
+		void toggleInstall ();
+		void toggleUpgrade ();
+		void selectAllForInstall ();
+		void selectNoneForInstall ();
+
+		void on_PackagesTree__customContextMenuRequested (const QPoint&);
 		void on_PackageStatus__currentIndexChanged (int);
 	signals:
 		void addNewTab (const QString&, QWidget*);

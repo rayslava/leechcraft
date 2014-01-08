@@ -29,17 +29,52 @@
 
 #pragma once
 
-#include <QStringList>
-#include "engine/audiosource.h"
-#include "playlist.h"
+#include <QVariantMap>
+#include "../engine/audiosource.h"
 
 namespace LeechCraft
 {
 namespace LMP
 {
-namespace XSPF
-{
-	Playlist Read2Sources (const QString&);
-}
+	struct PlaylistItem
+	{
+		AudioSource Source_;
+		QVariantMap Additional_;
+	};
+
+	class Playlist
+	{
+		typedef QList<PlaylistItem> Container_t;
+		Container_t Playlist_;
+	public:
+		typedef Container_t::const_iterator const_iterator;
+		typedef Container_t::iterator iterator;
+
+		Playlist () = default;
+		explicit Playlist (const QList<AudioSource>&);
+
+		const_iterator begin () const;
+		iterator begin ();
+		const_iterator end () const;
+		iterator end ();
+
+		iterator erase (iterator);
+
+		Playlist& Append (const PlaylistItem&);
+		Playlist& operator+= (const AudioSource&);
+		Playlist& operator+= (const Playlist&);
+
+		QList<AudioSource> ToSources () const;
+
+		bool IsEmpty () const;
+
+		bool SetProperty (const AudioSource&, const QString&, const QVariant&);
+	};
+
+	struct RawReadData
+	{
+		QString SourceStr_;
+		QVariantMap Additional_;
+	};
 }
 }

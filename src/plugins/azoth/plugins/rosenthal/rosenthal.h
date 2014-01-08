@@ -27,8 +27,8 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#ifndef PLUGINS_AZOTH_PLUGINS_ROSENTHAL_H
-#define PLUGINS_AZOTH_PLUGINS_ROSENTHAL_H
+#pragma once
+
 #include <memory>
 #include <QObject>
 #include <interfaces/iinfo.h>
@@ -38,7 +38,6 @@
 
 class QWebView;
 class QTranslator;
-class Hunspell;
 
 namespace LeechCraft
 {
@@ -47,6 +46,7 @@ namespace Azoth
 namespace Rosenthal
 {
 	class Highlighter;
+	class Checker;
 
 	class Plugin : public QObject
 				 , public IInfo
@@ -56,9 +56,13 @@ namespace Rosenthal
 		Q_OBJECT
 		Q_INTERFACES (IInfo IPlugin2 IHaveSettings)
 
+		ICoreProxy_ptr Proxy_;
+
 		std::shared_ptr<QTranslator> Translator_;
 		Util::XmlSettingsDialog_ptr SettingsDialog_;
-		std::shared_ptr<Hunspell> Hunspell_;
+
+		Checker *Checker_;
+
 		QList<Highlighter*> Highlighters_;
 	public:
 		void Init (ICoreProxy_ptr);
@@ -73,20 +77,16 @@ namespace Rosenthal
 		Util::XmlSettingsDialog_ptr GetSettingsDialog () const;
 	protected:
 		bool eventFilter (QObject*, QEvent*);
-	private:
-		void ReinitHunspell ();
-		QStringList GetPropositions (const QString&);
 	private slots:
+		void handlePushButtonClicked (const QString&);
+
 		void hookChatTabCreated (LeechCraft::IHookProxy_ptr,
 				QObject*,
 				QObject*,
 				QWebView*);
 		void handleCorrectionTriggered ();
 		void handleHighlighterDestroyed ();
-		void handleCustomLocalesChanged ();
 	};
 }
 }
 }
-
-#endif

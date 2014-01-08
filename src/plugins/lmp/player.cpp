@@ -222,29 +222,28 @@ namespace LMP
 	{
 		Sorter_.Criteria_ = criteria;
 
-		AddToPlaylistModel (QList<AudioSource> (), true);
+		AddToPlaylistModel ({}, true);
 
 		XmlSettingsManager::Instance ().setProperty ("SortingCriteria", SaveCriteria (criteria));
 	}
 
 	namespace
 	{
-		QList<AudioSource> FileToSource (const AudioSource& source)
+		Playlist FileToSource (const AudioSource& source)
 		{
 			if (!source.IsLocalFile ())
-				return { source };
+				return Playlist { { source } };
 
 			const auto& file = source.GetLocalPath ();
 
-			auto parser = MakePlaylistParser (file);
-			if (parser)
+			if (auto parser = MakePlaylistParser (file))
 			{
-				const auto& list = parser (file);
-				if (!list.isEmpty ())
-					return list;
+				const auto& sources = parser (file);
+				if (!sources.IsEmpty ())
+					return sources;
 			}
 
-			return { AudioSource (file) };
+			return Playlist { { file } };
 		}
 	}
 
@@ -264,20 +263,28 @@ namespace LMP
 
 	void Player::Enqueue (const QList<AudioSource>& sources, bool sort)
 	{
-		QList<AudioSource> parsedSources;
+		Playlist parsedSources;
 		std::for_each (sources.begin (), sources.end (),
 				[&parsedSources] (decltype (sources.front ()) path)
 					{ parsedSources += FileToSource (path); });
 
 		for (auto i = parsedSources.begin (); i != parsedSources.end (); )
 		{
-			if (Items_.contains (*i))
+			if (Items_.contains (i->Source_))
 				i = parsedSources.erase (i);
 			else
 				++i;
 		}
 
-		AddToPlaylistModel (parsedSources, sort);
+		if (Source_->GetCurrentSource ().IsEmpty ())
+			for (const auto& item : parsedSources)
+				if (item.Additional_ ["Current"].toBool ())
+				{
+					Source_->SetCurrentSource (item.Source_);
+					break;
+				}
+
+		AddToPlaylistModel (parsedSources.ToSources (), sort);
 	}
 
 	void Player::ReplaceQueue (const QList<AudioSource>& queue, bool sort)
@@ -287,7 +294,7 @@ namespace LMP
 		AlbumRoots_.clear ();
 		CurrentQueue_.clear ();
 
-		AddToPlaylistModel (queue, sort);
+		Enqueue (queue, sort);
 	}
 
 	QList<AudioSource> Player::GetQueue () const
@@ -667,8 +674,12 @@ namespace LMP
 				{
 					info = resolver->ResolveInfo (source.GetLocalPath ());
 				}
-				catch (...)
+				catch (const std::exception& e)
 				{
+					qWarning () << Q_FUNC_INFO
+							<< "could not find track"
+							<< info.LocalPath_
+							<< "in library and cannot resolve its info, probably missing?";
 				}
 				return { source, info };
 			}
@@ -1243,7 +1254,7 @@ namespace LMP
 			return;
 		}
 
-		const auto& list = parser (name);
+		const auto& list = parser (name).ToSources ();
 		Enqueue (list, false);
 	}
 
@@ -1311,11 +1322,11 @@ namespace LMP
 		qDebug () << Q_FUNC_INFO << static_cast<int> (state);
 		switch (state)
 		{
-		case SourceState::Error:
-			qDebug () << Source_->GetErrorString ();
-			break;
 		case SourceState::Stopped:
 			emit songChanged ({});
+			break;
+		case SourceState::Playing:
+			handleCurrentSourceChanged (Source_->GetCurrentSource ());
 			break;
 		default:
 			break;
@@ -1402,6 +1413,11 @@ namespace LMP
 			text.prepend ("<br/>");
 			text.prepend (tr ("Cannot find a proper audio decoder. "
 					"You probably don't have all the codec plugins installed."));
+			break;
+		case SourceError::SourceNotFound:
+			text = tr ("Audio source %1 not found, playing next track...")
+					.arg (QFileInfo (Source_->GetCurrentSource ().ToUrl ().path ()).fileName ());
+			nextTrack ();
 			break;
 		case SourceError::Other:
 			break;
