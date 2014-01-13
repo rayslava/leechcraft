@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -447,22 +447,17 @@ namespace LMP
 		g_error_free (gerror);
 		g_free (debug);
 
+		// GStreamer is utter crap
+		if (domain == GST_RESOURCE_ERROR &&
+				code == GST_RESOURCE_ERROR_NOT_FOUND &&
+				msgStr == "Cancelled")
+			return;
+
 		qWarning () << Q_FUNC_INFO
+				<< domain
 				<< code
 				<< msgStr
 				<< debugStr;
-
-		if (!IsDrainingMsgs_)
-		{
-			qDebug () << Q_FUNC_INFO << "draining bus";
-			IsDrainingMsgs_ = true;
-
-			while (const auto newMsg = gst_bus_pop (gst_pipeline_get_bus (GST_PIPELINE (Dec_))))
-				handleMessage (std::shared_ptr<GstMessage> (newMsg, gst_message_unref));
-
-			IsDrainingMsgs_ = false;
-			BusDrainWC_.wakeAll ();
-		}
 
 		const std::map<decltype (domain), std::map<decltype (code), SourceError>> errMap
 		{
@@ -497,6 +492,18 @@ namespace LMP
 					return SourceError::Other;
 				}
 			} ();
+
+		if (!IsDrainingMsgs_)
+		{
+			qDebug () << Q_FUNC_INFO << "draining bus";
+			IsDrainingMsgs_ = true;
+
+			while (const auto newMsg = gst_bus_pop (gst_pipeline_get_bus (GST_PIPELINE (Dec_))))
+				handleMessage (std::shared_ptr<GstMessage> (newMsg, gst_message_unref));
+
+			IsDrainingMsgs_ = false;
+			BusDrainWC_.wakeAll ();
+		}
 
 		if (!IsDrainingMsgs_)
 			emit error (msgStr, errCode);
@@ -721,7 +728,6 @@ namespace LMP
 			g_free (uri);
 
 			emit currentSourceChanged (CurrentSource_);
-			emit metaDataChanged ();
 		}
 #else
 		Q_UNUSED (msg)
@@ -827,7 +833,6 @@ namespace LMP
 #if GST_VERSION_MAJOR >= 1
 		case GST_MESSAGE_STREAM_START:
 			emit currentSourceChanged (CurrentSource_);
-			emit metaDataChanged ();
 			break;
 #endif
 		default:

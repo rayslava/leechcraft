@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -302,7 +302,7 @@ namespace LMP
 		if (!(e.Parameters_ & FromUserInitiated))
 			return;
 
-		player->Enqueue ({ AudioSource (url) }, false);
+		player->Enqueue ({ AudioSource (url) }, Player::EnqueueNone);
 
 		if (e.Additional_ ["Action"] == "AudioEnqueuePlay")
 			player->AddToOneShotQueue (url);

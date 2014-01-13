@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -115,7 +115,7 @@ namespace Poshuku
 			* Puts all the favorites items (FavoritesModel::FavoritesItem) from
 			* the storage backend into the passed container.
 			*
-			* @param[out] items. The container with items. They would be
+			* @param[out] items The container with items. They would be
 			* appended to the container.
 			*/
 		virtual void LoadFavorites (FavoritesModel::items_t& items) const = 0;

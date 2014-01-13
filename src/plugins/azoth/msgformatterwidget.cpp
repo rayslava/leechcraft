@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -206,6 +206,12 @@ namespace Azoth
 		result = result.simplified ();
 		result.remove ('\n');
 		return result;
+	}
+
+	void MsgFormatterWidget::HidePopups ()
+	{
+		if (SmilesTooltip_)
+			SmilesTooltip_->hide ();
 	}
 
 	void MsgFormatterWidget::CharFormatActor (std::function<void (QTextCharFormat*)> format)

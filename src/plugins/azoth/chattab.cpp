@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -42,7 +42,7 @@
 #include <QKeyEvent>
 #include <QTextBrowser>
 #include <QDesktopWidget>
-#include <util/defaulthookproxy.h>
+#include <util/xpc/defaulthookproxy.h>
 #include <util/util.h>
 #include <util/shortcuts/shortcutmanager.h>
 #include <util/gui/util.h>
@@ -376,6 +376,8 @@ namespace Azoth
 		emit entryLostCurrent (GetEntry<QObject> ());
 
 		IsCurrent_ = false;
+
+		MsgFormatter_->HidePopups ();
 	}
 
 	QByteArray ChatTab::GetTabRecoverData () const
@@ -1764,10 +1766,6 @@ namespace Azoth
 				SIGNAL (scroll (int)),
 				this,
 				SLOT (handleEditScroll (int)));
-
-		QTimer::singleShot (0,
-				Ui_.MsgEdit_,
-				SLOT (setFocus ()));
 
 		connect (Ui_.MsgEdit_,
 				SIGNAL (clearAvailableNicks ()),

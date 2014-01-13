@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -42,8 +42,8 @@ namespace LMP
 	{
 		Ui_.setupUi (this);
 		const auto& fm = fontMetrics ();
-		const auto qualityWidth = std::min (fm.width (" 9999 kbps "),
-				fm.width (tr ("Quality %1").arg (10)));
+		const auto qualityWidth = std::max (fm.width (" 9999 kbps "),
+				fm.width (" " + tr ("Quality %1").arg (10) + " "));
 		Ui_.QualityDisplay_->setFixedWidth (qualityWidth);
 		Ui_.QualityDisplay_->setFrameShape (Ui_.ThreadsDisplay_->frameShape ());
 

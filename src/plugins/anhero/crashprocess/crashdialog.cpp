@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -34,8 +34,9 @@
 #include <QClipboard>
 #include <QProcess>
 #include <QtDebug>
+#include <QTimer>
 #include <util/util.h>
-#include <util/sysinfo.h>
+#include <util/sys/sysinfo.h>
 #include "appinfo.h"
 #include "gdblauncher.h"
 #include "highlighter.h"
@@ -67,6 +68,8 @@ namespace CrashProcess
 				this,
 				SLOT (reload ()));
 		reload ();
+
+		setAttribute (Qt::WA_DeleteOnClose);
 
 		show ();
 	}
@@ -145,6 +148,10 @@ namespace CrashProcess
 
 	void CrashDialog::handleFinished (int code)
 	{
+		QTimer::singleShot (0,
+				this,
+				SLOT (clearGdb ()));
+
 		Ui_.TraceDisplay_->append ("\n\nGDB exited with code " + QString::number (code));
 		SetInteractionAllowed (true);
 
@@ -170,18 +177,23 @@ namespace CrashProcess
 			Ui_.TraceDisplay_->append (line);
 	}
 
+	void CrashDialog::clearGdb ()
+	{
+		GdbLauncher_.reset ();
+	}
+
 	void CrashDialog::reload ()
 	{
 		Ui_.TraceDisplay_->clear ();
 
 		SetFormat ();
 
-		auto l = new GDBLauncher (Info_.PID_, Info_.Path_);
-		connect (l,
+		GdbLauncher_.reset (new GDBLauncher (Info_.PID_, Info_.Path_));
+		connect (GdbLauncher_.get (),
 				SIGNAL (gotOutput (QString)),
 				this,
 				SLOT (appendTrace (QString)));
-		connect (l,
+		connect (GdbLauncher_.get (),
 				SIGNAL (finished (int)),
 				this,
 				SLOT (handleFinished (int)));

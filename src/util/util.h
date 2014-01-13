@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -95,13 +95,13 @@ namespace LeechCraft
 		 *
 		 * Converts, for example, 1048576 to 1.0 MB.
 		 *
-		 * @param[in] sourcesize Size in bytes.
+		 * @param[in] sourceSize Size in bytes.
 		 * @return Formatted string.
 		 *
 		 * @sa SetStrings
 		 * @sa MakeTimeFromLong
 		 */
-		UTIL_API QString MakePrettySize (qint64);
+		UTIL_API QString MakePrettySize (qint64 sourceSize);
 
 		/** @brief Makes a formatted time from number.
 		 *
@@ -112,7 +112,7 @@ namespace LeechCraft
 		 *
 		 * @sa MakePrettySize
 		 */
-		UTIL_API QString MakeTimeFromLong (ulong);
+		UTIL_API QString MakeTimeFromLong (ulong time);
 
 		UTIL_API QTranslator* LoadTranslator (const QString& base,
 				const QString& locale,

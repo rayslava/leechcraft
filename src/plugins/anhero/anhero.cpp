@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -73,13 +73,13 @@ namespace AnHero
 				break;
 			case 0:
 				CloseFiles ();
-				execvp (argv[0], const_cast<char**> (argv));
+				execvp (argv [0], const_cast<char**> (argv));
 				fprintf (stderr, "%s: failed to exec(), errno: %d\n", Q_FUNC_INFO, errno);
 				_exit (253);
 				break;
 			default:
 				alarm (0);
-				while (waitpid (-1, nullptr, 0) != pid)
+				while (waitpid (pid, nullptr, 0) != pid)
 					;
 				break;
 			}

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -29,7 +29,7 @@
 
 #include "aboutdialog.h"
 #include <QDomDocument>
-#include "util/sysinfo.h"
+#include "util/sys/sysinfo.h"
 #include "interfaces/ihavediaginfo.h"
 #include "core.h"
 #include "coreproxy.h"

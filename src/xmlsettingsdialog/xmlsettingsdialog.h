@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -70,6 +70,7 @@ namespace Util
 			bool Valid_;
 			QPair<bool, QString> Label_;
 			QPair<bool, QString> Suffix_;
+			QPair<bool, QString> SpecialValue_;
 		};
 
 		XMLSETTINGSMANAGER_API XmlSettingsDialog ();
@@ -147,7 +148,7 @@ namespace Util
 		 * integers should correspond to values of the
 		 * DataSources::DataFieldType enumeration.
 		 *
-		 * @param[in] name The identifier of the property.
+		 * @param[in] property The identifier of the property.
 		 * @param[in] source The new datasource.
 		 */
 		XMLSETTINGSMANAGER_API void SetDataSource (const QString& property,

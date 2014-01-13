@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -27,45 +27,36 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#include "defaulthookproxy.h"
+#pragma once
+
+#include <QObject>
+#include <interfaces/lmp/iunmountablesync.h>
+
+template<typename T>
+class QFutureWatcher;
 
 namespace LeechCraft
 {
-namespace Util
+namespace LMP
 {
-	DefaultHookProxy::DefaultHookProxy ()
-	: Cancelled_ (false)
+namespace jOS
+{
+	class DevManager : public QObject
 	{
-	}
+		Q_OBJECT
 
-	void DefaultHookProxy::CancelDefault ()
-	{
-		Cancelled_ = true;
-	}
+		UnmountableDevInfos_t Devices_;
+		QFutureWatcher<UnmountableDevInfos_t> *PollWatcher_ = nullptr;
+	public:
+		DevManager (QObject* = 0);
 
-	bool DefaultHookProxy::IsCancelled () const
-	{
-		return Cancelled_;
-	}
-
-	const QVariant& DefaultHookProxy::GetReturnValue () const
-	{
-		return ReturnValue_;
-	}
-
-	void DefaultHookProxy::SetReturnValue (const QVariant& val)
-	{
-		ReturnValue_ = val;
-	}
-
-	QVariant DefaultHookProxy::GetValue (const QByteArray& name) const
-	{
-		return Name2NewVal_.value (name);
-	}
-
-	void DefaultHookProxy::SetValue (const QByteArray& name, const QVariant& val)
-	{
-		Name2NewVal_ [name] = val;
-	}
+		UnmountableDevInfos_t GetDevices () const;
+	public slots:
+		void refresh ();
+		void handlePolled ();
+	signals:
+		void availableDevicesChanged ();
+	};
+}
 }
 }

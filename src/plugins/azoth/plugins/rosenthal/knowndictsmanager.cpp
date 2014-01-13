@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -61,7 +61,7 @@ namespace Rosenthal
 	}
 
 	KnownDictsManager::KnownDictsManager ()
-	: LocalPath_ (Util::CreateIfNotExists ("data/dicts/myspell").absolutePath ())
+	: LocalPath_ (Util::CreateIfNotExists ("data/dicts/myspell").absolutePath () + '/')
 	, Model_ (new QStandardItemModel (this))
 	, EnabledModel_ (new QStringListModel (this))
 	{

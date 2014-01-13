@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -244,10 +244,13 @@ namespace DeadLyrics
 	void ConcreteSite::handleReplyFinished ()
 	{
 		auto reply = qobject_cast<QNetworkReply*> (sender ());
+
+		const auto& data = reply->readAll ();
+		const auto& contentType = reply->header (QNetworkRequest::ContentTypeHeader);
+
 		reply->deleteLater ();
 		deleteLater ();
 
-		const auto& data = reply->readAll ();
 #ifdef QT_DEBUG
 		qDebug () << Q_FUNC_INFO
 				<< "got from"
@@ -276,7 +279,6 @@ namespace DeadLyrics
 
 		str = str.trimmed ();
 
-		const auto& contentType = reply->header (QNetworkRequest::ContentTypeHeader);
 		const bool isPlainText = contentType.toString ().toLower ().startsWith ("text/plain");
 		if (isPlainText)
 		{

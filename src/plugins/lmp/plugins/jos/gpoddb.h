@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -27,32 +27,52 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#ifndef UTIL_SYSINFO_H
-#define UTIL_SYSINFO_H
-#include "utilconfig.h"
-#include <QPair>
+#pragma once
 
-class QString;
+#include <memory>
+#include <QObject>
+
+typedef struct _Itdb_iTunesDB Itdb_iTunesDB;
+typedef struct _Itdb_Track Itdb_Track;
 
 namespace LeechCraft
 {
-namespace Util
+namespace LMP
 {
-namespace SysInfo
+struct UnmountableFileInfo;
+
+namespace jOS
 {
-	/** @brief Returns a string of OS name and version joined together.
-	 *
-	 * @return The name and version of OS running LeechCraft.
-	 */
-	UTIL_API QString GetOSName ();
+	class GpodDb : public QObject
+	{
+		Itdb_iTunesDB *DB_ = nullptr;;
+		const QString LocalPath_;
+	public:
+		GpodDb (const QString& localPath, QObject* = 0);
+		~GpodDb ();
 
-	/** @brief Returns a pair of OS name and version.
-	 *
-	 * @return A pair consisting of operating system name and version.
-	 */
-	UTIL_API QPair<QString, QString> GetOSNameSplit ();
-}
-}
-}
+		enum class Result
+		{
+			Success,
+			NotFound,
+			OtherError
+		};
 
-#endif
+		struct InitResult
+		{
+			Result Result_;
+			QString Message_;
+		};
+
+		InitResult Reinitialize ();
+		InitResult Load ();
+
+		bool Save () const;
+
+		Itdb_Track* AddTrack (const QString&, const QString&, const UnmountableFileInfo&);
+
+		std::shared_ptr<void> GetSyncGuard () const;
+	};
+}
+}
+}
