@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -29,6 +29,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <QStringList>
 #include <QFileInfo>
 #include <interfaces/media/idiscographyprovider.h>
@@ -42,7 +43,8 @@ namespace LMP
 {
 	struct MediaInfo;
 
-	QList<QFileInfo> RecIterateInfo (const QString& dirPath, bool followSymlinks = false);
+	QList<QFileInfo> RecIterateInfo (const QString& dirPath,
+			bool followSymlinks = false, std::atomic<bool> *stopFlag = nullptr);
 	QStringList RecIterate (const QString& dirPath, bool followSymlinks = false);
 
 	QString FindAlbumArtPath (const QString& near, bool ignoreCollection = false);

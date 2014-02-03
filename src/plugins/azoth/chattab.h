@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -53,7 +53,7 @@ namespace Azoth
 	class IAccount;
 	class IMessage;
 	class ITransferManager;
-
+	class ContactDropFilter;
 	class MsgFormatterWidget;
 
 	class ChatTab : public QWidget
@@ -100,6 +100,7 @@ namespace Azoth
 		bool IsMUC_;
 		int PreviousTextHeight_;
 
+		ContactDropFilter *CDF_;
 		MsgFormatterWidget *MsgFormatter_;
 
 		ITransferManager *XferManager_;
@@ -163,10 +164,6 @@ namespace Azoth
 		void appendMessageText (const QString&);
 		void selectVariant (const QString&);
 		QTextEdit* getMsgEdit ();
-
-		void handleLocalImageDropped (const QImage&, const QUrl&);
-		void handleImageDropped (const QImage&);
-		void handleFilesDropped (const QList<QUrl>&);
 	private slots:
 		void on_MUCEventsButton__toggled (bool);
 		void handleSeparateMUCLog (bool initial = false);
@@ -224,7 +221,10 @@ namespace Azoth
 		void InitEntry ();
 		void CheckMUC ();
 		void HandleMUC ();
+
 		void InitExtraActions ();
+		void AddManagedActions (bool first);
+
 		void InitMsgEdit ();
 		void RegisterSettings ();
 

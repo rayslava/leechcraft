@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -180,8 +180,12 @@ namespace SB2
 		}
 		else
 		{
-			const auto screenGeometry = QApplication::desktop ()->
-					screenGeometry (ViewMgr_->GetManagedWindow ());
+			auto& xwrapper = Util::XWrapper::Instance ();
+
+			xwrapper.ClearStrut (toolbar);
+			xwrapper.Sync ();
+
+			const auto screenGeometry = xwrapper.GetAvailableGeometry (ViewMgr_->GetManagedWindow ());
 
 			QSize diff;
 			const auto& rect = ToGeom (screenGeometry, ViewMgr_->GetView ()->minimumSizeHint (), pos, &diff);
@@ -190,7 +194,7 @@ namespace SB2
 			ViewMgr_->GetView ()->setFixedSize (rect.size () - diff);
 			toolbar->setFixedSize (rect.size ());
 
-			Util::XWrapper::Instance ().SetStrut (toolbar, pos);
+			xwrapper.SetStrut (toolbar, pos);
 		}
 #endif
 	}

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -101,14 +101,14 @@ QIcon IconThemeEngine::GetIcon (const QString& actionIcon, const QString& action
 	return QIcon ();
 }
 
-void IconThemeEngine::UpdateIconSet (const QList<QAction*>& actions)
+void IconThemeEngine::UpdateIconset (const QList<QAction*>& actions)
 {
 	FindIcons ();
 
 	for (auto action : actions)
 	{
 		if (action->menu ())
-			UpdateIconSet (action->menu ()->actions ());
+			UpdateIconset (action->menu ()->actions ());
 
 		if (action->property ("WatchActionIconChange").toBool ())
 			action->installEventFilter (this);
@@ -120,7 +120,7 @@ void IconThemeEngine::UpdateIconSet (const QList<QAction*>& actions)
 	}
 }
 
-void IconThemeEngine::UpdateIconSet (const QList<QPushButton*>& buttons)
+void IconThemeEngine::UpdateIconset (const QList<QPushButton*>& buttons)
 {
 	FindIcons ();
 
@@ -133,7 +133,7 @@ void IconThemeEngine::UpdateIconSet (const QList<QPushButton*>& buttons)
 	}
 }
 
-void IconThemeEngine::UpdateIconSet (const QList<QTabWidget*>& tabs)
+void IconThemeEngine::UpdateIconset (const QList<QTabWidget*>& tabs)
 {
 	FindIcons ();
 

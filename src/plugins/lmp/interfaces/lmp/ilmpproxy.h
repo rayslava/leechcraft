@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -31,6 +31,7 @@
 
 #include <functional>
 #include <memory>
+#include <atomic>
 #include <QtPlugin>
 #include <QFileInfo>
 #include <QMap>
@@ -57,7 +58,9 @@ namespace LMP
 
 		virtual QString FindAlbumArt (const QString& near, bool includeCollection = true) const = 0;
 
-		virtual QList<QFileInfo> RecIterateInfo (const QString& dirPath, bool followSymlinks = false) const = 0;
+		virtual QList<QFileInfo> RecIterateInfo (const QString& dirPath,
+				bool followSymlinks = false,
+				std::atomic<bool> *stopGuard = nullptr) const = 0;
 
 		virtual QMap<QString, std::function<QString (MediaInfo)>> GetSubstGetters () const = 0;
 

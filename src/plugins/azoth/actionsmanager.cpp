@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -40,12 +40,13 @@
 #include <QClipboard>
 #include <QFileDialog>
 #include <util/util.h>
-#include <util/defaulthookproxy.h>
+#include <util/xpc/defaulthookproxy.h>
 #include <util/shortcuts/shortcutmanager.h>
 #include <util/delayedexecutor.h>
 #include <util/xpc/util.h>
 #include <interfaces/core/icoreproxy.h>
 #include <interfaces/core/ientitymanager.h>
+#include <interfaces/core/iiconthememanager.h>
 #include <interfaces/an/constants.h>
 #include "interfaces/azoth/iclentry.h"
 #include "interfaces/azoth/imucperms.h"
@@ -379,10 +380,9 @@ namespace Azoth
 				return;
 			}
 
-			if (XmlSettingsManager::Instance ().property ("CloseConfOnLeave").toBool ())
-			{
-				Core::Instance ().GetChatTabsManager ()->CloseChat (entry);
-				Q_FOREACH (QObject *partObj, mucEntry->GetParticipants ())
+			const bool closeTabs = XmlSettingsManager::Instance ().property ("CloseConfOnLeave").toBool ();
+			if (closeTabs)
+				for (auto partObj : mucEntry->GetParticipants ())
 				{
 					ICLEntry *partEntry = qobject_cast<ICLEntry*> (partObj);
 					if (!partEntry)
@@ -396,9 +396,11 @@ namespace Azoth
 
 					Core::Instance ().GetChatTabsManager ()->CloseChat (partEntry);
 				}
-			}
 
 			mucEntry->Leave ();
+
+			if (closeTabs)
+				Core::Instance ().GetChatTabsManager ()->CloseChat (entry);
 		}
 
 		void Reconnect (ICLEntry *entry)
@@ -701,7 +703,7 @@ namespace Azoth
 
 		result.removeAll (0);
 
-		Core::Instance ().GetProxy ()->UpdateIconset (result);
+		Core::Instance ().GetProxy ()->GetIconThemeManager ()->UpdateIconset (result);
 
 		return result;
 	}
@@ -811,7 +813,7 @@ namespace Azoth
 
 		setter (AfterRolesNames);
 
-		Core::Instance ().GetProxy ()->UpdateIconset (result);
+		Core::Instance ().GetProxy ()->GetIconThemeManager ()->UpdateIconset (result);
 
 		return result;
 	}
@@ -1125,7 +1127,7 @@ namespace Azoth
 			Action2Areas_ [leave] << CLEAAContactListCtxtMenu
 					<< CLEAATabCtxtMenu
 					<< CLEAAToolbar;
-			sm->RegisterAction ("org.LeechCraft.Azoth.LeaveMUC", leave, true);
+			sm->RegisterAction ("org.LeechCraft.Azoth.LeaveMUC", leave);
 
 			QAction *reconnect = new QAction (tr ("Reconnect"), entry->GetQObject ());
 			reconnect->setProperty ("ActionIcon", "view-refresh");
@@ -1144,7 +1146,7 @@ namespace Azoth
 			userList->setShortcut (QString ("Ctrl+M"));
 			Entry2Actions_ [entry] ["userslist"] = userList;
 			Action2Areas_ [userList] << CLEAAToolbar;
-			sm->RegisterAction ("org.LeechCraft.Azoth.MUCUsers", userList, true);
+			sm->RegisterAction ("org.LeechCraft.Azoth.MUCUsers", userList);
 
 			if (qobject_cast<IConfigurableMUC*> (entry->GetQObject ()))
 			{

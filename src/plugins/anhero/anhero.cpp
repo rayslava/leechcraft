@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -51,6 +51,7 @@ namespace AnHero
 	namespace
 	{
 		QByteArray AppPath_;
+		QByteArray AppDir_;
 		QByteArray AppVersion_;
 		QByteArray AppArgs_;
 
@@ -72,13 +73,13 @@ namespace AnHero
 				break;
 			case 0:
 				CloseFiles ();
-				execvp (argv[0], const_cast<char**> (argv));
+				execvp (argv [0], const_cast<char**> (argv));
 				fprintf (stderr, "%s: failed to exec(), errno: %d\n", Q_FUNC_INFO, errno);
 				_exit (253);
 				break;
 			default:
 				alarm (0);
-				while (waitpid (-1, nullptr, 0) != pid)
+				while (waitpid (pid, nullptr, 0) != pid)
 					;
 				break;
 			}
@@ -98,9 +99,18 @@ namespace AnHero
 			char pidtxt [10];
 			sprintf (pidtxt, "%lld", QCoreApplication::applicationPid ());
 
+#ifdef Q_OS_MAC
+			char crashprocess [1024] = { 0 };
+			sprintf (crashprocess, "%s/lc_anhero_crashprocess", AppDir_.constData ());
+#endif
+
 			const char *argv [] =
 			{
+#ifndef Q_OS_MAC
 				"lc_anhero_crashprocess",
+#else
+				crashprocess,
+#endif
 #ifdef HAVE_X11
 				"-display",
 				QX11Info::display () ? XDisplayString (QX11Info::display ()) : getenv ("DISPLAY"),
@@ -160,7 +170,13 @@ namespace AnHero
 		if (args.contains ("-noanhero"))
 			return;
 
+#ifdef Q_OS_MAC
+		if (!QFile::exists ("/usr/bin/gdb"))
+			return;
+#endif
+
 		AppPath_ = QCoreApplication::applicationFilePath ().toUtf8 ();
+		AppDir_ = QCoreApplication::applicationDirPath ().toUtf8 ();
 		AppVersion_ = proxy->GetVersion ().toUtf8 ();
 		AppArgs_ = args.join (" ").toUtf8 ();
 		SetCrashHandler (DefaultCrashHandler);

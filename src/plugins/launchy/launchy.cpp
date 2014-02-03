@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -72,7 +72,7 @@ namespace Launchy
 				this,
 				SLOT (handleFSRequested ()));
 
-		ShortcutMgr_->RegisterAction ("FSLauncher", FSLauncher_, true);
+		ShortcutMgr_->RegisterAction ("FSLauncher", FSLauncher_);
 
 		auto itemImageProv = new ItemImageProvider;
 		auto quarkMgr = new QuarkManager (proxy, FavManager_, Finder_, itemImageProv);

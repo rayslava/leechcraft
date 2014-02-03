@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -214,7 +214,7 @@ public:
 	 */
 	virtual QList<QAction*> GetTabBarContextMenuActions () const
 	{
-		return QList<QAction*> ();
+		return {};
 	}
 
 	/** @brief Returns the list of QActions to be inserted into global
@@ -237,7 +237,7 @@ public:
 	 */
 	virtual QMap<QString, QList<QAction*>> GetWindowMenus () const
 	{
-		return QMap<QString, QList<QAction*>> ();
+		return {};
 	}
 
 	/** @brief This method is called when this tab becomes active.

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -33,6 +33,7 @@
 #include <QPalette>
 #include <QTextDocument>
 #include <QtDebug>
+#include <interfaces/core/iiconthememanager.h>
 #include "core.h"
 #include "xmlsettingsmanager.h"
 
@@ -44,9 +45,9 @@ namespace Aggregator
 	: QAbstractItemModel (parent)
 	, CurrentRow_ (-1)
 	, CurrentChannel_ (-1)
-	, StarredIcon_ (Core::Instance ().GetProxy ()->GetIcon ("mail-mark-important"))
-	, UnreadIcon_ (Core::Instance ().GetProxy ()->GetIcon ("mail-mark-unread"))
-	, ReadIcon_ (Core::Instance ().GetProxy ()->GetIcon ("mail-mark-read"))
+	, StarredIcon_ (Core::Instance ().GetProxy ()->GetIconThemeManager ()->GetIcon ("mail-mark-important"))
+	, UnreadIcon_ (Core::Instance ().GetProxy ()->GetIconThemeManager ()->GetIcon ("mail-mark-unread"))
+	, ReadIcon_ (Core::Instance ().GetProxy ()->GetIconThemeManager ()->GetIcon ("mail-mark-read"))
 	{
 		ItemHeaders_ << tr ("Name") << tr ("Date");
 

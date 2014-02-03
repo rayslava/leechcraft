@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -32,7 +32,7 @@
 #include <QDockWidget>
 #include <QActionGroup>
 #include <QTimer>
-#include <util/defaulthookproxy.h>
+#include <util/xpc/defaulthookproxy.h>
 #include "mainwindow.h"
 #include "core.h"
 #include "coreinstanceobject.h"
@@ -139,7 +139,7 @@ namespace LeechCraft
 
 	/* Both dw and act can be already dead and gone here.
 	 */
-	void DockToolbarManager::HandleDockDestroyed (QDockWidget *dw, QAction *act)
+	void DockToolbarManager::HandleDockDestroyed (QDockWidget*, QAction *act)
 	{
 		IHookProxy_ptr proxy (new Util::DefaultHookProxy);
 		for (auto& info : Area2Info_)

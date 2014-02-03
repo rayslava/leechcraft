@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2012  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -34,10 +34,10 @@
 #include <QUrl>
 #include <QtDeclarative>
 #include <QGraphicsEffect>
-#include <gst/gst.h>
 #include <xmlsettingsdialog/xmlsettingsdialog.h>
 #include <interfaces/entitytesthandleresult.h>
 #include <util/util.h>
+#include "gstfix.h"
 #include "playertab.h"
 #include "player.h"
 #include "xmlsettingsmanager.h"
@@ -48,6 +48,7 @@
 #include "progressmanager.h"
 #include "volumenotifycontroller.h"
 #include "radiomanager.h"
+#include "notificationplayer.h"
 
 typedef QList<QPair<QString, QUrl>> CustomStationsList_t;
 Q_DECLARE_METATYPE (CustomStationsList_t);
@@ -59,6 +60,14 @@ namespace LMP
 	void Plugin::Init (ICoreProxy_ptr proxy)
 	{
 		Util::InstallTranslator ("lmp");
+
+#ifdef Q_OS_MAC
+		if (qgetenv ("GST_PLUGIN_SYSTEM_PATH").isEmpty ())
+			qputenv ("GST_PLUGIN_SYSTEM_PATH",
+					QCoreApplication::applicationDirPath ().toUtf8 () + "/../PlugIns/gstreamer");
+
+		qputenv ("GST_REGISTRY_FORK", "no");
+#endif
 
 		gint argc = 1;
 		gchar *argvarr [] = { "leechcraft", nullptr };
@@ -286,21 +295,14 @@ namespace LMP
 
 		if (e.Parameters_ & Internal)
 		{
-			/* TODO
-			auto obj = Phonon::createPlayer (Phonon::NotificationCategory, path);
-			obj->play ();
-			connect (obj,
-					SIGNAL (finished ()),
-					obj,
-					SLOT (deleteLater ()));
-					*/
+			new NotificationPlayer (path, this);
 			return;
 		}
 
 		if (!(e.Parameters_ & FromUserInitiated))
 			return;
 
-		player->Enqueue ({ AudioSource (url) }, false);
+		player->Enqueue ({ AudioSource (url) }, Player::EnqueueNone);
 
 		if (e.Additional_ ["Action"] == "AudioEnqueuePlay")
 			player->AddToOneShotQueue (url);

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -52,11 +52,15 @@
 
 #include <util/util.h>
 #include <interfaces/core/ientitymanager.h>
+#include <interfaces/core/ipluginsmanager.h>
+#include <interfaces/data/iimgsource.h>
 #include "hyperlinkdialog.h"
 #include "imagedialog.h"
 #include "finddialog.h"
 #include "inserttabledialog.h"
 #include "xmlsettingsmanager.h"
+#include "htmlhighlighter.h"
+#include "imagecollectiondialog.h"
 
 namespace LeechCraft
 {
@@ -119,6 +123,12 @@ namespace LHTR
 					emit linkClicked (request.url ());
 				return false;
 			}
+		};
+
+		enum TabWidgetIdx
+		{
+			TWIVisualView,
+			TWIHTMLView
 		};
 	}
 
@@ -306,11 +316,7 @@ namespace LHTR
 					SLOT (handleInsertLink ()));
 		InsertLink_->setProperty ("ActionIcon", "insert-link");
 
-		InsertImage_ = ViewBar_->addAction (tr ("Insert image..."),
-					this,
-					SLOT (handleInsertImage ()));
-		InsertImage_->setProperty ("ActionIcon", "insert-image");
-
+		SetupImageMenu ();
 		SetupTableMenu ();
 
 		setupJS ();
@@ -326,6 +332,8 @@ namespace LHTR
 				SLOT (toggleView ()));
 
 		SetContents ("", ContentType::HTML);
+
+		new HtmlHighlighter (Ui_.HTML_->document ());
 	}
 
 	QString RichEditorWidget::GetContents (ContentType type) const
@@ -333,7 +341,9 @@ namespace LHTR
 		switch (type)
 		{
 		case ContentType::HTML:
-			return RevertCustomTags ();
+			if (Ui_.TabWidget_->currentIndex () != TabWidgetIdx::TWIHTMLView)
+				SyncHTMLToView ();
+			return Ui_.HTML_->toPlainText ();
 		case ContentType::PlainText:
 			return Ui_.View_->page ()->mainFrame ()->toPlainText ();
 		}
@@ -506,6 +516,40 @@ namespace LHTR
 		auto palette = widget->palette ();
 		palette.setColor (QPalette::Base, color);
 		widget->setPalette (palette);
+	}
+
+	void RichEditorWidget::SetupImageMenu ()
+	{
+		auto imagesMenu = new QMenu (tr ("Insert image..."), this);
+
+		auto imagesButton = new QToolButton;
+		imagesButton->setMenu (imagesMenu);
+		imagesButton->setPopupMode (QToolButton::InstantPopup);
+		imagesButton->setIcon (Proxy_->GetIcon ("insert-image"));
+		ViewBar_->addWidget (imagesButton);
+
+		InsertImage_ = imagesMenu->addAction (tr ("Insert image by link..."),
+					this,
+					SLOT (handleInsertImage ()));
+
+		auto fromCollection = imagesMenu->addMenu (tr ("Insert image from collection"));
+
+		bool added = false;
+		for (const auto pluginObj : Proxy_->GetPluginsManager ()->GetAllCastableRoots<IImgSource*> ())
+		{
+			const auto plugin = qobject_cast<IImgSource*> (pluginObj);
+			for (const auto& service : plugin->GetServices ())
+			{
+				const auto act = fromCollection->addAction (service.Name_,
+						this,
+						SLOT (handleInsertImageFromCollection ()));
+				act->setProperty ("LHTR/Plugin", QVariant::fromValue (pluginObj));
+				act->setProperty ("LHTR/Service", service.ID_);
+				added = true;
+			}
+		}
+
+		fromCollection->setEnabled (added);
 	}
 
 	void RichEditorWidget::SetupTableMenu ()
@@ -752,6 +796,21 @@ namespace LHTR
 		return root.toOuterXml ();
 	}
 
+	void RichEditorWidget::SyncHTMLToView () const
+	{
+		const auto frame = Ui_.View_->page ()->mainFrame ();
+		const auto& peElem = frame->findFirstElement ("parsererror");
+
+		if (!peElem.isNull ())
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "there are parser errors, ignoring reverting";
+			return;
+		}
+
+		Ui_.HTML_->setPlainText (RevertCustomTags ());
+	}
+
 	void RichEditorWidget::handleBgColorSettings ()
 	{
 		const auto& color = XmlSettingsManager::Instance ()
@@ -782,10 +841,10 @@ namespace LHTR
 
 		switch (idx)
 		{
-		case 1:
-			Ui_.HTML_->setPlainText (RevertCustomTags ());
+		case TabWidgetIdx::TWIHTMLView:
+			SyncHTMLToView ();
 			break;
-		case 0:
+		case TabWidgetIdx::TWIVisualView:
 			if (!HTMLDirty_)
 				return;
 
@@ -1126,6 +1185,88 @@ namespace LHTR
 		w.writeEndElement ();
 
 		ExecCommand ("insertHTML", html);
+	}
+
+	void RichEditorWidget::handleCollectionImageChosen ()
+	{
+		const auto chooser = qobject_cast<IPendingImgSourceRequest*> (sender ());
+
+		ImageCollectionDialog dia { chooser->GetInfos (), Proxy_, this };
+		if (dia.exec () != QDialog::Accepted)
+			return;
+
+		QString html;
+		QXmlStreamWriter w (&html);
+		w.writeStartElement ("span");
+
+		bool displayBlock = false;
+		QString floatPos;
+		QString align;
+		switch (dia.GetPosition ())
+		{
+		case ImageCollectionDialog::Position::Center:
+			align = "center";
+			displayBlock = true;
+			break;
+		case ImageCollectionDialog::Position::Right:
+			displayBlock = true;
+			align = "right";
+			break;
+		case ImageCollectionDialog::Position::Left:
+			displayBlock = true;
+			align = "left";
+			break;
+		case ImageCollectionDialog::Position::RightWrap:
+			floatPos = "right";
+			break;
+		case ImageCollectionDialog::Position::LeftWrap:
+			floatPos = "left";
+			break;
+		}
+
+		QStringList styleElems;
+		if (displayBlock)
+			styleElems << "display: block";
+		if (!floatPos.isEmpty ())
+			styleElems << "float: " + floatPos;
+		if (!align.isEmpty ())
+			styleElems << "text-align: " + align;
+
+		if (!styleElems.isEmpty ())
+			w.writeAttribute ("style", styleElems.join ("; "));
+
+		for (const auto& image : dia.GetInfos ())
+		{
+			w.writeStartElement ("a");
+			w.writeAttribute ("href", image.Full_.toString ());
+
+			w.writeStartElement ("img");
+			w.writeAttribute ("src", image.Preview_.toString ());
+			w.writeAttribute ("alt", image.Title_);
+			w.writeAttribute ("width", QString::number (image.PreviewSize_.width ()));
+			w.writeAttribute ("height", QString::number (image.PreviewSize_.height ()));
+			w.writeEndElement ();
+
+			w.writeEndElement ();
+
+			w.writeEmptyElement ("br");
+		}
+		w.writeEndElement ();
+
+		ExecCommand ("insertHTML", html);
+	}
+
+	void RichEditorWidget::handleInsertImageFromCollection ()
+	{
+		const auto pluginObj = sender ()->property ("LHTR/Plugin").value<QObject*> ();
+		const auto& service = sender ()->property ("LHTR/Service").toByteArray ();
+
+		const auto plugin = qobject_cast<IImgSource*> (pluginObj);
+		const auto chooser = plugin->RequestImages (service);
+		connect (chooser->GetQObject (),
+				SIGNAL (ready ()),
+				this,
+				SLOT (handleCollectionImageChosen ()));
 	}
 
 	void RichEditorWidget::handleFind ()

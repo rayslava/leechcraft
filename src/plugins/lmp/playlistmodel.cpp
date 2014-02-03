@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -89,19 +89,7 @@ namespace LMP
 			const auto& localPath = url.toLocalFile ();
 			if (QFileInfo (localPath).isFile ())
 			{
-				bool playlistHandled = false;
-				if (auto f = MakePlaylistParser (localPath))
-				{
-					const auto& playlistSrcs = f (localPath);
-					if (!playlistSrcs.isEmpty ())
-					{
-						playlistHandled = true;
-						sources += playlistSrcs;
-					}
-				}
-
-				if (!playlistHandled)
-					sources << AudioSource (localPath);
+				sources << AudioSource (localPath);
 				continue;
 			}
 
@@ -132,7 +120,7 @@ namespace LMP
 				pos = existingQueue.insert (pos, src) + 1;
 		}
 
-		Player_->ReplaceQueue (existingQueue);
+		Player_->Enqueue (existingQueue, Player::EnqueueReplace | Player::EnqueueSort);
 		return true;
 	}
 

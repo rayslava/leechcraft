@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -30,11 +30,12 @@
 #include "sourceobject.h"
 #include <memory>
 #include <atomic>
+#include <map>
+#include <stdexcept>
 #include <QtDebug>
 #include <QTimer>
 #include <QTextCodec>
 #include <QThread>
-#include <gst/gst.h>
 
 #ifdef WITH_LIBGUESS
 extern "C"
@@ -45,10 +46,12 @@ extern "C"
 
 #include "audiosource.h"
 #include "path.h"
+#include "../gstfix.h"
 #include "../core.h"
 #include "../xmlsettingsmanager.h"
 
 Q_DECLARE_METATYPE (GstMessage*);
+Q_DECLARE_METATYPE (GstMessage_ptr);
 
 namespace LeechCraft
 {
@@ -74,8 +77,12 @@ namespace LMP
 		GstBus * const Bus_;
 		SourceObject * const SourceObj_;
 		std::atomic_bool ShouldStop_;
+		const double Multiplier_;
+
+		QMutex& BusDrainMutex_;
+		QWaitCondition& BusDrainWC_;
 	public:
-		MsgPopThread (GstBus*, SourceObject*);
+		MsgPopThread (GstBus*, SourceObject*, double, QMutex&, QWaitCondition&);
 		~MsgPopThread ();
 
 		void Stop ();
@@ -83,11 +90,14 @@ namespace LMP
 		void run ();
 	};
 
-	MsgPopThread::MsgPopThread (GstBus *bus, SourceObject *obj)
+	MsgPopThread::MsgPopThread (GstBus *bus, SourceObject *obj, double multiplier, QMutex& bdMutex, QWaitCondition& bdWC)
 	: QThread (obj)
 	, Bus_ (bus)
 	, SourceObj_ (obj)
 	, ShouldStop_ (false)
+	, Multiplier_ (multiplier)
+	, BusDrainMutex_ (bdMutex)
+	, BusDrainWC_ (bdWC)
 	{
 	}
 
@@ -105,19 +115,27 @@ namespace LMP
 	{
 		while (!ShouldStop_.load (std::memory_order_relaxed))
 		{
-			const auto msg = gst_bus_timed_pop (Bus_, 2 * GST_SECOND);
+			const auto msg = gst_bus_timed_pop (Bus_, Multiplier_ * GST_SECOND);
 			if (!msg)
 				continue;
 
 			QMetaObject::invokeMethod (SourceObj_,
 					"handleMessage",
-					Qt::BlockingQueuedConnection,
-					Q_ARG (GstMessage*, msg));
-			gst_message_unref (msg);
+					Qt::QueuedConnection,
+					Q_ARG (GstMessage_ptr, std::shared_ptr<GstMessage> (msg, gst_message_unref)));
+
+			if (GST_MESSAGE_TYPE (msg) == GST_MESSAGE_ERROR)
+			{
+				BusDrainMutex_.lock ();
+				BusDrainWC_.wait (&BusDrainMutex_);
+				BusDrainMutex_.unlock ();
+
+				qDebug () << "bus drained, continuing";
+			}
 		}
 	}
 
-	SourceObject::SourceObject (QObject *parent)
+	SourceObject::SourceObject (Category cat, QObject *parent)
 	: QObject (parent)
 #if GST_VERSION_MAJOR < 1
 	, Dec_ (gst_element_factory_make ("playbin2", "play"))
@@ -128,13 +146,18 @@ namespace LMP
 	, IsSeeking_ (false)
 	, LastCurrentTime_ (-1)
 	, PrevSoupRank_ (0)
-	, PopThread_ (new MsgPopThread (gst_pipeline_get_bus (GST_PIPELINE (Dec_)), this))
+	, PopThread_ (new MsgPopThread (gst_pipeline_get_bus (GST_PIPELINE (Dec_)),
+				this,
+				cat == Category::Notification ? 0.05 : 1,
+				BusDrainMutex_,
+				BusDrainWC_))
 	, OldState_ (SourceState::Stopped)
 	{
 		g_signal_connect (Dec_, "about-to-finish", G_CALLBACK (CbAboutToFinish), this);
 		g_signal_connect (Dec_, "notify::source", G_CALLBACK (CbSourceChanged), this);
 
 		qRegisterMetaType<GstMessage*> ("GstMessage*");
+		qRegisterMetaType<GstMessage_ptr> ("GstMessage_ptr");
 
 		qRegisterMetaType<AudioSource> ("AudioSource");
 
@@ -150,10 +173,14 @@ namespace LMP
 
 	SourceObject::~SourceObject ()
 	{
+		gst_element_set_state (Path_->GetPipeline (), GST_STATE_NULL);
+
 		PopThread_->Stop ();
-		PopThread_->wait (2500);
+		PopThread_->wait (1100);
 		if (PopThread_->isRunning ())
 			PopThread_->terminate ();
+
+		gst_object_unref (Dec_);
 	}
 
 	bool SourceObject::IsSeekable () const
@@ -415,26 +442,71 @@ namespace LMP
 		const auto& debugStr = QString::fromUtf8 (debug);
 
 		const auto code = gerror->code;
+		const auto domain = gerror->domain;
 
 		g_error_free (gerror);
 		g_free (debug);
 
+		// GStreamer is utter crap
+		if (domain == GST_RESOURCE_ERROR &&
+				code == GST_RESOURCE_ERROR_NOT_FOUND &&
+				msgStr == "Cancelled")
+			return;
+
 		qWarning () << Q_FUNC_INFO
+				<< domain
 				<< code
 				<< msgStr
 				<< debugStr;
 
-		SourceError errCode = SourceError::Other;
-		switch (code)
+		const std::map<decltype (domain), std::map<decltype (code), SourceError>> errMap
 		{
-		case GST_CORE_ERROR_MISSING_PLUGIN:
-			errCode = SourceError::MissingPlugin;
-			break;
-		default:
-			break;
+			{
+				GST_CORE_ERROR,
+				{
+					{
+						GST_CORE_ERROR_MISSING_PLUGIN,
+						SourceError::MissingPlugin
+					}
+				}
+			},
+			{
+				GST_RESOURCE_ERROR,
+				{
+					{
+						GST_RESOURCE_ERROR_NOT_FOUND,
+						SourceError::SourceNotFound
+					}
+				}
+			}
+		};
+
+		const auto errCode = [&] () -> SourceError
+			{
+				try
+				{
+					return errMap.at (domain).at (code);
+				}
+				catch (const std::out_of_range&)
+				{
+					return SourceError::Other;
+				}
+			} ();
+
+		if (!IsDrainingMsgs_)
+		{
+			qDebug () << Q_FUNC_INFO << "draining bus";
+			IsDrainingMsgs_ = true;
+
+			while (const auto newMsg = gst_bus_pop (gst_pipeline_get_bus (GST_PIPELINE (Dec_))))
+				handleMessage (std::shared_ptr<GstMessage> (newMsg, gst_message_unref));
+
+			IsDrainingMsgs_ = false;
+			BusDrainWC_.wakeAll ();
 		}
 
-		emit error (msgStr, errCode);
+		if (!IsDrainingMsgs_)
+			emit error (msgStr, errCode);
 	}
 
 	namespace
@@ -634,20 +706,21 @@ namespace LMP
 			}
 		}
 
-		auto newNativeState = GstToState (newState);
+		const auto newNativeState = GstToState (newState);
+		if (newNativeState == OldState_)
+			return;
+
+		auto prevState = OldState_;
 		OldState_ = newNativeState;
-		emit stateChanged (newNativeState, OldState_);
+		emit stateChanged (newNativeState, prevState);
 	}
 
 	void SourceObject::HandleElementMsg (GstMessage *msg)
 	{
+#if GST_VERSION_MAJOR < 1
 		const auto msgStruct = gst_message_get_structure (msg);
 
-#if GST_VERSION_MAJOR < 1
 		if (gst_structure_has_name (msgStruct, "playbin2-stream-changed"))
-#else
-		if (gst_structure_has_name (msgStruct, "playbin-stream-changed"))
-#endif
 		{
 			gchar *uri = nullptr;
 			g_object_get (Dec_, "uri", &uri, nullptr);
@@ -655,8 +728,10 @@ namespace LMP
 			g_free (uri);
 
 			emit currentSourceChanged (CurrentSource_);
-			emit metaDataChanged ();
 		}
+#else
+		Q_UNUSED (msg)
+#endif
 	}
 
 	void SourceObject::HandleEosMsg (GstMessage*)
@@ -665,13 +740,8 @@ namespace LMP
 		gst_element_set_state (Path_->GetPipeline (), GST_STATE_READY);
 	}
 
-	void SourceObject::HandleStreamStatusMsg (GstMessage *msg)
+	void SourceObject::HandleStreamStatusMsg (GstMessage*)
 	{
-		GstStreamStatusType type;
-		GstElement *owner = nullptr;
-		gst_message_parse_stream_status (msg, &type, &owner);
-
-		qDebug () << Q_FUNC_INFO << type;
 	}
 
 	void SourceObject::SetupSource ()
@@ -720,14 +790,15 @@ namespace LMP
 		Path_ = path;
 	}
 
-	void SourceObject::PostAdd (Path *path)
+	void SourceObject::SetSink (GstElement *bin)
 	{
-		auto bin = path->GetAudioBin ();
 		g_object_set (GST_OBJECT (Dec_), "audio-sink", bin, nullptr);
 	}
 
-	void SourceObject::handleMessage (GstMessage *message)
+	void SourceObject::handleMessage (GstMessage_ptr msgPtr)
 	{
+		const auto message = msgPtr.get ();
+
 		switch (GST_MESSAGE_TYPE (message))
 		{
 		case GST_MESSAGE_ERROR:
@@ -759,6 +830,11 @@ namespace LMP
 		case GST_MESSAGE_STREAM_STATUS:
 			HandleStreamStatusMsg (message);
 			break;
+#if GST_VERSION_MAJOR >= 1
+		case GST_MESSAGE_STREAM_START:
+			emit currentSourceChanged (CurrentSource_);
+			break;
+#endif
 		default:
 			qDebug () << Q_FUNC_INFO << GST_MESSAGE_TYPE (message);
 			break;

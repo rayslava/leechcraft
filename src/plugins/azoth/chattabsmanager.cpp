@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -218,9 +218,11 @@ namespace Azoth
 		if (!XmlSettingsManager::Instance ().property ("OpenTabOnNewMsg").toBool ())
 			return;
 
-		if (msg->GetMessageType () == IMessage::MTChatMessage)
+		if (msg->GetMessageType () == IMessage::MTChatMessage ||
+				(msg->GetMessageType () == IMessage::MTMUCMessage &&
+					Core::Instance ().IsHighlightMessage (msg)))
 		{
-			auto entry = qobject_cast<ICLEntry*> (msg->OtherPart ());
+			auto entry = qobject_cast<ICLEntry*> (msg->ParentCLEntry ());
 			if (!Entry2Tab_.contains (entry->GetEntryID ()))
 				OpenChat (entry, false);
 		}

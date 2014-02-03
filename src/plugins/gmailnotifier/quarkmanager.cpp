@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -31,6 +31,7 @@
 #include <QtDebug>
 #include <QApplication>
 #include <util/gui/util.h>
+#include <util/gui/autoresizemixin.h>
 #include "maillistview.h"
 
 namespace LeechCraft
@@ -66,9 +67,7 @@ namespace GmailNotifier
 		}
 
 		MailListView_ = new MailListView (Infos_, Proxy_);
-		qApp->processEvents ();
-		MailListView_->move (Util::FitRect ({ x, y }, MailListView_->size (), geometry,
-				Util::FitFlag::NoOverlap));
+		new Util::AutoResizeMixin ({ x, y }, [geometry] { return geometry; }, MailListView_);
 		MailListView_->show ();
 	}
 }

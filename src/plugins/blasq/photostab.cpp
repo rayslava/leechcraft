@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -29,6 +29,7 @@
 
 #include "photostab.h"
 #include <array>
+#include <cmath>
 #include <QToolBar>
 #include <QComboBox>
 #include <QDeclarativeEngine>
@@ -39,6 +40,7 @@
 #include <QDesktopWidget>
 #include <QtDebug>
 #include <interfaces/core/ientitymanager.h>
+#include <interfaces/core/iiconthememanager.h>
 #include <util/qml/colorthemeproxy.h>
 #include <util/qml/themeimageprovider.h>
 #include <util/qml/standardnamfactory.h>
@@ -84,6 +86,7 @@ namespace Blasq
 				QVariant::fromValue<QObject*> (ProxyModel_));
 		rootCtx->setContextProperty ("listingMode", "false");
 		rootCtx->setContextProperty ("collRootIndex", QVariant::fromValue (QModelIndex ()));
+		rootCtx->setContextProperty ("imageSelectionMode", tc.TabClass_.isEmpty ());
 
 		auto engine = Ui_.ImagesView_->engine ();
 		engine->addImageProvider ("ThemeIcons", new Util::ThemeImageProvider (proxy));
@@ -105,6 +108,10 @@ namespace Blasq
 				SIGNAL (imageSelected (QString)),
 				this,
 				SLOT (handleImageSelected (QString)));
+		connect (rootObj,
+				SIGNAL (toggleSelectionSet (QString)),
+				this,
+				SLOT (handleToggleSelectionSet (QString)));
 		connect (rootObj,
 				SIGNAL (imageOpenRequested (QVariant)),
 				this,
@@ -222,12 +229,26 @@ namespace Blasq
 		handleAccountChosen (accIdx);
 	}
 
-	QModelIndex PhotosTab::GetSelectedImage () const
+	void PhotosTab::SelectAccount (const QByteArray& id)
 	{
-		if (SelectedID_.isEmpty ())
-			return {};
+		for (int i = 0; i < AccountsBox_->count (); ++i)
+			if (id == AccountsBox_->itemData (i, AccountsManager::Role::AccountId).toByteArray ())
+			{
+				handleAccountChosen (i);
+				return;
+			}
+	}
 
-		return ImageID2Index (SelectedID_);
+	QModelIndexList PhotosTab::GetSelectedImages () const
+	{
+		QModelIndexList result;
+		for (const auto& id : SelectedIDsSet_)
+			result << ImageID2Index (id);
+
+		if (!SelectedID_.isEmpty () && !SelectedIDsSet_.contains (SelectedID_))
+			result << ImageID2Index (SelectedID_);
+
+		return result;
 	}
 
 	void PhotosTab::AddScaleSlider ()
@@ -311,6 +332,30 @@ namespace Blasq
 		}
 
 		return {};
+	}
+
+	namespace
+	{
+		QModelIndexList ScanIndex (const QString& id, const QModelIndex& parent, QAbstractItemModel * const model)
+		{
+			QModelIndexList result;
+
+			for (auto i = 0; i < model->rowCount (parent); ++i)
+			{
+				const auto& idx = model->index (i, 0, parent);
+				if (idx.data (CollectionRole::Type).toInt () != ItemType::Image)
+					result += ScanIndex (id, idx, model);
+				else if (idx.data (CollectionRole::ID).toString () == id)
+					result += idx;
+			}
+
+			return result;
+		}
+	}
+
+	QModelIndexList PhotosTab::ImageID2Indexes (const QString& id) const
+	{
+		return ScanIndex (id, {}, CurAcc_->GetCollectionsModel ());
 	}
 
 	QByteArray PhotosTab::GetUniSettingName () const
@@ -411,13 +456,16 @@ namespace Blasq
 		QMenu menu;
 		if (isImage)
 		{
-			menu.addAction (Proxy_->GetIcon ("go-jump-locationbar"), tr ("Open in browser"),
+			menu.addAction (Proxy_->GetIconThemeManager ()->GetIcon ("go-jump-locationbar"),
+					tr ("Open in browser"),
 					this,
 					SLOT (handleImageOpenRequested ()));
-			menu.addAction (Proxy_->GetIcon ("download"), tr ("Download original"),
+			menu.addAction (Proxy_->GetIconThemeManager ()->GetIcon ("download"),
+					tr ("Download original"),
 					this,
 					SLOT (handleImageDownloadRequested ()));
-			menu.addAction (Proxy_->GetIcon ("edit-copy"), tr ("Copy image URL"),
+			menu.addAction (Proxy_->GetIconThemeManager ()->GetIcon ("edit-copy"),
+					tr ("Copy image URL"),
 					this,
 					SLOT (handleCopyURLRequested ()));
 		}
@@ -426,14 +474,16 @@ namespace Blasq
 		{
 			if ((isColl && isd->SupportsFeature (DeleteFeature::DeleteCollections)) ||
 				(isImage && isd->SupportsFeature (DeleteFeature::DeleteImages)))
-				menu.addAction (Proxy_->GetIcon ("list-remove"), tr ("Delete"),
+				menu.addAction (Proxy_->GetIconThemeManager ()->GetIcon ("list-remove"),
+						tr ("Delete"),
 						this,
 						SLOT (handleDeleteRequested ()));
 		}
 
 		if (auto isu = qobject_cast<ISupportUploads*> (CurAccObj_))
 			if (isColl || (isAll && !isu->HasUploadFeature (ISupportUploads::Feature::RequiresAlbumOnUpload)))
-				menu.addAction (Proxy_->GetIcon ("svn-commit"), tr ("Upload"),
+				menu.addAction (Proxy_->GetIconThemeManager ()->GetIcon ("svn-commit"),
+						tr ("Upload"),
 						this,
 						SLOT (handleUploadRequested ()));
 
@@ -488,6 +538,19 @@ namespace Blasq
 	void PhotosTab::handleImageSelected (const QString& id)
 	{
 		SelectedID_ = id;
+	}
+
+	void PhotosTab::handleToggleSelectionSet (const QString& id)
+	{
+		const auto& idxs = ImageID2Indexes (id);
+
+		if (SelectedIDsSet_.removeAll (id))
+			ProxyModel_->RemoveSelected (id, idxs);
+		else
+		{
+			SelectedIDsSet_ << id;
+			ProxyModel_->AddSelected (id, idxs);
+		}
 	}
 
 	void PhotosTab::handleImageOpenRequested (const QVariant& var)

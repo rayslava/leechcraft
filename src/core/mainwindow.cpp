@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -41,7 +41,7 @@
 #include <QDesktopWidget>
 #include <QWidgetAction>
 #include <util/util.h>
-#include <util/defaulthookproxy.h>
+#include <util/xpc/defaulthookproxy.h>
 #include <util/shortcuts/shortcutmanager.h>
 #include <interfaces/iactionsexporter.h>
 #include <interfaces/ihavetabs.h>
@@ -241,7 +241,7 @@ void LeechCraft::MainWindow::AddMenus (const QMap<QString, QList<QAction*>>& men
 			MenuButton_->menu ()->insertMenu (MenuTools_->menuAction (), menu);
 		}
 
-		IconThemeEngine::Instance ().UpdateIconSet (menus [menuName]);
+		IconThemeEngine::Instance ().UpdateIconset (menus [menuName]);
 	}
 }
 
@@ -616,7 +616,7 @@ void MainWindow::handleRestoreActionAdded (QAction *act)
 
 void LeechCraft::MainWindow::showHideMain ()
 {
-	IsShown_ = 1 - IsShown_;
+	IsShown_ = !IsShown_;
 	if (IsShown_)
 	{
 		show ();
@@ -692,7 +692,7 @@ void LeechCraft::MainWindow::FillQuickLaunch ()
 		if (actions.isEmpty ())
 			continue;
 
-		IconThemeEngine::Instance ().UpdateIconSet (actions);
+		IconThemeEngine::Instance ().UpdateIconset (actions);
 
 		QLBar_->addSeparator ();
 		QLBar_->addActions (actions);
@@ -705,10 +705,13 @@ void LeechCraft::MainWindow::FillTray ()
 		return;
 
 	QMenu *iconMenu = new QMenu (this);
-	QMenu *menu = iconMenu->addMenu (tr ("LeechCraft menu"));
-	menu->addAction (Ui_.ActionAddTask_);
-	menu->addMenu (MenuView_);
-	menu->addMenu (MenuTools_);
+	iconMenu->addAction (windowIcon (),
+			tr ("Toggle LeechCraft window"),
+			this,
+			SLOT (showHideMain ()));
+	iconMenu->addAction (Ui_.ActionAddTask_);
+	iconMenu->addMenu (MenuView_);
+	iconMenu->addMenu (MenuTools_);
 	iconMenu->addSeparator ();
 
 	const auto& trayMenus = Core::Instance ().GetPluginManager ()->
@@ -716,7 +719,7 @@ void LeechCraft::MainWindow::FillTray ()
 	Q_FOREACH (auto o, trayMenus)
 	{
 		const auto& actions = o->GetActions (ActionsEmbedPlace::TrayMenu);
-		IconThemeEngine::Instance ().UpdateIconSet (actions);
+		IconThemeEngine::Instance ().UpdateIconset (actions);
 		iconMenu->addActions (actions);
 		if (actions.size ())
 			iconMenu->addSeparator ();
@@ -745,7 +748,7 @@ void LeechCraft::MainWindow::FillToolMenu ()
 				GetAllCastableTo<IActionsExporter*> ())
 	{
 		const auto& acts = e->GetActions (ActionsEmbedPlace::ToolsMenu);
-		IconThemeEngine::Instance ().UpdateIconSet (acts);
+		IconThemeEngine::Instance ().UpdateIconset (acts);
 		MenuTools_->addActions (acts);
 		if (acts.size ())
 			MenuTools_->addSeparator ();
@@ -798,13 +801,13 @@ void LeechCraft::MainWindow::InitializeShortcuts ()
 			SIGNAL (activated ()),
 			tm,
 			SLOT (rotateLeft ()));
-	sm->RegisterShortcut ("SwitchToLeftTab", {}, leftShortcut, true);
+	sm->RegisterShortcut ("SwitchToLeftTab", {}, leftShortcut);
 	auto rightShortcut = new QShortcut (QKeySequence ("Ctrl+PgDown"), this);
 	connect (rightShortcut,
 			SIGNAL (activated ()),
 			tm,
 			SLOT (rotateRight ()));
-	sm->RegisterShortcut ("SwitchToRightTab", {}, rightShortcut, true);
+	sm->RegisterShortcut ("SwitchToRightTab", {}, rightShortcut);
 
 	connect (new QShortcut (QKeySequence (Qt::CTRL + Qt::Key_T), this),
 			SIGNAL (activated ()),
@@ -812,7 +815,7 @@ void LeechCraft::MainWindow::InitializeShortcuts ()
 			SLOT (handleNewTabShortcutActivated ()));
 
 	auto prevTabSC = new QShortcut (QKeySequence (sysModifier + Qt::Key_Space), this);
-	sm->RegisterShortcut ("SwitchToPrevTab", ActionInfo (), prevTabSC, true);
+	sm->RegisterShortcut ("SwitchToPrevTab", ActionInfo (), prevTabSC);
 	connect (prevTabSC,
 			SIGNAL (activated ()),
 			Ui_.MainTabWidget_,

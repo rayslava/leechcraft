@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -32,6 +32,7 @@
 #include <QToolButton>
 #include <QApplication>
 #include <QStyle>
+#include "interfaces/core/iiconthememanager.h"
 
 namespace LeechCraft
 {
@@ -43,7 +44,7 @@ namespace Util
 	, Edit_ (edit)
 	{
 		const bool isRtl = QApplication::layoutDirection () == Qt::RightToLeft;
-		const auto& icon = proxy->GetIcon (isRtl ?
+		const auto& icon = proxy->GetIconThemeManager ()->GetIcon (isRtl ?
 				"edit-clear-locationbar-ltr" :
 				"edit-clear-locationbar-rtl");
 

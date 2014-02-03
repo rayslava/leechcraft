@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -139,19 +139,7 @@ namespace Xoox
 		if (info.Caps_.contains ("jabber:iq:register"))
 			result << QPair<QByteArray, QString> ("register", tr ("Register..."));
 		if (info.Caps_.contains ("http://jabber.org/protocol/commands"))
-		{
-			bool found = false;
-			Q_FOREACH (const auto& id, info.Identities_)
-				if (id.category () == "automation" &&
-						id.type () == "command-node")
-				{
-					found = true;
-					break;
-				}
-
-			if (found)
-				result << QPair<QByteArray, QString> ("execute-ad-hoc", tr ("Execute..."));
-		}
+			result << QPair<QByteArray, QString> ("execute-ad-hoc", tr ("Execute..."));
 		if (idHasCat ("conference"))
 			result << QPair<QByteArray, QString> ("join-conference", tr ("Join..."));
 
@@ -254,9 +242,18 @@ namespace Xoox
 				targetItem->setText (text);
 		}
 
-		QString tooltip = Qt::escape (targetItem->text ()) + "<br />";
+		auto normalize = [] (QString& text)
+		{
+			text.replace ("\n", "<br />")
+					.remove ("\r")
+					.replace ("\t", "&nbsp;&nbsp;&nbsp;&nbsp;");
+		};
 
-		const QString& mucDescr = GetMUCDescr (iq.form ());
+		QString tooltip = Qt::escape (targetItem->text ()) + "<br />";
+		normalize (tooltip);
+
+		auto mucDescr = GetMUCDescr (iq.form ());
+		normalize (mucDescr);
 		if (!mucDescr.isEmpty ())
 		{
 			tooltip += tr ("MUC description: %1.")
@@ -414,7 +411,9 @@ namespace Xoox
 		if (jid.isEmpty ())
 			return;
 
-		ExecuteCommandDialog *dia = new ExecuteCommandDialog (jid, info.Node_, Account_);
+		auto dia = info.Node_.isEmpty () ?
+				new ExecuteCommandDialog (jid, Account_) :
+				new ExecuteCommandDialog (jid, info.Node_, Account_);
 		dia->show ();
 		connect (dia,
 				SIGNAL (finished (int)),

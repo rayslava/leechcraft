@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -32,6 +32,7 @@
 #include <QUuid>
 #include <QIcon>
 #include <QtDebug>
+#include <util/svcauth/vkcaptchadialog.h>
 #include "vkprotocol.h"
 #include "vkconnection.h"
 #include "vkentry.h"
@@ -43,7 +44,6 @@
 #include "vkchatentry.h"
 #include "logger.h"
 #include "accountconfigdialog.h"
-#include "captchadialog.h"
 
 namespace LeechCraft
 {
@@ -182,17 +182,27 @@ namespace Murm
 
 	void VkAccount::Send (VkEntry *entry, VkMessage *msg)
 	{
+		QPointer<VkMessage> safeMsg { msg };
 		Conn_->SendMessage (entry->GetInfo ().ID_,
 				msg->GetBody (),
-				[msg] (qulonglong id) { msg->SetID (id); },
+				[safeMsg] (qulonglong id)
+				{
+					if (safeMsg)
+						safeMsg->SetID (id);
+				},
 				VkConnection::MessageType::Dialog);
 	}
 
 	void VkAccount::Send (VkChatEntry *entry, VkMessage *msg)
 	{
+		QPointer<VkMessage> safeMsg { msg };
 		Conn_->SendMessage (entry->GetInfo ().ChatID_,
 				msg->GetBody (),
-				[msg] (qulonglong id) { msg->SetID (id); },
+				[safeMsg] (qulonglong id)
+				{
+					if (safeMsg)
+						safeMsg->SetID (id);
+				},
 				VkConnection::MessageType::Chat);
 	}
 
@@ -610,7 +620,8 @@ namespace Murm
 			return;
 		}
 
-		auto dia = new CaptchaDialog (url, cid, CoreProxy_->GetNetworkAccessManager ());
+		auto dia = new Util::SvcAuth::VkCaptchaDialog (url, cid, CoreProxy_->GetNetworkAccessManager ());
+		dia->SetContextName ("Azoth Murm");
 		connect (dia,
 				SIGNAL (gotCaptcha (QString, QString)),
 				this,

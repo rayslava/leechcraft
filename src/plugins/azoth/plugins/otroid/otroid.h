@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -106,8 +106,9 @@ namespace OTRoid
 		QString GetVisibleEntryName (const QString& accId, const QString& entryId);
 
 		void CreatePrivkey (const char*, const char*);
-
 #if OTRL_VERSION_MAJOR >= 4
+		void CreateInstag (const char*, const char*);
+
 		void SetPollTimerInterval (unsigned int seconds);
 #endif
 	private:

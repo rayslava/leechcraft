@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -31,6 +31,7 @@
 #include <QDialog>
 #include <QToolBar>
 #include <QDialogButtonBox>
+#include <QDesktopWidget>
 #include "photostab.h"
 #include "interfaces/blasq/collection.h"
 
@@ -38,7 +39,7 @@ namespace LeechCraft
 {
 namespace Blasq
 {
-	DefaultImageChooser::DefaultImageChooser (AccountsManager *accMgr, const ICoreProxy_ptr& proxy)
+	DefaultImageChooser::DefaultImageChooser (AccountsManager *accMgr, const ICoreProxy_ptr& proxy, const QByteArray& accId)
 	: AccMgr_ (accMgr)
 	, Proxy_ (proxy)
 	, Photos_ (new PhotosTab (accMgr, proxy))
@@ -65,6 +66,9 @@ namespace Blasq
 				SLOT (reject ()));
 		lay->addWidget (buttonBox);
 
+		const auto& geom = qApp->desktop ()->availableGeometry (QCursor::pos ());
+		dialog->resize (geom.size () * 2 / 3);
+
 		dialog->setAttribute (Qt::WA_DeleteOnClose);
 		dialog->show ();
 
@@ -76,6 +80,9 @@ namespace Blasq
 				SIGNAL (rejected ()),
 				this,
 				SLOT (handleReject ()));
+
+		if (!accId.isEmpty ())
+			Photos_->SelectAccount (accId);
 	}
 
 	QObject* DefaultImageChooser::GetQObject ()
@@ -85,26 +92,21 @@ namespace Blasq
 
 	RemoteImageInfos_t DefaultImageChooser::GetInfos () const
 	{
-		if (Selected_.Full_.isValid ())
-			return { Selected_ };
-		else
-			return {};
+		return Selected_;
 	}
 
 	void DefaultImageChooser::handleAccept ()
 	{
-		const auto& index = Photos_->GetSelectedImage ();
-		if (index.isValid ())
-			Selected_ = RemoteImageInfo
-			{
-				index.data (CollectionRole::Original).toUrl (),
-				index.data (CollectionRole::OriginalSize).toSize (),
-				index.data (CollectionRole::MediumThumb).toUrl (),
-				index.data (CollectionRole::MediumThumbSize).toSize (),
-				index.data (CollectionRole::SmallThumb).toUrl (),
-				index.data (CollectionRole::SmallThumbSize).toSize (),
-				index.data (CollectionRole::Name).toString ()
-			};
+		for (const auto& index : Photos_->GetSelectedImages ())
+			Selected_.append ({
+					index.data (CollectionRole::Original).toUrl (),
+					index.data (CollectionRole::OriginalSize).toSize (),
+					index.data (CollectionRole::MediumThumb).toUrl (),
+					index.data (CollectionRole::MediumThumbSize).toSize (),
+					index.data (CollectionRole::SmallThumb).toUrl (),
+					index.data (CollectionRole::SmallThumbSize).toSize (),
+					index.data (CollectionRole::Name).toString ()
+				});
 
 		emit ready ();
 

@@ -29,6 +29,8 @@
 
 #include "blogique.h"
 #include <QIcon>
+#include <QGraphicsEffect>
+#include <QtDeclarative>
 #include <util/util.h>
 #include "accountslistwidget.h"
 #include "blogiquewidget.h"
@@ -62,7 +64,7 @@ namespace Blogique
 			GetInfo (),
 			GetIcon (),
 			50,
-			TabFeatures (TFOpenableByRequest | TFSuggestOpening)
+			TFOpenableByRequest | TFSuggestOpening
 		};
 		TabClasses_ << tabClass;
 
@@ -93,6 +95,8 @@ namespace Blogique
 				SIGNAL (triggered ()),
 				&Core::Instance (),
 				SLOT (exportBlog ()));
+
+		qmlRegisterType<QGraphicsBlurEffect> ("Effects", 1, 0, "Blur");
 	}
 
 	void Plugin::SecondInit ()

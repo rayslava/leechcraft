@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -502,13 +502,23 @@ namespace MTPSync
 			const auto& devName = QString::fromUtf8 (LIBMTP_Get_Manufacturername (device)) + " " +
 					QString::fromUtf8 (LIBMTP_Get_Modelname (device)) + " " +
 					LIBMTP_Get_Friendlyname (device);
+
+
+			int battPercentage = -1;
+			uint8_t maxBattLevel = 0, curBattLevel = 0;
+			if (!LIBMTP_Get_Batterylevel (device, &maxBattLevel, &curBattLevel) && curBattLevel)
+				battPercentage = 100 * curBattLevel / maxBattLevel;
+
+			qDebug () << Q_FUNC_INFO << curBattLevel << maxBattLevel << battPercentage;
+
 			return
 			{
 				LIBMTP_Get_Serialnumber (device),
 				LIBMTP_Get_Manufacturername (device),
 				devName.simplified ().trimmed (),
 				GetPartitions (device),
-				GetSupportedFormats (device)
+				GetSupportedFormats (device),
+				battPercentage
 			};
 		}
 
@@ -604,6 +614,10 @@ namespace MTPSync
 			Subscribe2Devs ();
 			FirstPoll_ = false;
 		}
+
+		QTimer::singleShot (120000,
+				this,
+				SLOT (pollDevices ()));
 	}
 
 	void Plugin::handleRowsInserted (const QModelIndex& parent, int start, int end)

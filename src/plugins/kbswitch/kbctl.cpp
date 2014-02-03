@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -165,6 +165,13 @@ namespace KBSwitch
 		}
 
 		scheduleApply ();
+	}
+
+	void KBCtl::EnableNextGroup ()
+	{
+		const int count = GetEnabledGroups ().count ();
+		const int group = (GetCurrentGroup () + 1) % count;
+		XkbLockGroup (Display_, XkbUseCoreKbd, group);
 	}
 
 	int KBCtl::GetMaxEnabledGroups () const

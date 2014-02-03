@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -128,13 +128,6 @@ namespace Util
 		 * @param[in] successful Whether the search has been successful.
 		 */
 		void SetSuccessful (bool successful);
-
-		/** @brief Sets the focus to the search edit field.
-		 *
-		 * @deprecated This function is deprecated,
-		 * <code>QWidget::setFocus()</code> should be used instead.
-		 */
-		void Focus ();
 
 		/** @brief Returns the current find flags except the direction.
 		 *

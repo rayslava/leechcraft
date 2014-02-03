@@ -107,9 +107,15 @@ set (SRCS
 	radiocustomstation.cpp
 	radiocustomdialog.cpp
 	stdartistactionsmanager.cpp
+	notificationplayer.cpp
+	effectsmanager.cpp
 	engine/audiosource.cpp
+	engine/filterelement.cpp
+	engine/gstutil.cpp
 	engine/output.cpp
 	engine/path.cpp
+	engine/pathelement.cpp
+	engine/rgfilter.cpp
 	engine/sourceobject.cpp
 	sync/cloudwidget.cpp
 	sync/clouduploadmanager.cpp
@@ -127,6 +133,7 @@ set (SRCS
 	sync/unmountabledevmanager.cpp
 	sync/uploadmodel.cpp
 	playlistparsers/commonpl.cpp
+	playlistparsers/playlist.cpp
 	playlistparsers/playlistfactory.cpp
 	playlistparsers/m3u.cpp
 	playlistparsers/pls.cpp
@@ -194,6 +201,7 @@ endif ()
 
 option (ENABLE_LMP_DUMBSYNC "Enable DumbSync, plugin for syncing with Flash-like media players" ON)
 option (ENABLE_LMP_GRAFFITI "Enable Graffiti for manipulating audio file tags" ON)
+option (ENABLE_LMP_JOS "Enable jOS for synchronizing with iOS devices" OFF)
 option (ENABLE_LMP_MP3TUNES "Enable plugin for syncing and using the mp3tunes.com service" ON)
 option (ENABLE_LMP_MTPSYNC "Enable plugin for syncing with MTP devices" OFF)
 
@@ -202,6 +210,9 @@ if (ENABLE_LMP_DUMBSYNC)
 endif ()
 if (ENABLE_LMP_GRAFFITI)
 	add_subdirectory (plugins/graffiti)
+endif ()
+if (ENABLE_LMP_JOS)
+	add_subdirectory (plugins/jos)
 endif ()
 if (ENABLE_LMP_MP3TUNES)
 	add_subdirectory (plugins/mp3tunes)

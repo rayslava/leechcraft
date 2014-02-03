@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -402,13 +402,17 @@ namespace LMP
 	QList<int> LocalCollection::GetDynamicPlaylist (DynamicPlaylist type) const
 	{
 		QList<int> result;
-		const auto& keys = Track2Path_.keys ();
 		switch (type)
 		{
 		case DynamicPlaylist::Random50:
+		{
+			const auto& keys = Track2Path_.keys ();
+			if (keys.isEmpty ())
+				return {};
 			for (int i = 0; i < 50; ++i)
 				result << keys [qrand () % keys.size ()];
 			break;
+		}
 		case DynamicPlaylist::LovedTracks:
 			result = Storage_->GetLovedTracks ();
 			break;

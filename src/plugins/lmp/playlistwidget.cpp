@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -55,6 +55,7 @@
 #include "sortingcriteriadialog.h"
 #include "util.h"
 #include "palettefixerfilter.h"
+#include "engine/sourceobject.h"
 
 namespace LeechCraft
 {
@@ -463,6 +464,7 @@ namespace LMP
 		ActionRemoveSelected_ = new QAction (tr ("Delete from playlist"), Ui_.Playlist_);
 		ActionRemoveSelected_->setProperty ("ActionIcon", "list-remove");
 		ActionRemoveSelected_->setShortcut (Qt::Key_Delete);
+		ActionRemoveSelected_->setShortcutContext (Qt::WidgetShortcut);
 		connect (ActionRemoveSelected_,
 				SIGNAL (triggered ()),
 				this,
@@ -809,7 +811,7 @@ namespace LMP
 			if (sources.contains (allSrcs.at (i)))
 				std::swap (allSrcs [i], allSrcs [i - 1]);
 
-		Player_->ReplaceQueue (allSrcs, false);
+		Player_->Enqueue (allSrcs, Player::EnqueueReplace);
 
 		NextResetSelect_ = sources;
 	}
@@ -821,7 +823,7 @@ namespace LMP
 		Q_FOREACH (const auto& source, sources)
 			allSrcs.removeAll (source);
 
-		Player_->ReplaceQueue (sources + allSrcs, false);
+		Player_->Enqueue (sources + allSrcs, Player::EnqueueReplace);
 		NextResetSelect_ = sources;
 	}
 
@@ -837,7 +839,7 @@ namespace LMP
 			if (sources.contains (allSrcs.at (i)))
 				std::swap (allSrcs [i], allSrcs [i + 1]);
 
-		Player_->ReplaceQueue (allSrcs, false);
+		Player_->Enqueue (allSrcs, Player::EnqueueReplace);
 
 		NextResetSelect_ = sources;
 	}
@@ -849,7 +851,7 @@ namespace LMP
 		Q_FOREACH (const auto& source, sources)
 			allSrcs.removeAll (source);
 
-		Player_->ReplaceQueue (allSrcs + sources, false);
+		Player_->Enqueue (allSrcs + sources, Player::EnqueueReplace);
 		NextResetSelect_ = sources;
 	}
 
@@ -871,7 +873,9 @@ namespace LMP
 						QMessageBox::Yes | QMessageBox::No) != QMessageBox::Yes)
 			return;
 
-		mgr->SaveCustomPlaylist (name, Player_->GetQueue ());
+		Playlist playlist { Player_->GetQueue () };
+		playlist.SetProperty (Player_->GetSourceObject ()->GetCurrentSource (), "Current", true);
+		mgr->SaveCustomPlaylist (name, playlist);
 	}
 
 	void PlaylistWidget::loadFromDisk ()

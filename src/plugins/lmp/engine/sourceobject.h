@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -29,16 +29,20 @@
 
 #pragma once
 
+#include <memory>
 #include <QObject>
 #include <QStringList>
 #include <QMap>
 #include <QMutex>
 #include <QWaitCondition>
 #include "audiosource.h"
+#include "pathelement.h"
 
 typedef struct _GstElement GstElement;
 typedef struct _GstPad GstPad;
 typedef struct _GstMessage GstMessage;
+
+typedef std::shared_ptr<GstMessage> GstMessage_ptr;
 
 namespace LeechCraft
 {
@@ -50,6 +54,7 @@ namespace LMP
 	enum class SourceError
 	{
 		MissingPlugin,
+		SourceNotFound,
 		Other
 	};
 
@@ -62,11 +67,21 @@ namespace LMP
 		Playing
 	};
 
+	enum class Category
+	{
+		Music,
+		Notification
+	};
+
 	class MsgPopThread;
+
+	class Path;
 
 	class SourceObject : public QObject
 	{
 		Q_OBJECT
+
+		friend class Path;
 
 		GstElement *Dec_;
 
@@ -83,6 +98,10 @@ namespace LMP
 		qint64 LastCurrentTime_;
 
 		uint PrevSoupRank_;
+
+		QMutex BusDrainMutex_;
+		QWaitCondition BusDrainWC_;
+		bool IsDrainingMsgs_ = false;
 
 		MsgPopThread *PopThread_;
 	public:
@@ -104,7 +123,7 @@ namespace LMP
 	private:
 		SourceState OldState_;
 	public:
-		SourceObject (QObject* = 0);
+		SourceObject (Category, QObject* = 0);
 		~SourceObject ();
 
 		SourceObject (const SourceObject&) = delete;
@@ -144,9 +163,9 @@ namespace LMP
 		void SetupSource ();
 
 		void AddToPath (Path*);
-		void PostAdd (Path*);
+		void SetSink (GstElement*);
 	private slots:
-		void handleMessage (GstMessage*);
+		void handleMessage (GstMessage_ptr);
 		void updateTotalTime ();
 		void handleTick ();
 	signals:

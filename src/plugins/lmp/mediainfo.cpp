@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -33,6 +33,21 @@ namespace LeechCraft
 {
 namespace LMP
 {
+	MediaInfo::MediaInfo (const QString& localPath,
+			const QString& artist, const QString& album, const QString& title,
+			const QStringList& genres,
+			qint32 length, qint32 year, qint32 trackNumber)
+	: LocalPath_ { localPath }
+	, Artist_ { artist }
+	, Album_ { album }
+	, Title_ { title }
+	, Genres_ { genres }
+	, Length_ { length }
+	, Year_ { year }
+	, TrackNumber_ { trackNumber }
+	{
+	}
+
 	MediaInfo& MediaInfo::operator= (const Media::AudioInfo& info)
 	{
 		Artist_ = info.Artist_;

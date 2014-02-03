@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -33,6 +33,7 @@
 #include "util/util.h"
 #include "interfaces/ihaveshortcuts.h"
 #include "interfaces/core/ientitymanager.h"
+#include "interfaces/core/iiconthememanager.h"
 
 namespace LeechCraft
 {
@@ -50,7 +51,7 @@ namespace Util
 		ContextObj_ = obj;
 	}
 
-	void ShortcutManager::RegisterAction (const QString& id, QAction *act, bool update)
+	void ShortcutManager::RegisterAction (const QString& id, QAction *act)
 	{
 		Actions_ [id] << act;
 		connect (act,
@@ -59,7 +60,7 @@ namespace Util
 				SLOT (handleActionDestroyed ()));
 
 		const QIcon& icon = act->icon ().isNull () ?
-				CoreProxy_->GetIcon (act->property ("ActionIcon").toString ()) :
+				CoreProxy_->GetIconThemeManager ()->GetIcon (act->property ("ActionIcon").toString ()) :
 				act->icon ();
 		RegisterActionInfo (id,
 				{ act->text (), act->shortcuts (), icon });
@@ -69,7 +70,7 @@ namespace Util
 					CoreProxy_->GetShortcutProxy ()->GetShortcuts (ContextObj_, id));
 	}
 
-	void ShortcutManager::RegisterShortcut (const QString& id, const ActionInfo& info, QShortcut* shortcut, bool update)
+	void ShortcutManager::RegisterShortcut (const QString& id, const ActionInfo& info, QShortcut* shortcut)
 	{
 		Shortcuts_ [id] << shortcut;
 		connect (shortcut,

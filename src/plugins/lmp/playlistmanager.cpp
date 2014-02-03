@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -180,7 +180,7 @@ namespace LMP
 		switch (index.data (Roles::PlaylistType).toInt ())
 		{
 		case PlaylistTypes::Static:
-			return Static_->GetCustomPlaylist (index.data ().toString ());
+			return { Static_->GetCustomPlaylistPath (index.data ().toString ()) };
 		case PlaylistTypes::Random50:
 			return toSrcs (col->GetDynamicPlaylist (LocalCollection::DynamicPlaylist::Random50));
 		case PlaylistTypes::LovedTracks:

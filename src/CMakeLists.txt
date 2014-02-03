@@ -185,6 +185,7 @@ option (ENABLE_QROSP "Build Qrosp, the scripting support plugin" OFF)
 # New
 option (ENABLE_BLASQ "Build Blasq, client for cloud image storages like Picasa or Flickr" ${WITH_PLUGINS})
 option (ENABLE_BLOGIQUE "Build Blogique, LeechCraft blogging client" ${WITH_PLUGINS})
+option (ENABLE_CPULOAD "Build CpuLoad for, well, monitoring the CPU load" ${WITH_PLUGINS})
 option (ENABLE_DEVMON "Build Devmon, the devices monitor plugin" ${WITH_PLUGINS})
 option (ENABLE_DLNIWE "Build DLNiwe, the DLNA server plugin" OFF)
 option (ENABLE_DOLOZHEE "Build Dolozhee, the feature request and bug reporter" ${WITH_PLUGINS})
@@ -210,6 +211,7 @@ option (ENABLE_NACHEKU "Build Nacheku, clipboard/download dir watcher" ${WITH_PL
 option (ENABLE_NETSTOREMANAGER "Build NetStoreManager for managing network data storages like Yandex.Disk" ${WITH_PLUGINS})
 option (ENABLE_OTLOZHU "Build Otlozhu, a GTD-inspired ToDo manager" ${WITH_PLUGINS})
 option (ENABLE_POLEEMERY "Build Poleemery, the personal finances manager" ${WITH_PLUGINS})
+option (ENABLE_ROSENTHAL "Build Rosenthal, the Hunspell-based spell checker service plugin" ${WITH_PLUGINS})
 option (ENABLE_SB2 "Build SB2, next-gen fluid sidebar" ${WITH_PLUGINS})
 option (ENABLE_SCROBLIBRE "Build ScrobLibre, multiaccount Scrobbler API 1.2 scrobbler" ${WITH_PLUGINS})
 cmake_dependent_option (ENABLE_SHAITAN "Build Shaitan, Embedded terminal emulator" ${WITH_PLUGINS} "NOT WIN32" OFF)
@@ -449,6 +451,10 @@ if (ENABLE_POLEEMERY)
 	add_subdirectory (plugins/poleemery)
 endif ()
 
+if (ENABLE_ROSENTHAL)
+	add_subdirectory (plugins/rosenthal)
+endif ()
+
 if (ENABLE_SB2)
 	add_subdirectory (plugins/sb2)
 endif ()
@@ -515,6 +521,10 @@ endif ()
 
 if (ENABLE_CEMENTO)
 	add_subdirectory (plugins/cemento)
+endif ()
+
+if (ENABLE_CPULOAD)
+	add_subdirectory (plugins/cpuload)
 endif ()
 
 if (ENABLE_DEVMON)

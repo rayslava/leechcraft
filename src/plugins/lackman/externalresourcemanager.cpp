@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -107,8 +107,6 @@ namespace LackMan
 				this,
 				SLOT (handleResourceError (int, IDownload::Error)),
 				Qt::UniqueConnection);
-
-		return;
 	}
 
 	QString ExternalResourceManager::GetResourcePath (const QUrl& url) const

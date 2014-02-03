@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -39,11 +39,27 @@ namespace LMP
 {
 	class SourceObject;
 	class Output;
+	struct CallbackData;
 
 	class Path : public QObject
 	{
+		SourceObject * const SrcObj_;
+
+		GstElement * const WholeBin_;
+		GstElement * const Identity_;
+
 		GstElement *Pipeline_;
-		GstElement *Audiobin_;
+		GstElement *OutputBin_;
+
+		QList<GstElement*> NextWholeElems_;
+
+		enum class Action
+		{
+			Add,
+			Remove
+		};
+
+		friend struct CallbackData;
 	public:
 		Path (SourceObject*, Output*, QObject* = 0);
 		~Path ();
@@ -51,8 +67,20 @@ namespace LMP
 		GstElement* GetPipeline () const;
 		void SetPipeline (GstElement*);
 
-		GstElement* GetAudioBin () const;
-		void SetAudioBin (GstElement*);
+		GstElement* GetOutPlaceholder () const;
+		GstElement* GetWholeOut () const;
+
+		GstElement* GetOutputBin () const;
+		void SetOutputBin (GstElement*);
+
+		SourceObject* GetSourceObject () const;
+
+		void InsertElement (GstElement*);
+		void RemoveElement (GstElement*);
+
+		void FinalizeAction (CallbackData*);
+	private:
+		void Perform (GstElement*, Action);
 	};
 }
 }

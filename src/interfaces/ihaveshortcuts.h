@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -58,10 +58,18 @@ namespace LeechCraft
 		/// Icon of the action.
 		QIcon Icon_;
 
+		/** @brief Default-constructs an action info.
+		 */
 		ActionInfo ()
 		{
 		}
 
+		/** @brief Constructs an action info.
+		 *
+		 * Constructs an info object for the given user-visible text
+		 * \em uvt, default key sequence \em seq and action icon
+		 * \em icon.
+		 */
 		ActionInfo (const QString& uvt,
 				const QKeySequence& seq,
 				const QIcon& icon)
@@ -71,6 +79,12 @@ namespace LeechCraft
 			Seqs_ << seq;
 		}
 
+		/** @brief Constructs an action info.
+		 *
+		 * Constructs an info object for the given user-visible text
+		 * \em uvt, default key sequence list \em seqs and action icon
+		 * \em icon.
+		 */
 		ActionInfo (const QString& uvt,
 				const QKeySequences_t& seqs,
 				const QIcon& icon)

@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -67,8 +67,8 @@
 #include <QLabel>
 #include <QXmlStreamWriter>
 #include <util/util.h>
-#include <util/defaulthookproxy.h>
-#include <util/notificationactionhandler.h>
+#include <util/xpc/defaulthookproxy.h>
+#include <util/xpc/notificationactionhandler.h>
 #include <interfaces/core/icoreproxy.h>
 #include "core.h"
 #include "historymodel.h"
@@ -1076,7 +1076,7 @@ namespace Poshuku
 		if (act)
 			FindDialog_->SetText (act->data ().toString ());
 		FindDialog_->show ();
-		FindDialog_->Focus ();
+		FindDialog_->setFocus ();
 	}
 
 	void BrowserWidget::handleFindNext ()

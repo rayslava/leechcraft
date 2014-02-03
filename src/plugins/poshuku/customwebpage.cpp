@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2006-2013  Georg Rudoy
+ * Copyright (C) 2006-2014  Georg Rudoy
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -40,7 +40,7 @@
 #include <qwebelement.h>
 #include <qwebhistory.h>
 #include <util/util.h>
-#include <util/defaulthookproxy.h>
+#include <util/xpc/defaulthookproxy.h>
 #include <interfaces/core/icoreproxy.h>
 #include <interfaces/core/ientitymanager.h>
 #include "xmlsettingsmanager.h"
@@ -396,16 +396,17 @@ namespace Poshuku
 
 		const auto& url = reply->url ();
 		const auto& mime = reply->header (QNetworkRequest::ContentTypeHeader).toString ();
+		const auto& referer = reply->request ().rawHeader ("Referer");
 
-		qDebug () << Q_FUNC_INFO << reply->url () << reply->errorString ();
-
-		auto sendEnt = [reply, mime, url, this] () -> void
+		auto sendEnt = [reply, mime, referer, this] () -> void
 		{
-			auto e = Util::MakeEntity (url,
+			auto e = Util::MakeEntity (reply->url (),
 					{},
 					LeechCraft::FromUserInitiated,
 					mime);
 			e.Additional_ ["IgnorePlugins"] = "org.LeechCraft.Poshuku";
+			e.Additional_ ["Referer"] = QUrl::fromEncoded (referer);
+			e.Additional_ ["Operation"] = reply->operation ();
 			emit gotEntity (e);
 
 			if (XmlSettingsManager::Instance ()->

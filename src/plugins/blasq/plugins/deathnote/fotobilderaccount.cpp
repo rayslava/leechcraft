@@ -40,7 +40,7 @@
 #include <QXmlQuery>
 #include <interfaces/core/irootwindowsmanager.h>
 #include <interfaces/core/ientitymanager.h>
-#include <util/passutils.h>
+#include <util/xpc/passutils.h>
 #include <util/util.h>
 #include "albumsettingsdialog.h"
 #include "fotobilderservice.h"
@@ -893,10 +893,14 @@ namespace DeathNote
 		if (IsErrorReply (content))
 			return;
 
+		const auto& item = Reply2UploadItem_.take (reply);
+
 		auto pic = ParseUploadedPictureResponse (document);
-		pic.Title_ = QFileInfo (Reply2UploadItem_.take (reply).FilePath_).fileName ();
+		pic.Title_ = QFileInfo (item.FilePath_).fileName ();
 		AllPhotosItem_->appendRow (CreatePhotoItem (pic));
 		emit doneUpdating ();
+
+		emit itemUploaded (item, pic.Url_);
 	}
 
 	void FotoBilderAccount::handleUploadPrepareFinished ()
