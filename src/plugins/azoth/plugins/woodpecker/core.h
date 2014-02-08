@@ -35,6 +35,7 @@
 #include <interfaces/structures.h>
 #include <interfaces/ihavetabs.h>
 #include <interfaces/core/icoreproxy.h>
+#include "woodpecker.h"
 #include "twitterpage.h"
 
 namespace LeechCraft
