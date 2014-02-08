@@ -56,6 +56,7 @@
 #include "util.h"
 #include "palettefixerfilter.h"
 #include "engine/sourceobject.h"
+#include <interfaces/core/iiconthememanager.h>
 
 namespace LeechCraft
 {
@@ -341,7 +342,8 @@ namespace LMP
 	void PlaylistWidget::SetPlayModeButton ()
 	{
 		auto playButton = new QToolButton;
-		playButton->setIcon (Core::Instance ().GetProxy ()->GetIcon ("view-media-playlist"));
+		playButton->setIcon (Core::Instance ().GetProxy ()->
+					GetIconThemeManager ()->GetIcon ("view-media-playlist"));
 		playButton->setPopupMode (QToolButton::InstantPopup);
 		QMenu *playMode = new QMenu (tr ("Play mode"));
 		playButton->setMenu (playMode);
@@ -386,7 +388,8 @@ namespace LMP
 	void PlaylistWidget::SetSortOrderButton ()
 	{
 		auto sortButton = new QToolButton;
-		sortButton->setIcon (Core::Instance ().GetProxy ()->GetIcon ("view-sort-ascending"));
+		sortButton->setIcon (Core::Instance ().GetProxy ()->
+					GetIconThemeManager ()->GetIcon ("view-sort-ascending"));
 		sortButton->setPopupMode (QToolButton::InstantPopup);
 
 		auto menu = new QMenu (tr ("Sorting"));
@@ -464,6 +467,7 @@ namespace LMP
 		ActionRemoveSelected_ = new QAction (tr ("Delete from playlist"), Ui_.Playlist_);
 		ActionRemoveSelected_->setProperty ("ActionIcon", "list-remove");
 		ActionRemoveSelected_->setShortcut (Qt::Key_Delete);
+		ActionRemoveSelected_->setShortcutContext (Qt::WidgetShortcut);
 		connect (ActionRemoveSelected_,
 				SIGNAL (triggered ()),
 				this,

@@ -29,6 +29,7 @@
 
 #include "entrybase.h"
 #include <util/util.h>
+#include <interfaces/core/iiconthememanager.h>
 #include <interfaces/azoth/azothutil.h>
 #include "vkaccount.h"
 #include "vkmessage.h"
@@ -128,7 +129,7 @@ namespace Murm
 
 			auto addImage = [&proxy, &result] (const QString& icon, const QString& name) -> void
 			{
-				const auto& px = proxy->GetIcon (icon).pixmap (16, 16);
+				const auto& px = proxy->GetIconThemeManager ()->GetIcon (icon).pixmap (16, 16);
 				const auto& data = LeechCraft::Util::GetAsBase64Src (px.toImage ());
 				result += "<img src='" + data + "' width='16' height='16' alt='" + name + "' title='" + name + "' />";
 			};
@@ -299,7 +300,7 @@ namespace Murm
 						replacement += "<div style='text-align:right'>";
 						replacement += tr ("Posted on: %1")
 								.arg (repost.PostDate_.toString ());
-						replacement += "<br/";
+						replacement += "<br/>";
 						replacement += tr ("%n like(s)", 0, repost.Likes_);
 						replacement += "; ";
 						replacement += tr ("%n repost(s)", 0, repost.Reposts_);

@@ -51,9 +51,9 @@ namespace Blasq
 
 		PhotosTab * const Photos_;
 
-		RemoteImageInfo Selected_;
+		RemoteImageInfos_t Selected_;
 	public:
-		DefaultImageChooser (AccountsManager*, const ICoreProxy_ptr&);
+		DefaultImageChooser (AccountsManager*, const ICoreProxy_ptr&, const QByteArray& = {});
 
 		QObject* GetQObject ();
 		RemoteImageInfos_t GetInfos () const;

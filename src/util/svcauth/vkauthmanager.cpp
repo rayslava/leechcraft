@@ -32,6 +32,7 @@
 #include <QNetworkReply>
 #include <QtDebug>
 #include <QTimer>
+#include <QEvent>
 #include <QWebView>
 #include <util/network/customcookiejar.h>
 #include <util/queuemanager.h>
@@ -81,6 +82,13 @@ namespace SvcAuth
 
 	void VkAuthManager::GetAuthKey ()
 	{
+		if (SilentMode_)
+		{
+			PrioManagedQueues_.clear ();
+			ManagedQueues_.clear ();
+			return;
+		}
+
 		if (Token_.isEmpty () ||
 				ReceivedAt_.secsTo (QDateTime::currentDateTime ()) > ValidFor_)
 		{
@@ -124,6 +132,11 @@ namespace SvcAuth
 	void VkAuthManager::UnmanageQueue (VkAuthManager::PrioRequestQueue_ptr queue)
 	{
 		PrioManagedQueues_.removeAll (queue);
+	}
+
+	void VkAuthManager::SetSilentMode (bool silent)
+	{
+		SilentMode_ = silent;
 	}
 
 	void VkAuthManager::InvokeQueues (const QString& token)
@@ -197,6 +210,28 @@ namespace SvcAuth
 		ValidFor_ = 0;
 	}
 
+	namespace
+	{
+		class CloseEventFilter : public QObject
+		{
+			const std::function<void ()> Handler_;
+		public:
+			CloseEventFilter (const std::function<void ()>& handler, QObject *handlee)
+			: QObject { handlee }
+			, Handler_ { handler }
+			{
+				handlee->installEventFilter (this);
+			}
+
+			bool eventFilter (QObject*, QEvent *event)
+			{
+				if (event->type () == QEvent::Close)
+					Handler_ ();
+				return false;
+			}
+		};
+	}
+
 	void VkAuthManager::reauth ()
 	{
 		auto view = new QWebView;
@@ -213,6 +248,8 @@ namespace SvcAuth
 				SIGNAL (urlChanged (QUrl)),
 				this,
 				SLOT (handleViewUrlChanged (QUrl)));
+
+		new CloseEventFilter ([this] { emit authCanceled (); }, view);
 	}
 
 	void VkAuthManager::execScheduledRequest ()

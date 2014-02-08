@@ -27,38 +27,51 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#pragma once
-
-#include <memory>
-#include <QObject>
-#include "hunspell/hunspell.hxx"
-
-class QTextCodec;
+#include "imagecollectiondialog.h"
+#include <map>
+#include <functional>
+#include <QtDebug>
+#include "imageinfosmodel.h"
 
 namespace LeechCraft
 {
-namespace Azoth
+namespace LHTR
 {
-namespace Rosenthal
-{
-	class KnownDictsManager;
-
-	class Checker : public QObject
+	ImageCollectionDialog::ImageCollectionDialog (const RemoteImageInfos_t& infos, ICoreProxy_ptr proxy, QWidget *parent)
+	: QDialog { parent }
+	, Infos_ { infos }
 	{
-		Q_OBJECT
+		Ui_.setupUi (this);
 
-		std::unique_ptr<Hunspell> Hunspell_;
-		QTextCodec *Codec_ = nullptr;
+		auto model = new ImageInfosModel (Infos_, proxy, this);
+		Ui_.Images_->setModel (model);
+	}
 
-		const KnownDictsManager * const KnownMgr_;
-	public:
-		Checker (const KnownDictsManager*, QObject* = 0);
+	RemoteImageInfos_t ImageCollectionDialog::GetInfos () const
+	{
+		return Infos_;
+	}
 
-		QStringList GetPropositions (const QString&) const;
-		bool IsCorrect (const QString&) const;
-	public slots:
-		void setLanguages (const QStringList&);
-	};
-}
+	ImageCollectionDialog::Position ImageCollectionDialog::GetPosition () const
+	{
+		switch (Ui_.Position_->currentIndex ())
+		{
+		case 0:
+			return Position::Center;
+		case 1:
+			return Position::Left;
+		case 2:
+			return Position::Right;
+		case 3:
+			return Position::LeftWrap;
+		case 4:
+			return Position::RightWrap;
+		}
+
+		qWarning () << Q_FUNC_INFO
+				<< "unknown position"
+				<< Ui_.Position_->currentIndex ();
+		return Position::Center;
+	}
 }
 }

@@ -36,6 +36,7 @@
 #include <QtDebug>
 #include <interfaces/iinfo.h>
 #include <interfaces/ihaveshortcuts.h>
+#include <interfaces/core/iiconthememanager.h>
 #include "keysequencer.h"
 #include "coreproxy.h"
 
@@ -75,7 +76,7 @@ namespace LeechCraft
 	, Filter_ (new SMFilterProxyModel (this))
 	{
 		Filter_->setDynamicSortFilter (true);
-		Model_->setHorizontalHeaderLabels (QStringList (tr ("Name")) << tr ("Shortcut") << tr ("Alternate"));
+		Model_->setHorizontalHeaderLabels ({ tr ("Name"), tr ("Shortcut"), tr ("Alternate") });
 		Filter_->setSourceModel (Model_);
 		Filter_->sort (0);
 
@@ -156,7 +157,7 @@ namespace LeechCraft
 
 			auto icon = info [name].Icon_;
 			if (icon.isNull ())
-				icon = CoreProxy ().GetIcon ("configure-shortcuts");
+				icon = CoreProxy ().GetIconThemeManager ()->GetIcon ("configure-shortcuts");
 			first->setIcon (icon);
 
 			first->setData (name, Roles::OriginalName);

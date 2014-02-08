@@ -27,36 +27,40 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#include "xmlsettingsmanager.h"
-#include <QCoreApplication>
+#pragma once
+
+#include <atomic>
+#include <QObject>
+#include <QFileInfo>
+#include <interfaces/lmp/ilmpplugin.h>
 
 namespace LeechCraft
 {
-namespace Azoth
+namespace LMP
 {
-namespace Rosenthal
+namespace Graffiti
 {
-	XmlSettingsManager::XmlSettingsManager ()
+	class RecIterator : public QObject
 	{
-		Util::BaseSettingsManager::Init ();
-	}
+		Q_OBJECT
 
-	XmlSettingsManager& XmlSettingsManager::Instance ()
-	{
-		static XmlSettingsManager xsm;
-		return xsm;
-	}
+		const ILMPProxy_ptr LMPProxy_;
+		std::atomic<bool> StopFlag_;
 
-	void XmlSettingsManager::EndSettings (QSettings*) const
-	{
-	}
+		QList<QFileInfo> Result_;
+	public:
+		RecIterator (ILMPProxy_ptr, QObject* = 0);
 
-	QSettings* XmlSettingsManager::BeginSettings () const
-	{
-		QSettings *settings = new QSettings (QCoreApplication::organizationName (),
-				QCoreApplication::applicationName () + "_Azoth_Rosenthal");
-		return settings;
-	}
+		void Start (const QString&);
+		QList<QFileInfo> GetResult () const;
+	public slots:
+		void cancel ();
+	private slots:
+		void handleImplFinished ();
+	signals:
+		void finished ();
+		void canceled ();
+	};
 }
 }
 }

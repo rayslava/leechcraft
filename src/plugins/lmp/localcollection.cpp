@@ -38,6 +38,7 @@
 #include <QtConcurrentRun>
 #include <QTimer>
 #include <QtDebug>
+#include <interfaces/core/iiconthememanager.h>
 #include <util/util.h>
 #include "localcollectionstorage.h"
 #include "core.h"
@@ -147,7 +148,8 @@ namespace LMP
 
 	void LocalCollection::FinalizeInit ()
 	{
-		ArtistIcon_ = Core::Instance ().GetProxy ()->GetIcon ("view-media-artist");
+		ArtistIcon_ = Core::Instance ().GetProxy ()->
+				GetIconThemeManager ()->GetIcon ("view-media-artist");
 	}
 
 	bool LocalCollection::IsReady () const
@@ -402,13 +404,17 @@ namespace LMP
 	QList<int> LocalCollection::GetDynamicPlaylist (DynamicPlaylist type) const
 	{
 		QList<int> result;
-		const auto& keys = Track2Path_.keys ();
 		switch (type)
 		{
 		case DynamicPlaylist::Random50:
+		{
+			const auto& keys = Track2Path_.keys ();
+			if (keys.isEmpty ())
+				return {};
 			for (int i = 0; i < 50; ++i)
 				result << keys [qrand () % keys.size ()];
 			break;
+		}
 		case DynamicPlaylist::LovedTracks:
 			result = Storage_->GetLovedTracks ();
 			break;

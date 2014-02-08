@@ -218,9 +218,11 @@ namespace Azoth
 		if (!XmlSettingsManager::Instance ().property ("OpenTabOnNewMsg").toBool ())
 			return;
 
-		if (msg->GetMessageType () == IMessage::MTChatMessage)
+		if (msg->GetMessageType () == IMessage::MTChatMessage ||
+				(msg->GetMessageType () == IMessage::MTMUCMessage &&
+					Core::Instance ().IsHighlightMessage (msg)))
 		{
-			auto entry = qobject_cast<ICLEntry*> (msg->OtherPart ());
+			auto entry = qobject_cast<ICLEntry*> (msg->ParentCLEntry ());
 			if (!Entry2Tab_.contains (entry->GetEntryID ()))
 				OpenChat (entry, false);
 		}

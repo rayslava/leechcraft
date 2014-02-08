@@ -73,6 +73,11 @@ namespace Rappor
 				SIGNAL (gotAuthKey (QString)),
 				this,
 				SLOT (handleAuthKey (QString)));
+
+		connect (UploadManager_,
+				SIGNAL (itemUploaded (UploadItem, QUrl)),
+				this,
+				SIGNAL (itemUploaded (UploadItem, QUrl)));
 	}
 
 	QByteArray VkAccount::Serialize () const

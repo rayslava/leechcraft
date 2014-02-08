@@ -30,50 +30,31 @@
 #pragma once
 
 #include <QObject>
-#include <QStringList>
-#include <QMap>
-
-class QAbstractItemModel;
-class QStandardItemModel;
-class QStringListModel;
-class QStandardItem;
+#include <interfaces/iinfo.h>
+#include <interfaces/iquarkcomponentprovider.h>
 
 namespace LeechCraft
 {
-namespace Azoth
+namespace CpuLoad
 {
-namespace Rosenthal
-{
-	class KnownDictsManager : public QObject
+	class Plugin : public QObject
+				 , public IInfo
+				 , public IQuarkComponentProvider
 	{
 		Q_OBJECT
+		Q_INTERFACES (IInfo IQuarkComponentProvider)
 
-		const QString LocalPath_;
-
-		QStandardItemModel * const Model_;
-		QStringList Languages_;
-		QMap<QString, QString> Lang2Path_;
-
-		QStringListModel * const EnabledModel_;
+		QuarkComponent_ptr CpuQuark_;
 	public:
-		KnownDictsManager ();
+		void Init (ICoreProxy_ptr);
+		void SecondInit ();
+		QByteArray GetUniqueID () const;
+		void Release ();
+		QString GetName () const;
+		QString GetInfo () const;
+		QIcon GetIcon () const;
 
-		QAbstractItemModel* GetModel () const;
-		QStringList GetLanguages () const;
-		QString GetDictPath (const QString& language) const;
-
-		QAbstractItemModel* GetEnabledModel () const;
-	private:
-		void LoadSettings ();
-		void SaveSettings ();
-	private slots:
-		void rebuildDictsModel ();
-
-		void handleItemChanged (QStandardItem*);
-		void reemitLanguages ();
-	signals:
-		void languagesChanged (const QStringList&);
+		QuarkComponents_t GetComponents () const;
 	};
-}
 }
 }

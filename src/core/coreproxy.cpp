@@ -73,14 +73,9 @@ namespace LeechCraft
 		return Core::Instance ().GetRootWindowsManager ();
 	}
 
-	QIcon CoreProxy::GetIcon (const QString& icon, const QString& iconOff) const
+	IIconThemeManager* CoreProxy::GetIconThemeManager() const
 	{
-		return IconThemeEngine::Instance ().GetIcon (icon, iconOff);
-	}
-
-	void CoreProxy::UpdateIconset (const QList<QAction*>& actions) const
-	{
-		IconThemeEngine::Instance ().UpdateIconSet (actions);
+		return &IconThemeEngine::Instance ();
 	}
 
 	IColorThemeManager* CoreProxy::GetColorThemeManager () const
@@ -139,7 +134,7 @@ namespace LeechCraft
 
 	void CoreProxy::RegisterSkinnable (QAction *act)
 	{
-		IconThemeEngine::Instance ().UpdateIconSet (QList<QAction*> () << act);
+		IconThemeEngine::Instance ().UpdateIconset (QList<QAction*> () << act);
 	}
 
 	bool CoreProxy::IsShuttingDown ()

@@ -29,50 +29,49 @@
 
 #pragma once
 
-#include <QObject>
-#include <QIcon>
-#include <interfaces/iinfo.h>
-#include <interfaces/structures.h>
-#include <interfaces/ihavetabs.h>
+#include <QAbstractItemModel>
+#include <QStringList>
+#include <interfaces/data/iimgsource.h>
+#include <interfaces/core/icoreproxy.h>
 
 namespace LeechCraft
 {
-namespace Popishu
+namespace LHTR
 {
-	class EditorPage;
-
-	class Core : public QObject
+	class ImageInfosModel : public QAbstractItemModel
 	{
 		Q_OBJECT
 
-		ICoreProxy_ptr Proxy_;
-		TabClassInfo TabClass_;
+		const ICoreProxy_ptr Proxy_;
+		RemoteImageInfos_t& Infos_;
+		const QStringList Columns_;
 
-		Core ();
+		QVector<QImage> Images_;
+		mutable QMap<QNetworkReply*, int> Reply2Image_;
+
+		enum Column
+		{
+			CImage,
+			CSize,
+			CAlt
+		};
 	public:
-		static Core& Instance ();
-		TabClassInfo GetTabClass () const;
+		ImageInfosModel (RemoteImageInfos_t& infos, ICoreProxy_ptr, QObject *parent);
 
-		void SetProxy (ICoreProxy_ptr);
-		ICoreProxy_ptr GetProxy () const;
+		QModelIndex index (int row, int column, const QModelIndex& parent = QModelIndex()) const;
+		QModelIndex parent (const QModelIndex& child) const;
+		int rowCount (const QModelIndex& parent = QModelIndex()) const;
+		int columnCount (const QModelIndex& parent = QModelIndex()) const;
 
-		EditorPage* NewTabRequested ();
-		void Handle (const Entity&);
+		QVariant headerData (int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const;
+
+		Qt::ItemFlags flags (const QModelIndex& index) const;
+		QVariant data (const QModelIndex& index, int role = Qt::DisplayRole) const;
+		bool setData (const QModelIndex& index, const QVariant& value, int role = Qt::EditRole);
 	private:
-		EditorPage* MakeEditorPage ();
-	signals:
-		void addNewTab (const QString&, QWidget*);
-		void removeTab (QWidget*);
-		void changeTabName (QWidget*, const QString&);
-		void changeTabIcon (QWidget*, const QIcon&);
-		void changeTooltip (QWidget*, QWidget*);
-		void statusBarChanged (QWidget*, const QString&);
-		void raiseTab (QWidget*);
-		void delegateEntity (const LeechCraft::Entity&,
-				int*, QObject**);
-		void gotEntity (const LeechCraft::Entity&);
-
-		void couldHandle (const LeechCraft::Entity&, bool*);
+		void FetchImage (int) const;
+	private slots:
+		void handleImageFetched ();
 	};
 }
 }

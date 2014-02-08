@@ -46,6 +46,7 @@
 #include <util/xpc/util.h>
 #include <interfaces/core/icoreproxy.h>
 #include <interfaces/core/ientitymanager.h>
+#include <interfaces/core/iiconthememanager.h>
 #include <interfaces/an/constants.h>
 #include "interfaces/azoth/iclentry.h"
 #include "interfaces/azoth/imucperms.h"
@@ -379,10 +380,9 @@ namespace Azoth
 				return;
 			}
 
-			if (XmlSettingsManager::Instance ().property ("CloseConfOnLeave").toBool ())
-			{
-				Core::Instance ().GetChatTabsManager ()->CloseChat (entry);
-				Q_FOREACH (QObject *partObj, mucEntry->GetParticipants ())
+			const bool closeTabs = XmlSettingsManager::Instance ().property ("CloseConfOnLeave").toBool ();
+			if (closeTabs)
+				for (auto partObj : mucEntry->GetParticipants ())
 				{
 					ICLEntry *partEntry = qobject_cast<ICLEntry*> (partObj);
 					if (!partEntry)
@@ -396,9 +396,11 @@ namespace Azoth
 
 					Core::Instance ().GetChatTabsManager ()->CloseChat (partEntry);
 				}
-			}
 
 			mucEntry->Leave ();
+
+			if (closeTabs)
+				Core::Instance ().GetChatTabsManager ()->CloseChat (entry);
 		}
 
 		void Reconnect (ICLEntry *entry)
@@ -701,7 +703,7 @@ namespace Azoth
 
 		result.removeAll (0);
 
-		Core::Instance ().GetProxy ()->UpdateIconset (result);
+		Core::Instance ().GetProxy ()->GetIconThemeManager ()->UpdateIconset (result);
 
 		return result;
 	}
@@ -811,7 +813,7 @@ namespace Azoth
 
 		setter (AfterRolesNames);
 
-		Core::Instance ().GetProxy ()->UpdateIconset (result);
+		Core::Instance ().GetProxy ()->GetIconThemeManager ()->UpdateIconset (result);
 
 		return result;
 	}

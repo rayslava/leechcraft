@@ -40,6 +40,7 @@
 #include <util/queuemanager.h>
 #include <interfaces/media/iradiostationprovider.h>
 #include <interfaces/media/audiostructs.h>
+#include <interfaces/core/iiconthememanager.h>
 
 namespace LeechCraft
 {
@@ -130,6 +131,7 @@ namespace TouchStreams
 				{
 					if (auto rc = AlbumsRootItem_->rowCount ())
 						AlbumsRootItem_->removeRows (0, rc);
+					Albums_.clear ();
 					refetchAlbums ();
 					return item;
 				}
@@ -156,7 +158,7 @@ namespace TouchStreams
 			AlbumsRootItem_->removeRows (0, rc);
 		Albums_.clear ();
 
-		const auto& icon = Proxy_->GetIcon ("media-optical");
+		const auto& icon = Proxy_->GetIconThemeManager ()->GetIcon ("media-optical");
 
 		auto allItem = new QStandardItem (tr ("Uncategorized"));
 		allItem->setEditable (false);

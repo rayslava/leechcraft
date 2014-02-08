@@ -82,6 +82,11 @@ namespace Murm
 		IsRead_ = true;
 	}
 
+	QString VkMessage::GetRawBody () const
+	{
+		return Body_;
+	}
+
 	IMessage::Direction VkMessage::GetDirection () const
 	{
 		return Dir_;
@@ -114,7 +119,9 @@ namespace Murm
 
 	QString VkMessage::GetBody () const
 	{
-		return Body_;
+		auto result = Body_;
+		result.replace ('<', "&lt;");
+		return result;
 	}
 
 	void VkMessage::SetBody (const QString& body)

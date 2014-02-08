@@ -35,6 +35,7 @@
 #include <QDir>
 #include <QHash>
 #include <QIcon>
+#include "../interfaces/core/iiconthememanager.h"
 
 class QIcon;
 class QAction;
@@ -45,8 +46,10 @@ class QFile;
 namespace LeechCraft
 {
 	class IconThemeEngine : public QObject
+						  , public IIconThemeManager
 	{
 		Q_OBJECT
+		Q_INTERFACES (IIconThemeManager)
 
 		QString OldIconSet_;
 		QStringList IconSets_;
@@ -58,9 +61,12 @@ namespace LeechCraft
 		static IconThemeEngine& Instance ();
 
 		QIcon GetIcon (const QString&, const QString&) const;
-		void UpdateIconSet (const QList<QAction*>&);
-		void UpdateIconSet (const QList<QPushButton*>&);
-		void UpdateIconSet (const QList<QTabWidget*>&);
+		void UpdateIconset (const QList<QAction*>&);
+		void UpdateIconset (const QList<QPushButton*>&);
+		void UpdateIconset (const QList<QTabWidget*>&);
+
+		void ManageWidget (QWidget*);
+
 		QStringList ListIcons () const;
 	protected:
 		bool eventFilter (QObject*, QEvent*);

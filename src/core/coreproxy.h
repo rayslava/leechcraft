@@ -57,8 +57,7 @@ namespace LeechCraft
 
 		IRootWindowsManager* GetRootWindowsManager () const;
 
-		QIcon GetIcon (const QString&, const QString& = QString ()) const;
-		void UpdateIconset (const QList<QAction*>&) const;
+		IIconThemeManager* GetIconThemeManager () const;
 
 		IColorThemeManager* GetColorThemeManager () const;
 

@@ -66,6 +66,10 @@ namespace Blasq
 		void SetSelectedCollection (const QModelIndex&);
 
 		QList<UploadItem> GetSelectedFiles () const;
+		void SetFiles (const QList<UploadItem>&);
+		void LockFiles ();
+	private:
+		void AppendPhotoItem (const UploadItem&);
 	private slots:
 		void on_SelectAlbumButton__released ();
 

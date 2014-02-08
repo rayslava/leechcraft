@@ -40,6 +40,7 @@
 #include <QTimer>
 #include <QtDebug>
 #include "xmlsettingsmanager.h"
+#include "childactioneventfilter.h"
 #include "util/util.h"
 
 using namespace LeechCraft;
@@ -101,14 +102,14 @@ QIcon IconThemeEngine::GetIcon (const QString& actionIcon, const QString& action
 	return QIcon ();
 }
 
-void IconThemeEngine::UpdateIconSet (const QList<QAction*>& actions)
+void IconThemeEngine::UpdateIconset (const QList<QAction*>& actions)
 {
 	FindIcons ();
 
 	for (auto action : actions)
 	{
 		if (action->menu ())
-			UpdateIconSet (action->menu ()->actions ());
+			UpdateIconset (action->menu ()->actions ());
 
 		if (action->property ("WatchActionIconChange").toBool ())
 			action->installEventFilter (this);
@@ -120,7 +121,7 @@ void IconThemeEngine::UpdateIconSet (const QList<QAction*>& actions)
 	}
 }
 
-void IconThemeEngine::UpdateIconSet (const QList<QPushButton*>& buttons)
+void IconThemeEngine::UpdateIconset (const QList<QPushButton*>& buttons)
 {
 	FindIcons ();
 
@@ -133,7 +134,7 @@ void IconThemeEngine::UpdateIconSet (const QList<QPushButton*>& buttons)
 	}
 }
 
-void IconThemeEngine::UpdateIconSet (const QList<QTabWidget*>& tabs)
+void IconThemeEngine::UpdateIconset (const QList<QTabWidget*>& tabs)
 {
 	FindIcons ();
 
@@ -148,6 +149,15 @@ void IconThemeEngine::UpdateIconSet (const QList<QTabWidget*>& tabs)
 				name != icons.end (); ++name, ++tab)
 			(*i)->setTabIcon (tab, GetIcon (*name, QString ()));
 	}
+}
+
+void IconThemeEngine::ManageWidget (QWidget *widget)
+{
+	UpdateIconset (widget->findChildren<QAction*> ());
+	UpdateIconset (widget->findChildren<QPushButton*> ());
+	UpdateIconset (widget->findChildren<QTabWidget*> ());
+
+	widget->installEventFilter (new ChildActionEventFilter (widget));
 }
 
 QStringList IconThemeEngine::ListIcons () const

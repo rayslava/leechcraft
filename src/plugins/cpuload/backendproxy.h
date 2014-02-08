@@ -27,29 +27,36 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#ifndef PLUGINS_AZOTH_PLUGINS_ROSENTHAL_XMLSETTINGSMANAGER_H
-#define PLUGINS_AZOTH_PLUGINS_ROSENTHAL_XMLSETTINGSMANAGER_H
-#include <xmlsettingsdialog/basesettingsmanager.h>
+#pragma once
+
+#include <QObject>
+#include <QPointF>
+
+class QStandardItemModel;
+class QAbstractItemModel;
 
 namespace LeechCraft
 {
-namespace Azoth
+namespace CpuLoad
 {
-namespace Rosenthal
-{
-	class XmlSettingsManager : public Util::BaseSettingsManager
+	class Backend;
+	class CpuLoadProxyObj;
+
+	class BackendProxy : public QObject
 	{
 		Q_OBJECT
 
-		XmlSettingsManager ();
+		Backend * const Backend_;
+
+		QStandardItemModel * const Model_;
+		QList<CpuLoadProxyObj*> ModelPropObjs_;
 	public:
-		static XmlSettingsManager& Instance ();
-	protected:
-		virtual QSettings* BeginSettings () const;
-		virtual void EndSettings (QSettings*) const;
+		BackendProxy (Backend*);
+
+		QAbstractItemModel* GetModel () const;
+	public slots:
+		void update ();
+		QList<QPointF> sumPoints (QList<QPointF>, const QList<QPointF>&);
 	};
 }
 }
-}
-
-#endif

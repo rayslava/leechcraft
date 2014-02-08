@@ -38,6 +38,7 @@
 #include <QToolButton>
 #include <QtDebug>
 #include <interfaces/core/ientitymanager.h>
+#include <interfaces/core/iiconthememanager.h>
 #include <util/util.h>
 #include "interfaces/netstoremanager/istorageaccount.h"
 #include "interfaces/netstoremanager/istorageplugin.h"
@@ -66,7 +67,7 @@ namespace NetStoreManager
 		Ui_.FilesView_->setModel (ProxyModel_);
 		ProxyModel_->setSourceModel (TreeModel_);
 		TreeModel_->setHorizontalHeaderLabels ({ tr ("Name"), tr ("Used space"), tr ("Modify") });
-		Ui_.FilesView_->header ()->setResizeMode (Columns::Name, QHeaderView::Interactive);
+		Ui_.FilesView_->header ()->setResizeMode (Columns::CName, QHeaderView::Interactive);
 
 		connect (Ui_.FilesView_->header (),
 				SIGNAL (sectionResized (int, int, int)),
@@ -74,79 +75,79 @@ namespace NetStoreManager
 				SLOT (handleFilesViewSectionResized (int, int, int)));
 		Ui_.FilesView_->setContextMenuPolicy (Qt::CustomContextMenu);
 
-		OpenFile_ = new QAction (Proxy_->GetIcon ("system-run"),
+		OpenFile_ = new QAction (Proxy_->GetIconThemeManager ()->GetIcon ("system-run"),
 				tr ("Open file"), this);
 		connect (OpenFile_,
 				SIGNAL (triggered ()),
 				this,
 				SLOT (flOpenFile ()));
-		CopyURL_ = new QAction (Proxy_->GetIcon ("edit-copy"),
+		CopyURL_ = new QAction (Proxy_->GetIconThemeManager ()->GetIcon ("edit-copy"),
 				tr ("Copy URL..."), this);
 		connect (CopyURL_,
 				SIGNAL (triggered ()),
 				this,
 				SLOT (flCopyUrl ()));
-		Copy_ = new QAction (Proxy_->GetIcon ("edit-copy"),
+		Copy_ = new QAction (Proxy_->GetIconThemeManager ()->GetIcon ("edit-copy"),
 				tr ("Copy..."), this);
 		connect (Copy_,
 				SIGNAL (triggered ()),
 				this,
 				SLOT (flCopy ()));
-		Move_ = new QAction (Proxy_->GetIcon ("transform-move"),
+		Move_ = new QAction (Proxy_->GetIconThemeManager ()->GetIcon ("transform-move"),
 				tr ("Move..."), this);
 		connect (Move_,
 				SIGNAL (triggered ()),
 				this,
 				SLOT (flMove ()));
-		Rename_ = new QAction (Proxy_->GetIcon ("edit-rename"),
+		Rename_ = new QAction (Proxy_->GetIconThemeManager ()->GetIcon ("edit-rename"),
 				tr ("Rename..."), this);
 		connect (Rename_,
 				SIGNAL (triggered ()),
 				this,
 				SLOT (flRename ()));
-		Paste_ = new QAction (Proxy_->GetIcon ("edit-paste"),
+		Paste_ = new QAction (Proxy_->GetIconThemeManager ()->GetIcon ("edit-paste"),
 				tr ("Paste"), this);
 		connect (Paste_,
 				SIGNAL (triggered ()),
 				this,
 				SLOT (flPaste ()));
-		DeleteFile_ = new QAction (Proxy_->GetIcon ("edit-delete"),
+		DeleteFile_ = new QAction (Proxy_->GetIconThemeManager ()->GetIcon ("edit-delete"),
 				tr ("Delete..."), this);
 		connect (DeleteFile_,
 				SIGNAL (triggered ()),
 				this,
 				SLOT (flDelete ()));
-		MoveToTrash_ = new QAction (Proxy_->GetIcon ("edit-clear"),
+		MoveToTrash_ = new QAction (Proxy_->GetIconThemeManager ()->GetIcon ("edit-clear"),
 				tr ("Move to trash"), this);
 		connect (MoveToTrash_,
 				SIGNAL (triggered ()),
 				this,
 				SLOT (flMoveToTrash ()));
-		UntrashFile_ = new QAction (Proxy_->GetIcon ("edit-undo"),
+		UntrashFile_ = new QAction (Proxy_->GetIconThemeManager ()->GetIcon ("edit-undo"),
 				tr ("Restore from trash"), this);
 		connect (UntrashFile_,
 				SIGNAL (triggered ()),
 				this,
 				SLOT (flRestoreFromTrash ()));
-		EmptyTrash_ = new QAction (Proxy_->GetIcon ("trash-empty"),
+		EmptyTrash_ = new QAction (Proxy_->GetIconThemeManager ()->GetIcon ("trash-empty"),
 				tr ("Empty trash"), this);
 		connect (EmptyTrash_,
 				SIGNAL (triggered ()),
 				this,
 				SLOT (flEmptyTrash ()));
-		CreateDir_ = new QAction (Proxy_->GetIcon ("folder-new"),
+		CreateDir_ = new QAction (Proxy_->GetIconThemeManager ()->GetIcon ("folder-new"),
 				tr ("Create directory"), this);
 		connect (CreateDir_,
 				SIGNAL (triggered ()),
 				this,
 				SLOT (flCreateDir ()));
-		UploadInCurrentDir_ = new QAction (Proxy_->GetIcon ("svn-commit"),
+		UploadInCurrentDir_ = new QAction (Proxy_->GetIconThemeManager ()->GetIcon ("svn-commit"),
 				tr ("Upload..."), this);
 		connect (UploadInCurrentDir_,
 				SIGNAL (triggered ()),
 				this,
 				SLOT (flUploadInCurrentDir ()));
-		Download_ = new QAction (Proxy_->GetIcon ("download"),
+		Download_ = new QAction (Proxy_->GetIconThemeManager ()->GetIcon ("download"),
 				tr ("Download"), this);
 		connect (Download_,
 				SIGNAL (triggered ()),
@@ -260,12 +261,14 @@ namespace NetStoreManager
 
 		ToolBar_->addWidget (AccountsBox_);
 
-		Refresh_ = new QAction (Proxy_->GetIcon ("view-refresh"), tr ("Refresh"), this);
+		Refresh_ = new QAction (Proxy_->GetIconThemeManager ()->GetIcon ("view-refresh"),
+				tr ("Refresh"), this);
 		connect (Refresh_,
 				SIGNAL (triggered ()),
 				this,
 				SLOT (handleRefresh ()));
-		Upload_ = new QAction (Proxy_->GetIcon ("svn-commit"), tr ("Upload"), this);
+		Upload_ = new QAction (Proxy_->GetIconThemeManager ()->GetIcon ("svn-commit"),
+				tr ("Upload"), this);
 		connect (Upload_,
 				SIGNAL (triggered ()),
 				this,
@@ -274,7 +277,7 @@ namespace NetStoreManager
 		ToolBar_->addActions ({ Refresh_, Util::CreateSeparator (ToolBar_), CreateDir_, Upload_ });
 		ToolBar_->addSeparator ();
 
-		OpenTrash_ = new QAction (Proxy_->GetIcon ("user-trash"),
+		OpenTrash_ = new QAction (Proxy_->GetIconThemeManager ()->GetIcon ("user-trash"),
 				tr ("Open trash"), this);
 		OpenTrash_->setCheckable (true);
 		connect (OpenTrash_,
@@ -283,7 +286,7 @@ namespace NetStoreManager
 				SLOT (showTrashContent (bool)));
 
 		Trash_ = new QToolButton (this);
-		Trash_->setIcon (Proxy_->GetIcon ("user-trash"));
+		Trash_->setIcon (Proxy_->GetIconThemeManager ()->GetIcon ("user-trash"));
 		Trash_->setText (tr ("Trash"));
 		Trash_->setPopupMode (QToolButton::InstantPopup);
 		Trash_->addActions ({ OpenTrash_, EmptyTrash_ });
@@ -352,7 +355,8 @@ namespace NetStoreManager
 					ListingRole::HashType);
 			name->setData (storageItem.IsDirectory_, ListingRole::IsDirectory);
 			name->setData (storageItem.IsTrashed_, ListingRole::InTrash);
-			QIcon icon = proxy->GetIcon (storageItem.IsDirectory_ ?
+			name->setData (storageItem.Name_, SortRoles::SRName);
+			QIcon icon = proxy->GetIconThemeManager ()->GetIcon (storageItem.IsDirectory_ ?
 					"inode-directory" :
 					storageItem.MimeType_);
 			if (icon.isNull ())
@@ -363,17 +367,21 @@ namespace NetStoreManager
 						<< "for file"
 						<< storageItem.Name_
 						<< storageItem.ID_;
-				icon = proxy->GetIcon ("unknown");
+				icon = proxy->GetIconThemeManager ()->GetIcon ("unknown");
 			}
 			name->setIcon (icon);
 
 			QStandardItem *size = new QStandardItem (Util::MakePrettySize (storageItem
 					.IsDirectory_ ? folderSize : storageItem.Size_));
+			size->setData (storageItem.IsDirectory_ ? folderSize : storageItem.Size_,
+					SortRoles::SRSize);
+
 			size->setEditable (false);
 
 			QStandardItem *modify = new QStandardItem (storageItem.ModifyDate_
 					.toString ("dd.MM.yy hh:mm"));
 			modify->setEditable (false);
+			modify->setData (storageItem.ModifyDate_, SortRoles::SRModifyDate);
 
 			return { name, size, modify };
 		}
@@ -386,9 +394,9 @@ namespace NetStoreManager
 
 		ShowListItemsWithParent (LastParentID_, OpenTrash_->isChecked ());
 
-		Ui_.FilesView_->header ()->resizeSection (Columns::Name,
+		Ui_.FilesView_->header ()->resizeSection (Columns::CName,
 				XmlSettingsManager::Instance ().Property ("ViewSectionSize",
-						Ui_.FilesView_->header ()->sectionSize (Columns::Name)).toInt ());
+						Ui_.FilesView_->header ()->sectionSize (Columns::CName)).toInt ());
 	}
 
 	void ManagerTab::RequestFileListings (IStorageAccount *acc)
@@ -430,14 +438,14 @@ namespace NetStoreManager
 
 	QByteArray ManagerTab::GetParentIDInListViewMode () const
 	{
-		return ProxyModel_->index (0, Columns::Name).data (Qt::UserRole + 1)
+		return ProxyModel_->index (0, Columns::CName).data (Qt::UserRole + 1)
 				.toByteArray ();
 	}
 
 	QByteArray ManagerTab::GetCurrentID () const
 	{
 		QModelIndex idx = Ui_.FilesView_->currentIndex ();
-		idx = idx.sibling (idx.row (), Columns::Name);
+		idx = idx.sibling (idx.row (), Columns::CName);
 		return ProxyModel_->mapToSource (idx).data (ListingRole::ID).toByteArray ();
 	}
 
@@ -478,7 +486,7 @@ namespace NetStoreManager
 		ClearModel ();
 		if (Id2Item_.contains (parentId))
 		{
-			QStandardItem *upLevel = new QStandardItem (Proxy_->GetIcon ("go-up"), "..");
+			QStandardItem *upLevel = new QStandardItem (Proxy_->GetIconThemeManager ()->GetIcon ("go-up"), "..");
 			upLevel->setData ("netstoremanager.item_uplevel", ListingRole::ID);
 			upLevel->setData (parentId);
 			TreeModel_->appendRow ({ upLevel });
@@ -617,7 +625,7 @@ namespace NetStoreManager
 
 		FillModel (acc);
 
-		Trash_->setIcon (Proxy_->GetIcon (GetTrashedFiles ().isEmpty () ?
+		Trash_->setIcon (Proxy_->GetIconThemeManager ()->GetIcon (GetTrashedFiles ().isEmpty () ?
 			"user-trash-full" :
 			"user-trash"));
 	}
@@ -632,7 +640,7 @@ namespace NetStoreManager
 	void ManagerTab::handleFilesViewSectionResized (int index,
 			int, int newSize)
 	{
-		if (index == Columns::Name)
+		if (index == Columns::CName)
 			XmlSettingsManager::Instance ().setProperty ("ViewSectionSize", newSize);
 	}
 
@@ -926,11 +934,11 @@ namespace NetStoreManager
 			{
 				QMenu *exportMenu = new QMenu (tr ("Export to..."), menu);
 				auto exportAct = menu->insertMenu (Download_, exportMenu);
-				exportAct->setIcon (Proxy_->GetIcon ("document-export"));
+				exportAct->setIcon (Proxy_->GetIconThemeManager ()->GetIcon ("document-export"));
 				for (const auto& key : item.ExportLinks.keys ())
 				{
 					const auto& pair = item.ExportLinks [key];
-					QAction *action = new QAction (Proxy_->GetIcon (pair.first),
+					QAction *action = new QAction (Proxy_->GetIconThemeManager ()->GetIcon (pair.first),
 							pair.second, exportMenu);
 					action->setProperty ("url", key);
 					exportMenu->addAction (action);

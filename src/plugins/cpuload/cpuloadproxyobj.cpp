@@ -27,78 +27,83 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#include "checker.h"
-#include <algorithm>
-#include <QFile>
-#include <QTextCodec>
-#include <util/util.h>
-#include "knowndictsmanager.h"
+#include "cpuloadproxyobj.h"
+#include <QtDebug>
+#include "structures.h"
 
 namespace LeechCraft
 {
-namespace Azoth
+namespace CpuLoad
 {
-namespace Rosenthal
-{
-	Checker::Checker (const KnownDictsManager *knownMgr, QObject *parent)
-	: QObject (parent)
-	, KnownMgr_ (knownMgr)
+	const auto HistCount = 350;
+
+	CpuLoadProxyObj::CpuLoadProxyObj (const QMap<LoadPriority, LoadTypeInfo>& infos)
 	{
-		connect (knownMgr,
-				SIGNAL (languagesChanged (QStringList)),
-				this,
-				SLOT (setLanguages (QStringList)));
-		setLanguages (knownMgr->GetLanguages ());
+		Set (infos);
 	}
 
-	QStringList Checker::GetPropositions (const QString& word) const
+	void CpuLoadProxyObj::Set (const QMap<LoadPriority, LoadTypeInfo>& infos)
 	{
-		if (!Hunspell_ || !Codec_)
-			return {};
+		Infos_ = infos;
+		emit percentagesChanged ();
 
-		const QByteArray& encoded = Codec_->fromUnicode (word);
-		if (Hunspell_->spell (encoded.data ()))
-			return QStringList ();
+		for (auto i = infos.begin (), end = infos.end (); i != end; ++i)
+		{
+			auto& arr = History_ [i.key ()];
+			arr << i.value ().LoadPercentage_ * 100;
+			if (arr.size () > HistCount)
+				arr.removeFirst ();
+		}
+		emit histChanged ();
+	}
 
-		char **wlist = 0;
-		const int ns = Hunspell_->suggest (&wlist, encoded.data ());
-		if (!ns || !wlist)
-			return QStringList ();
+	double CpuLoadProxyObj::GetIoPercentage () const
+	{
+		return Infos_ [LoadPriority::IO].LoadPercentage_;
+	}
 
-		QStringList result;
-		for (int i = 0; i < std::min (ns, 10); ++i)
-			result << Codec_->toUnicode (wlist [i]);
-		Hunspell_->free_list (&wlist, ns);
+	double CpuLoadProxyObj::GetLowPercentage () const
+	{
+		return Infos_ [LoadPriority::Low].LoadPercentage_;
+	}
 
+	double CpuLoadProxyObj::GetMediumPercentage () const
+	{
+		return Infos_ [LoadPriority::Medium].LoadPercentage_;
+	}
+
+	double CpuLoadProxyObj::GetHighPercentage () const
+	{
+		return Infos_ [LoadPriority::High].LoadPercentage_;
+	}
+
+	QList<QPointF> CpuLoadProxyObj::GetIoHist () const
+	{
+		return GetHist (LoadPriority::IO);
+	}
+
+	QList<QPointF> CpuLoadProxyObj::GetLowHist () const
+	{
+		return GetHist (LoadPriority::Low);
+	}
+
+	QList<QPointF> CpuLoadProxyObj::GetMediumHist () const
+	{
+		return GetHist (LoadPriority::Medium);
+	}
+
+	QList<QPointF> CpuLoadProxyObj::GetHighHist () const
+	{
+		return GetHist (LoadPriority::High);
+	}
+
+	QList<QPointF> CpuLoadProxyObj::GetHist (LoadPriority key) const
+	{
+		QList<QPointF> result;
+		int i = 0;
+		for (const auto pt : History_ [key])
+			result.push_back ({ static_cast<double> (i++), pt });
 		return result;
 	}
-
-	bool Checker::IsCorrect (const QString& word) const
-	{
-		if (!Hunspell_ || !Codec_)
-			return true;
-
-		const QByteArray& encoded = Codec_->fromUnicode (word);
-		return Hunspell_->spell (encoded.data ());
-	}
-
-	void Checker::setLanguages (const QStringList& languages)
-	{
-		Hunspell_.reset ();
-
-		const auto& primary = languages.value (0);
-		if (primary.isEmpty ())
-			return;
-
-		const auto& primaryPath = KnownMgr_->GetDictPath (primary);
-
-		Hunspell_.reset (new Hunspell ((primaryPath + ".aff").toLatin1 (),
-				(primaryPath + ".dic").toLatin1 ()));
-		for (int i = 1; i < languages.size (); ++i)
-			Hunspell_->add_dic (KnownMgr_->GetDictPath (languages.at (i) + ".dic").toLatin1 ());
-
-		Codec_ = QTextCodec::codecForName (Hunspell_->get_dic_encoding ());
-	}
-}
 }
 }

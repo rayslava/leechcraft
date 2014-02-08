@@ -34,6 +34,7 @@
 #include <QMessageBox>
 #include <util/util.h>
 #include <interfaces/core/icoreproxy.h>
+#include <interfaces/core/iiconthememanager.h>
 #include "interfaces/azoth/iaccount.h"
 #include "interfaces/azoth/imucjoinwidget.h"
 #include "interfaces/azoth/iprotocol.h"
@@ -57,6 +58,9 @@
 #include "servicediscoverywidget.h"
 #include "microblogstab.h"
 #include "chattabsmanager.h"
+#include "statuschangemenumanager.h"
+#include "setstatusdialog.h"
+#include "xmlsettingsmanager.h"
 
 namespace LeechCraft
 {
@@ -65,6 +69,9 @@ namespace Azoth
 	AccountActionsManager::AccountActionsManager (QWidget *mw, QObject *parent)
 	: QObject (parent)
 	, MW_ (mw)
+	, StatusMenuMgr_ (new StatusChangeMenuManager (this))
+	, MenuChangeStatus_ (StatusMenuMgr_->CreateMenu (this,
+				SLOT (handleChangeStatusRequested ()), nullptr, false))
 	, AccountJoinConference_ (new QAction (tr ("Join conference..."), this))
 	, AccountManageBookmarks_ (new QAction (tr ("Manage bookmarks..."), this))
 	, AccountAddContact_ (new QAction (tr ("Add contact..."), this))
@@ -87,6 +94,7 @@ namespace Azoth
 		AccountConsole_->setProperty ("ActionIcon", "utilities-terminal");
 		AccountUpdatePassword_->setToolTip (tr ("Updates the account's password on the server"));
 		AccountRename_->setProperty ("ActionIcon", "edit-rename");
+		MenuChangeStatus_->menuAction ()->setProperty ("ActionIcon", "im-status-message-edit");
 
 		connect (AccountJoinConference_,
 				SIGNAL (triggered ()),
@@ -149,48 +157,12 @@ namespace Azoth
 		IAccount *account = qobject_cast<IAccount*> (accObj);
 		IProtocol *proto = qobject_cast<IProtocol*> (account->GetParentProtocol ());
 
+		actions << AddMenuChangeStatus (menu, accObj);
+
 		AccountJoinConference_->setEnabled (proto->GetFeatures () & IProtocol::PFMUCsJoinable);
 		actions << AccountJoinConference_;
-
-		if (qobject_cast<ISupportBookmarks*> (accObj))
-		{
-			auto supBms = qobject_cast<ISupportBookmarks*> (accObj);
-			QVariantList bms = supBms->GetBookmarkedMUCs ();
-			if (!bms.isEmpty ())
-			{
-				QMenu *bmsMenu = new QMenu (tr ("Join bookmarked conference"), menu);
-				actions << bmsMenu->menuAction ();
-
-				for (auto mucObj : qobject_cast<IAccount*> (accObj)->GetCLEntries ())
-				{
-					IMUCEntry *muc = qobject_cast<IMUCEntry*> (mucObj);
-					if (!muc)
-						continue;
-
-					bms.removeAll (muc->GetIdentifyingData ());
-				}
-
-				for (const auto& bm : bms)
-				{
-					const QVariantMap& map = bm.toMap ();
-
-					auto name = map ["StoredName"].toString ();
-					const auto& hrName = map ["HumanReadableName"].toString ();
-					if (name.isEmpty ())
-						name = hrName;
-					QAction *act = bmsMenu->addAction (name);
-					act->setProperty ("Azoth/BMData", bm);
-					act->setProperty ("Azoth/AccountObject", QVariant::fromValue<QObject*> (accObj));
-					act->setToolTip (hrName);
-					connect (act,
-							SIGNAL (triggered ()),
-							this,
-							SLOT (joinAccountConfFromBM ()));
-				}
-			}
-
-			actions << AccountManageBookmarks_;
-		}
+		actions << AddBMActions (menu, accObj);
+		actions << AccountManageBookmarks_;
 		actions << Util::CreateSeparator (menu);
 
 		actions << AccountAddContact_;
@@ -216,9 +188,9 @@ namespace Azoth
 		if (!accActions.isEmpty ())
 		{
 			actions += accActions;
-			auto proxy = Core::Instance ().GetProxy ();
+			auto mgr = Core::Instance ().GetProxy ()->GetIconThemeManager ();
 			for (auto action : actions)
-				action->setIcon (proxy->GetIcon (action->property ("ActionIcon").toString ()));
+				action->setIcon (mgr->GetIcon (action->property ("ActionIcon").toString ()));
 			actions << Util::CreateSeparator (menu);
 		}
 
@@ -237,9 +209,93 @@ namespace Azoth
 			actions << AccountRename_;
 		actions << AccountModify_;
 
-		for (auto act : actions)
-			act->setProperty ("Azoth/AccountObject",
-					QVariant::fromValue<QObject*> (accObj));
+		const auto& accObjVar = QVariant::fromValue<QObject*> (accObj);
+		std::function<void (QList<QAction*>)> actionSetter = [&actionSetter, &accObjVar] (const QList<QAction*>& actions)
+		{
+			for (auto act : actions)
+			{
+				act->setProperty ("Azoth/AccountObject", accObjVar);
+
+				if (act->menu ())
+					actionSetter (act->menu ()->actions ());
+			}
+		};
+		actionSetter (actions);
+
+		return actions;
+	}
+
+	QString AccountActionsManager::GetStatusText (QAction *object, State state) const
+	{
+		const auto& textVar = object->property ("Azoth/TargetText");
+		if (!textVar.isNull ())
+			return textVar.toString ();
+
+		const auto& propName = "DefaultStatus" + QString::number (state);
+		return XmlSettingsManager::Instance ()
+				.property (propName.toLatin1 ()).toString ();
+	}
+
+	QList<QAction*> AccountActionsManager::AddMenuChangeStatus (QMenu *menu, QObject*)
+	{
+		StatusMenuMgr_->UpdateCustomStatuses (MenuChangeStatus_);
+
+		for (auto act : MenuChangeStatus_->actions ())
+		{
+			if (act->isSeparator ())
+				continue;
+
+			QVariant stateVar = act->property ("Azoth/TargetState");
+			if (stateVar.isNull ())
+				continue;
+
+			const auto state = stateVar.value<State> ();
+			act->setIcon (Core::Instance ().GetIconForState (state));
+		}
+
+		return { MenuChangeStatus_->menuAction (), Util::CreateSeparator (menu) };
+	}
+
+	QList<QAction*> AccountActionsManager::AddBMActions (QMenu *menu, QObject *accObj)
+	{
+		if (!qobject_cast<ISupportBookmarks*> (accObj))
+			return {};
+
+		auto supBms = qobject_cast<ISupportBookmarks*> (accObj);
+		auto bms = supBms->GetBookmarkedMUCs ();
+		if (bms.isEmpty ())
+			return {};
+
+		QList<QAction*> actions;
+
+		QMenu *bmsMenu = new QMenu (tr ("Join bookmarked conference"), menu);
+		actions << bmsMenu->menuAction ();
+
+		for (auto mucObj : qobject_cast<IAccount*> (accObj)->GetCLEntries ())
+		{
+			IMUCEntry *muc = qobject_cast<IMUCEntry*> (mucObj);
+			if (!muc)
+				continue;
+
+			bms.removeAll (muc->GetIdentifyingData ());
+		}
+
+		for (const auto& bm : bms)
+		{
+			const QVariantMap& map = bm.toMap ();
+
+			auto name = map ["StoredName"].toString ();
+			const auto& hrName = map ["HumanReadableName"].toString ();
+			if (name.isEmpty ())
+				name = hrName;
+			QAction *act = bmsMenu->addAction (name);
+			act->setProperty ("Azoth/BMData", bm);
+			act->setToolTip (hrName);
+			connect (act,
+					SIGNAL (triggered ()),
+					this,
+					SLOT (joinAccountConfFromBM ()));
+		}
 
 		return actions;
 	}
@@ -275,6 +331,30 @@ namespace Azoth
 
 			return account;
 		}
+	}
+
+	void AccountActionsManager::handleChangeStatusRequested ()
+	{
+		auto action = qobject_cast<QAction*> (sender ());
+		const auto acc = GetAccountFromSender (sender (), Q_FUNC_INFO);
+
+		QVariant stateVar = action->property ("Azoth/TargetState");
+		EntryStatus status;
+		if (!stateVar.isNull ())
+		{
+			const auto state = stateVar.value<State> ();
+			status = EntryStatus (state, GetStatusText (action, state));
+		}
+		else
+		{
+			SetStatusDialog ssd (acc->GetAccountID ());
+			if (ssd.exec () != QDialog::Accepted)
+				return;
+
+			status = EntryStatus (ssd.GetState (), ssd.GetStatusText ());
+		}
+
+		acc->ChangeState (status);
 	}
 
 	void AccountActionsManager::joinAccountConference ()
