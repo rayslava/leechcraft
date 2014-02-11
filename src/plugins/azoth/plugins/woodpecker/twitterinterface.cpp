@@ -269,6 +269,11 @@ namespace Woodpecker
 			params.insert ("count", "50");
 			break;
 
+		case TwitterRequest::Followers:
+			reqUrl = "https://api.twitter.com/1.1/followers/ids.json";
+			params.insert ("include_entities", "true");
+			params.insert ("count", "5000");
+			break;
 		default:
 			return;
 		}

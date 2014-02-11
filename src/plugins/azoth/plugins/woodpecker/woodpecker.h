@@ -50,6 +50,8 @@ namespace Azoth
 {
 namespace Woodpecker
 {
+	class UserManager;
+
 	class Plugin	: public QObject
 			, public IInfo
 			, public IHaveTabs
