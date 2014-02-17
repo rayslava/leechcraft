@@ -43,8 +43,17 @@ namespace LHTR
 		Q_OBJECT
 
 		Ui::ImageCollectionDialog Ui_;
-
+	public:
+		enum class PreviewSize
+		{
+			None,
+			Thumb,
+			Preview,
+			Full
+		};
+	private:
 		RemoteImageInfos_t Infos_;
+		QList<PreviewSize> Sizes_;
 	public:
 		enum class Position
 		{
@@ -59,6 +68,8 @@ namespace LHTR
 
 		RemoteImageInfos_t GetInfos () const;
 		Position GetPosition () const;
+		bool PreviewsAreLinks () const;
+		PreviewSize GetPreviewSize () const;
 	};
 }
 }

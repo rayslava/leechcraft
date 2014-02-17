@@ -64,10 +64,10 @@ namespace LMP
 		QStringList RootPaths_;
 
 		QIcon ArtistIcon_;
-		LocalCollectionStorage *Storage_;
-		QStandardItemModel *CollectionModel_;
-		QSortFilterProxyModel *Sorter_;
-		LocalCollectionWatcher *FilesWatcher_;
+		LocalCollectionStorage * const Storage_;
+		QStandardItemModel * const CollectionModel_;
+		QSortFilterProxyModel * const Sorter_;
+		LocalCollectionWatcher * const FilesWatcher_;
 
 		AlbumArtManager *AlbumArtMgr_;
 
@@ -140,6 +140,8 @@ namespace LMP
 
 		AlbumArtManager* GetAlbumArtManager () const;
 
+		LocalCollectionStorage* GetStorage () const;
+
 		QAbstractItemModel* GetCollectionModel () const;
 		void Enqueue (const QModelIndex&, Player*);
 		void Enqueue (const QList<QModelIndex>&, Player*);
@@ -159,6 +161,7 @@ namespace LMP
 		Collection::Album_ptr GetAlbum (int albumId) const;
 
 		int FindTrack (const QString& path) const;
+		int GetTrackAlbumId (int trackId) const;
 		Collection::Album_ptr GetTrackAlbum (int trackId) const;
 		QVariant GetTrackData (int trackId, Role) const;
 

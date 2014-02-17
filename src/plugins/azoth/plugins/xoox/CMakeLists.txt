@@ -99,6 +99,11 @@ set (XOOX_SRCS
 	xmppcaptchamanager.cpp
 	xmlsettingsmanager.cpp
 	captchamanager.cpp
+	xep0313manager.cpp
+	xep0313prefiq.cpp
+	xep0313prefsdialog.cpp
+	xep0313modelmanager.cpp
+	xep0313reqiq.cpp
 	)
 set (XOOX_FORMS
 	glooxaccountconfigurationdialog.ui
@@ -117,6 +122,7 @@ set (XOOX_FORMS
 	vcardlisteditdialog.ui
 	gwoptionsdialog.ui
 	gwitemsremovaldialog.ui
+	xep0313prefsdialog.ui
 	)
 set (XOOX_RESOURCES azothxooxresources.qrc)
 

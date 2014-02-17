@@ -37,6 +37,7 @@
 #include <QWaitCondition>
 #include "audiosource.h"
 #include "pathelement.h"
+#include "gstutil.h"
 
 typedef struct _GstElement GstElement;
 typedef struct _GstPad GstPad;
@@ -104,10 +105,7 @@ namespace LMP
 		bool IsDrainingMsgs_ = false;
 
 		MsgPopThread *PopThread_;
-	public:
-		typedef QMap<QString, QString> TagMap_t;
-	private:
-		TagMap_t Metadata_;
+		GstUtil::TagMap_t Metadata_;
 	public:
 		enum class Metadata
 		{
@@ -153,6 +151,12 @@ namespace LMP
 		void ClearQueue ();
 
 		void HandleAboutToFinish ();
+
+		void SetupSource ();
+
+		void AddToPath (Path*);
+		void SetSink (GstElement*);
+	private:
 		void HandleErrorMsg (GstMessage*);
 		void HandleTagMsg (GstMessage*);
 		void HandleBufferingMsg (GstMessage*);
@@ -160,10 +164,6 @@ namespace LMP
 		void HandleElementMsg (GstMessage*);
 		void HandleEosMsg (GstMessage*);
 		void HandleStreamStatusMsg (GstMessage*);
-		void SetupSource ();
-
-		void AddToPath (Path*);
-		void SetSink (GstElement*);
 	private slots:
 		void handleMessage (GstMessage_ptr);
 		void updateTotalTime ();

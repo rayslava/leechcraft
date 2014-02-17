@@ -36,12 +36,13 @@ namespace Azoth
 {
 namespace Murm
 {
-	VkMessage::VkMessage (Direction dir, MessageType type, EntryBase *parentEntry, EntryBase *other)
+	VkMessage::VkMessage (bool isOurs, Direction dir, MessageType type, EntryBase *parentEntry, EntryBase *other)
 	: QObject (parentEntry)
 	, OtherPart_ (other)
 	, ParentCLEntry_ (parentEntry)
 	, Type_ (type)
 	, Dir_ (dir)
+	, IsOurs_ (isOurs)
 	{
 	}
 
@@ -120,7 +121,8 @@ namespace Murm
 	QString VkMessage::GetBody () const
 	{
 		auto result = Body_;
-		result.replace ('<', "&lt;");
+		if (IsOurs_)
+			result.replace ('<', "&lt;");
 		return result;
 	}
 

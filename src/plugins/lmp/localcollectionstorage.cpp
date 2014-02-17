@@ -405,6 +405,50 @@ namespace LMP
 		return GetLovedBanned (BannedStateID);
 	}
 
+	QList<int> LocalCollectionStorage::GetOutdatedRgTracks ()
+	{
+		if (!GetOutdatedRgData_.exec ())
+		{
+			Util::DBLock::DumpError (GetOutdatedRgData_);
+			throw std::runtime_error ("cannot fetch outdated track RG data");
+		}
+
+		QList<int> result;
+		while (GetOutdatedRgData_.next ())
+			result << GetOutdatedRgData_.value (0).toInt ();
+		return result;
+	}
+
+	void LocalCollectionStorage::SetRgTrackInfo (int trackId,
+			double trackPeak, double trackGain,
+			double albumPeak, double albumGain)
+	{
+		GetFileIdMTime_.bindValue (":track_id", trackId);
+		if (!GetFileIdMTime_.exec ())
+		{
+			Util::DBLock::DumpError (GetFileIdMTime_);
+			throw std::runtime_error ("cannot get file mtime");
+		}
+
+		const auto& mtime = GetFileIdMTime_.next () ?
+				GetFileIdMTime_.value (0).toDateTime () :
+				QDateTime ();
+		GetFileIdMTime_.finish ();
+
+		SetTrackRgData_.bindValue (":track_id", trackId);
+		SetTrackRgData_.bindValue (":mtime", mtime);
+		SetTrackRgData_.bindValue (":track_gain", trackGain);
+		SetTrackRgData_.bindValue (":track_peak", trackPeak);
+		SetTrackRgData_.bindValue (":album_gain", albumGain);
+		SetTrackRgData_.bindValue (":album_peak", albumPeak);
+
+		if (!SetTrackRgData_.exec ())
+		{
+			Util::DBLock::DumpError (SetTrackRgData_);
+			throw std::runtime_error ("cannot set track RG data");
+		}
+	}
+
 	void LocalCollectionStorage::MarkLovedBanned (int trackId, int state)
 	{
 		SetLovedBanned_.bindValue (":track_id", trackId);
@@ -669,6 +713,9 @@ namespace LMP
 				"		:play_date"
 				");");
 
+		GetFileIdMTime_ = QSqlQuery (DB_);
+		GetFileIdMTime_.prepare ("SELECT MTime FROM fileTimes WHERE fileTimes.TrackID = :track_id;");
+
 		GetFileMTime_ = QSqlQuery (DB_);
 		GetFileMTime_.prepare ("SELECT MTime FROM fileTimes, tracks WHERE tracks.Path = :filepath AND tracks.Id = fileTimes.TrackID;");
 
@@ -684,6 +731,15 @@ namespace LMP
 
 		RemoveLovedBanned_ = QSqlQuery (DB_);
 		RemoveLovedBanned_.prepare ("DELETE FROM lovedBanned WHERE TrackId = :track_id;");
+
+		GetOutdatedRgData_ = QSqlQuery (DB_);
+		GetOutdatedRgData_.prepare ("SELECT fileTimes.TrackID FROM fileTimes LEFT OUTER JOIN rgdata ON fileTimes.TrackId = rgdata.TrackId WHERE fileTimes.MTime != rgdata.LastMTime OR rgdata.LastMTime IS NULL;");
+
+		SetTrackRgData_ = QSqlQuery (DB_);
+		SetTrackRgData_.prepare ("INSERT OR REPLACE INTO rgdata "
+				"(TrackId, LastMTime, TrackGain, TrackPeak, AlbumGain, AlbumPeak)"
+				" VALUES "
+				"(:track_id, :mtime, :track_gain, :track_peak, :album_gain, :album_peak);");
 	}
 
 	void LocalCollectionStorage::CreateTables ()
@@ -745,6 +801,16 @@ namespace LMP
 				"Id INTEGER PRIMARY KEY AUTOINCREMENT, "
 				"TrackID INTEGER UNIQUE NOT NULL REFERENCES tracks (Id) ON DELETE CASCADE, "
 				"MTime TIMESTAMP NOT NULL"
+				");");
+		table2query << QueryPair_t ("rgdata",
+				"CREATE TABLE rgdata ("
+				"Id INTEGER PRIMARY KEY AUTOINCREMENT, "
+				"TrackId INTEGER UNIQUE NOT NULL REFERENCES tracks (Id) ON DELETE CASCADE, "
+				"LastMTime TIMESTAMP NOT NULL, "
+				"TrackGain DOUBLE NOT NULL, "
+				"TrackPeak DOUBLE NOT NULL, "
+				"AlbumGain DOUBLE NOT NULL, "
+				"AlbumPeak DOUBLE NOT NULL "
 				");");
 
 		Util::DBLock lock (DB_);

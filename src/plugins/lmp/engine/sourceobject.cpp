@@ -34,18 +34,10 @@
 #include <stdexcept>
 #include <QtDebug>
 #include <QTimer>
-#include <QTextCodec>
 #include <QThread>
-
-#ifdef WITH_LIBGUESS
-extern "C"
-{
-#include <libguess/libguess.h>
-}
-#endif
-
 #include "audiosource.h"
 #include "path.h"
+#include "gstutil.h"
 #include "../gstfix.h"
 #include "../core.h"
 #include "../xmlsettingsmanager.h"
@@ -432,6 +424,57 @@ namespace LMP
 		NextSource_.Clear ();
 	}
 
+	void SourceObject::SetupSource ()
+	{
+		GstElement *src;
+		g_object_get (Dec_, "source", &src, nullptr);
+
+		if (!CurrentSource_.ToUrl ().scheme ().startsWith ("http"))
+			return;
+
+		std::shared_ptr<void> soupRankGuard (nullptr,
+				[&] (void*) -> void
+				{
+					if (PrevSoupRank_)
+					{
+						SetSoupRank (PrevSoupRank_);
+						PrevSoupRank_ = 0;
+					}
+				});
+
+		if (!g_object_class_find_property (G_OBJECT_GET_CLASS (src), "user-agent"))
+		{
+			qDebug () << Q_FUNC_INFO
+					<< "user-agent property not found for"
+					<< CurrentSource_.ToUrl ()
+					<< (QString ("|") + G_OBJECT_TYPE_NAME (src) + "|")
+					<< "soup rank:"
+					<< GetRank ("souphttpsrc")
+					<< "webkit rank:"
+					<< GetRank ("WebKitWebSrc");
+			return;
+		}
+
+		const auto& str = QString ("LeechCraft LMP/%1 (%2)")
+				.arg (Core::Instance ().GetProxy ()->GetVersion ())
+				.arg (gst_version_string ());
+		qDebug () << Q_FUNC_INFO
+				<< "setting user-agent to"
+				<< str;
+		g_object_set (src, "user-agent", str.toUtf8 ().constData (), nullptr);
+	}
+
+	void SourceObject::AddToPath (Path *path)
+	{
+		path->SetPipeline (Dec_);
+		Path_ = path;
+	}
+
+	void SourceObject::SetSink (GstElement *bin)
+	{
+		g_object_set (GST_OBJECT (Dec_), "audio-sink", bin, nullptr);
+	}
+
 	void SourceObject::HandleErrorMsg (GstMessage *msg)
 	{
 		GError *gerror = nullptr;
@@ -509,129 +552,11 @@ namespace LMP
 			emit error (msgStr, errCode);
 	}
 
-	namespace
-	{
-		void FixEncoding (QString& out, const gchar *origStr)
-		{
-#ifdef WITH_LIBGUESS
-			const auto& cp1252 = QTextCodec::codecForName ("CP-1252")->fromUnicode (origStr);
-			if (cp1252.isEmpty ())
-				return;
-
-			const auto region = XmlSettingsManager::Instance ()
-					.property ("TagsRecodingRegion").toString ();
-			const auto encoding = libguess_determine_encoding (cp1252.constData (),
-					cp1252.size (), region.toUtf8 ().constData ());
-			if (!encoding)
-				return;
-
-			auto codec = QTextCodec::codecForName (encoding);
-			if (!codec)
-			{
-				qWarning () << Q_FUNC_INFO
-						<< "no codec for encoding"
-						<< encoding;
-				return;
-			}
-
-			const auto& proper = codec->toUnicode (cp1252.constData ());
-			if (proper.isEmpty ())
-				return;
-
-			int origQCount = 0;
-			while (*origStr)
-				if (*(origStr++) == '?')
-					++origQCount;
-
-			if (origQCount >= proper.count ('?'))
-				out = proper;
-#else
-			Q_UNUSED (out);
-			Q_UNUSED (origStr);
-#endif
-		}
-
-		void TagFunction (const GstTagList *list, const gchar *tag, gpointer data)
-		{
-			auto& map = *static_cast<SourceObject::TagMap_t*> (data);
-
-			const auto& tagName = QString::fromUtf8 (tag).toLower ();
-			auto& valList = map [tagName];
-
-			switch (gst_tag_get_type (tag))
-			{
-			case G_TYPE_STRING:
-			{
-				gchar *str = nullptr;
-				gst_tag_list_get_string (list, tag, &str);
-				valList = QString::fromUtf8 (str);
-
-				const auto recodingEnabled = XmlSettingsManager::Instance ()
-						.property ("EnableTagsRecoding").toBool ();
-				if (recodingEnabled &&
-						(tagName == "title" || tagName == "album" || tagName == "artist"))
-					FixEncoding (valList, str);
-
-				g_free (str);
-				break;
-			}
-			case G_TYPE_BOOLEAN:
-			{
-				int val = 0;
-				gst_tag_list_get_boolean (list, tag, &val);
-				valList = QString::number (val);
-				break;
-			}
-			case G_TYPE_INT:
-			{
-				int val = 0;
-				gst_tag_list_get_int (list, tag, &val);
-				valList = QString::number (val);
-				break;
-			}
-			case G_TYPE_UINT:
-			{
-				uint val = 0;
-				gst_tag_list_get_uint (list, tag, &val);
-				valList = QString::number (val);
-				break;
-			}
-			case G_TYPE_FLOAT:
-			{
-				float val = 0;
-				gst_tag_list_get_float (list, tag, &val);
-				valList = QString::number (val);
-				break;
-			}
-			case G_TYPE_DOUBLE:
-			{
-				double val = 0;
-				gst_tag_list_get_double (list, tag, &val);
-				valList = QString::number (val);
-				break;
-			}
-			default:
-				qWarning () << Q_FUNC_INFO
-						<< "unhandled tag type"
-						<< gst_tag_get_type (tag)
-						<< "for"
-						<< tag;
-				break;
-			}
-		}
-	}
-
 	void SourceObject::HandleTagMsg (GstMessage *msg)
 	{
-		GstTagList *tagList = nullptr;
-		gst_message_parse_tag (msg, &tagList);
-		if (!tagList)
-			return;
-
 		const auto oldMetadata = Metadata_;
-		gst_tag_list_foreach (tagList,
-				TagFunction,
-				&Metadata_);
+		if (!GstUtil::ParseTagMessage (msg, Metadata_))
+			return;
 
 		auto merge = [this] (const QString& oldName, const QString& stdName, bool emptyOnly)
 		{
@@ -742,57 +667,6 @@ namespace LMP
 
 	void SourceObject::HandleStreamStatusMsg (GstMessage*)
 	{
-	}
-
-	void SourceObject::SetupSource ()
-	{
-		GstElement *src;
-		g_object_get (Dec_, "source", &src, nullptr);
-
-		if (!CurrentSource_.ToUrl ().scheme ().startsWith ("http"))
-			return;
-
-		std::shared_ptr<void> soupRankGuard (nullptr,
-				[&] (void*) -> void
-				{
-					if (PrevSoupRank_)
-					{
-						SetSoupRank (PrevSoupRank_);
-						PrevSoupRank_ = 0;
-					}
-				});
-
-		if (!g_object_class_find_property (G_OBJECT_GET_CLASS (src), "user-agent"))
-		{
-			qDebug () << Q_FUNC_INFO
-					<< "user-agent property not found for"
-					<< CurrentSource_.ToUrl ()
-					<< (QString ("|") + G_OBJECT_TYPE_NAME (src) + "|")
-					<< "soup rank:"
-					<< GetRank ("souphttpsrc")
-					<< "webkit rank:"
-					<< GetRank ("WebKitWebSrc");
-			return;
-		}
-
-		const auto& str = QString ("LeechCraft LMP/%1 (%2)")
-				.arg (Core::Instance ().GetProxy ()->GetVersion ())
-				.arg (gst_version_string ());
-		qDebug () << Q_FUNC_INFO
-				<< "setting user-agent to"
-				<< str;
-		g_object_set (src, "user-agent", str.toUtf8 ().constData (), nullptr);
-	}
-
-	void SourceObject::AddToPath (Path *path)
-	{
-		path->SetPipeline (Dec_);
-		Path_ = path;
-	}
-
-	void SourceObject::SetSink (GstElement *bin)
-	{
-		g_object_set (GST_OBJECT (Dec_), "audio-sink", bin, nullptr);
 	}
 
 	void SourceObject::handleMessage (GstMessage_ptr msgPtr)

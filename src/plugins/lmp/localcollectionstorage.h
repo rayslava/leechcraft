@@ -69,6 +69,7 @@ namespace LMP
 		QSqlQuery SetTrackStats_;
 		QSqlQuery UpdateTrackStats_;
 
+		QSqlQuery GetFileIdMTime_;
 		QSqlQuery GetFileMTime_;
 		QSqlQuery SetFileMTime_;
 
@@ -76,6 +77,9 @@ namespace LMP
 		QSqlQuery GetLovedBanned_;
 		QSqlQuery SetLovedBanned_;
 		QSqlQuery RemoveLovedBanned_;
+
+		QSqlQuery GetOutdatedRgData_;
+		QSqlQuery SetTrackRgData_;
 	public:
 		struct LoadResult
 		{
@@ -112,6 +116,9 @@ namespace LMP
 		void ClearTrackLovedBanned (int);
 		QList<int> GetLovedTracks ();
 		QList<int> GetBannedTracks ();
+
+		QList<int> GetOutdatedRgTracks ();
+		void SetRgTrackInfo (int, double trackPeak, double trackGain, double albumPeak, double albumGain);
 	private:
 		void MarkLovedBanned (int, int);
 		QList<int> GetLovedBanned (int);

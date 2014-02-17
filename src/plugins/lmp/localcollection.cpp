@@ -162,6 +162,11 @@ namespace LMP
 		return AlbumArtMgr_;
 	}
 
+	LocalCollectionStorage* LocalCollection::GetStorage () const
+	{
+		return Storage_;
+	}
+
 	QAbstractItemModel* LocalCollection::GetCollectionModel () const
 	{
 		return Sorter_;
@@ -388,6 +393,11 @@ namespace LMP
 	int LocalCollection::FindTrack (const QString& path) const
 	{
 		return Path2Track_.value (path, -1);
+	}
+
+	int LocalCollection::GetTrackAlbumId (int trackId) const
+	{
+		return Track2Album_ [trackId];
 	}
 
 	Collection::Album_ptr LocalCollection::GetTrackAlbum (int trackId) const

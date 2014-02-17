@@ -646,8 +646,8 @@ namespace LHTR
 		void TryFixHTML (QString& html)
 		{
 #ifdef WITH_HTMLTIDY
-			TidyBuffer output = { 0 };
-			TidyBuffer errbuf = { 0 };
+			TidyBuffer output {};
+			TidyBuffer errbuf {};
 
 			auto tdoc = tidyCreate ();
 
@@ -1188,6 +1188,49 @@ namespace LHTR
 		ExecCommand ("insertHTML", html);
 	}
 
+	namespace
+	{
+		QUrl GetPreviewUrl (const RemoteImageInfo& info, ImageCollectionDialog::PreviewSize size)
+		{
+			switch (size)
+			{
+			case ImageCollectionDialog::PreviewSize::None:
+				return {};
+			case ImageCollectionDialog::PreviewSize::Thumb:
+				return info.Thumb_;
+			case ImageCollectionDialog::PreviewSize::Preview:
+				return info.Preview_;
+			case ImageCollectionDialog::PreviewSize::Full:
+				return info.Full_;
+			}
+
+			qWarning () << Q_FUNC_INFO
+					<< "unknown preview size"
+					<< static_cast<int> (size);
+			return {};
+		}
+
+		QSize GetPreviewSize (const RemoteImageInfo& info, ImageCollectionDialog::PreviewSize size)
+		{
+			switch (size)
+			{
+			case ImageCollectionDialog::PreviewSize::None:
+				return {};
+			case ImageCollectionDialog::PreviewSize::Thumb:
+				return info.ThumbSize_;
+			case ImageCollectionDialog::PreviewSize::Preview:
+				return info.PreviewSize_;
+			case ImageCollectionDialog::PreviewSize::Full:
+				return info.FullSize_;
+			}
+
+			qWarning () << Q_FUNC_INFO
+					<< "unknown preview size"
+					<< static_cast<int> (size);
+			return {};
+		}
+	}
+
 	void RichEditorWidget::handleCollectionImageChosen ()
 	{
 		const auto chooser = qobject_cast<IPendingImgSourceRequest*> (sender ());
@@ -1198,6 +1241,9 @@ namespace LHTR
 		ImageCollectionDialog dia { rawInfos, Proxy_, this };
 		if (dia.exec () != QDialog::Accepted)
 			return;
+
+		const bool linkPreviews = dia.PreviewsAreLinks ();
+		const auto previewSize = dia.GetPreviewSize ();
 
 		QString html;
 		QXmlStreamWriter w (&html);
@@ -1241,17 +1287,27 @@ namespace LHTR
 
 		for (const auto& image : dia.GetInfos ())
 		{
-			w.writeStartElement ("a");
-			w.writeAttribute ("href", image.Full_.toString ());
+			if (linkPreviews)
+			{
+				w.writeStartElement ("a");
+				w.writeAttribute ("href", image.Full_.toString ());
+			}
 
 			w.writeStartElement ("img");
-			w.writeAttribute ("src", image.Preview_.toString ());
+			w.writeAttribute ("src", GetPreviewUrl (image, previewSize).toString ());
 			w.writeAttribute ("alt", image.Title_);
-			w.writeAttribute ("width", QString::number (image.PreviewSize_.width ()));
-			w.writeAttribute ("height", QString::number (image.PreviewSize_.height ()));
-			w.writeEndElement ();
+
+			const auto& size = GetPreviewSize (image, previewSize);
+			if (size.isValid ())
+			{
+				w.writeAttribute ("width", QString::number (size.width ()));
+				w.writeAttribute ("height", QString::number (size.height ()));
+			}
 
 			w.writeEndElement ();
+
+			if (linkPreviews)
+				w.writeEndElement ();
 
 			w.writeEmptyElement ("br");
 		}
