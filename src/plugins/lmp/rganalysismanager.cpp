@@ -31,6 +31,8 @@
 #include "localcollection.h"
 #include "localcollectionstorage.h"
 #include "engine/rganalyser.h"
+#include "engine/rgfilter.h"
+#include "xmlsettingsmanager.h"
 
 namespace LeechCraft
 {
@@ -44,6 +46,17 @@ namespace LMP
 				SIGNAL (scanFinished ()),
 				this,
 				SLOT (handleScanFinished ()));
+
+		XmlSettingsManager::Instance ().RegisterObject ("AutobuildRG",
+				this, "handleScanFinished");
+	}
+
+	namespace
+	{
+		bool IsScanAllowed ()
+		{
+			return XmlSettingsManager::Instance ().property ("AutobuildRG").toBool ();
+		}
 	}
 
 	void RgAnalysisManager::handleAnalysed ()
@@ -62,8 +75,12 @@ namespace LMP
 			}
 
 			Coll_->GetStorage ()->SetRgTrackInfo (id,
-					track.TrackPeak_, track.TrackGain_,
-					result.AlbumPeak_, result.AlbumGain_);
+					{
+						track.TrackGain_,
+						track.TrackPeak_,
+						result.AlbumGain_,
+						result.AlbumPeak_
+					});
 		}
 
 		CurrentAnalyser_.reset ();
@@ -74,6 +91,12 @@ namespace LMP
 	{
 		if (AlbumsQueue_.isEmpty ())
 			return;
+
+		if (!IsScanAllowed ())
+		{
+			AlbumsQueue_.clear ();
+			return;
+		}
 
 		QStringList paths;
 		for (const auto& track : AlbumsQueue_.takeFirst ()->Tracks_)
@@ -88,7 +111,10 @@ namespace LMP
 
 	void RgAnalysisManager::handleScanFinished ()
 	{
-		qDebug () << Q_FUNC_INFO;
+		qDebug () << Q_FUNC_INFO << IsScanAllowed ();
+		if (!IsScanAllowed ())
+			return;
+
 		QSet<int> albums;
 		for (const auto track : Coll_->GetStorage ()->GetOutdatedRgTracks ())
 			albums << Coll_->GetTrackAlbumId (track);
@@ -96,7 +122,8 @@ namespace LMP
 		const bool wasEmpty = AlbumsQueue_.isEmpty ();
 
 		for (auto albumId : albums)
-			AlbumsQueue_ << Coll_->GetAlbum (albumId);
+			if (const auto& album = Coll_->GetAlbum (albumId))
+				AlbumsQueue_ << album;
 
 		qDebug () << AlbumsQueue_.size ()
 				<< "albums to rescan";

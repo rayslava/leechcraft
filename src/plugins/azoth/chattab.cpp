@@ -46,6 +46,7 @@
 #include <util/util.h>
 #include <util/shortcuts/shortcutmanager.h>
 #include <util/gui/util.h>
+#include <util/gui/findnotificationwk.h>
 #include <interfaces/core/icoreproxy.h>
 #include <interfaces/core/ipluginsmanager.h>
 #include <interfaces/core/ientitymanager.h>
@@ -193,6 +194,9 @@ namespace Azoth
 				SIGNAL (released ()),
 				this,
 				SLOT (messageSend ()));
+
+		ChatFinder_ = new Util::FindNotificationWk (Core::Instance ().GetProxy (), Ui_.View_);
+		ChatFinder_->hide ();
 
 		BuildBasicActions ();
 
@@ -920,17 +924,20 @@ namespace Azoth
 		}
 
 		auto entry = GetEntry<ICLEntry> ();
+
+		const bool isActiveChat = Core::Instance ().GetChatTabsManager ()->IsActiveChat (entry);
+
 		bool shouldReformat = false;
 		if (Core::Instance ().ShouldCountUnread (entry, msg))
 		{
 			++NumUnreadMsgs_;
 			shouldReformat = true;
 		}
-		else
+		else if (isActiveChat)
 			GetEntry<ICLEntry> ()->MarkMsgsRead ();
 
 		if (msg->GetMessageType () == IMessage::MTMUCMessage &&
-				!Core::Instance ().GetChatTabsManager ()->IsActiveChat (entry) &&
+				!isActiveChat &&
 				!HadHighlight_)
 		{
 			HadHighlight_ = Core::Instance ().IsHighlightMessage (msg);
@@ -1093,26 +1100,7 @@ namespace Azoth
 	{
 		if (url.scheme () != "azoth")
 		{
-			if (Core::Instance ().CouldHandleURL (url))
-			{
-				Core::Instance ().HandleURL (url, GetEntry<ICLEntry> ());
-				return;
-			}
-
-			if (url.scheme () == "file")
-				return;
-
-			if (url.scheme ().isEmpty () &&
-					url.host ().isEmpty () &&
-					url.path ().startsWith ("www."))
-				url = "http://" + url.toString ();
-
-			Entity e = Util::MakeEntity (url,
-					QString (),
-					FromUserInitiated | OnlyHandle);
-			if (!raise)
-				e.Additional_ ["BackgroundHandle"] = true;
-			Core::Instance ().SendEntity (e);
+			Core::Instance ().HandleURLGeneric (url, raise, GetEntry<ICLEntry> ());
 			return;
 		}
 
@@ -1460,6 +1448,18 @@ namespace Azoth
 		auto shortcut = new QShortcut (openLinkInfo.Seqs_.value (0),
 				this, SLOT (handleOpenLastLink ()), 0, Qt::WidgetWithChildrenShortcut);
 		sm->RegisterShortcut ("org.LeechCraft.Azoth.OpenLastLink", openLinkInfo, shortcut);
+
+		auto findShortcut = new QShortcut (this);
+		findShortcut->setContext (Qt::WidgetWithChildrenShortcut);
+		findShortcut->setKey (QString ("Ctrl+F"));
+		connect (findShortcut,
+				SIGNAL (activated ()),
+				ChatFinder_,
+				SLOT (show ()));
+		connect (findShortcut,
+				SIGNAL (activated ()),
+				ChatFinder_,
+				SLOT (setFocus ()));
 	}
 
 	void ChatTab::InitEntry ()

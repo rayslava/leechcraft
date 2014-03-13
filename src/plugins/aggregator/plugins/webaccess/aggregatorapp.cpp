@@ -28,7 +28,9 @@
  **********************************************************************/
 
 #include "aggregatorapp.h"
+#include <tuple>
 #include <QObject>
+#include <QThread>
 #include <QtDebug>
 #include <Wt/WText>
 #include <Wt/WContainerWidget>
@@ -39,10 +41,17 @@
 #include <Wt/WStandardItemModel>
 #include <Wt/WStandardItem>
 #include <Wt/WOverlayLoadingIndicator>
+#include <Wt/WPanel>
+#include <Wt/WPopupMenu>
+#include <Wt/WCssTheme>
 #include <util/util.h>
 #include <interfaces/aggregator/iproxyobject.h>
 #include <interfaces/aggregator/channel.h>
+#include <interfaces/aggregator/iitemsmodel.h>
+#include <util/aggregator/itemsmodeldecorator.h>
 #include "readchannelsfilter.h"
+#include "util.h"
+#include "q2wproxymodel.h"
 
 namespace LeechCraft
 {
@@ -52,10 +61,22 @@ namespace WebAccess
 {
 	namespace
 	{
-		Wt::WString ToW (const QString& str)
+		class WittyThread : public QThread
 		{
-			return Wt::WString (str.toUtf8 ().constData (), Wt::CharEncoding::UTF8);
-		}
+			Wt::WApplication * const App_;
+		public:
+			WittyThread (Wt::WApplication *app)
+			: App_ { app }
+			{
+			}
+		protected:
+			void run ()
+			{
+				App_->attachThread (true);
+				QThread::run ();
+				App_->attachThread (false);
+			}
+		};
 	}
 
 	AggregatorApp::AggregatorApp (IProxyObject *ap, ICoreProxy_ptr cp,
@@ -63,10 +84,45 @@ namespace WebAccess
 	: WApplication (environment)
 	, AP_ (ap)
 	, CP_ (cp)
-	, ChannelsModel_ (new Wt::WStandardItemModel (0, 2, this))
+	, ObjsThread_ (new WittyThread (this))
+	, ChannelsModel_ (new Q2WProxyModel (AP_->GetChannelsModel (), this))
 	, ChannelsFilter_ (new ReadChannelsFilter (this))
-	, ItemsModel_ (new Wt::WStandardItemModel (0, 2, this))
+	, SourceItemModel_ (AP_->CreateItemsModel ())
+	, ItemsModel_ (new Q2WProxyModel (SourceItemModel_, this))
 	{
+		ChannelsModel_->SetRoleMappings (Util::MakeMap<int, int> ({
+				{ ChannelRole::UnreadCount, Aggregator::ChannelRoles::UnreadCount },
+				{ ChannelRole::CID, Aggregator::ChannelRoles::ChannelID }
+			}));
+
+		ItemsModel_->SetRoleMappings (Util::MakeMap<int, int> ({
+				{ ItemRole::IID, Aggregator::IItemsModel::ItemRole::ItemId }
+			}));
+		ItemsModel_->AddDataMorphism ([] (const QModelIndex& idx, int role) -> boost::any
+			{
+				if (role != Wt::StyleClassRole)
+					return {};
+
+				if (!idx.data (Aggregator::IItemsModel::ItemRole::IsRead).toBool ())
+					return Wt::WString ("unreadItem");
+
+				return {};
+			});
+
+		auto initThread = [this] (QObject *obj) -> void
+		{
+			obj->moveToThread (ObjsThread_);
+			QObject::connect (ObjsThread_,
+					SIGNAL (finished ()),
+					obj,
+					SLOT (deleteLater ()));
+		};
+		initThread (ChannelsModel_);
+		initThread (SourceItemModel_);
+		initThread (ItemsModel_);
+
+		ObjsThread_->start ();
+
 		ChannelsFilter_->setSourceModel (ChannelsModel_);
 
 		setTitle ("Aggregator WebAccess");
@@ -74,64 +130,193 @@ namespace WebAccess
 
 		SetupUI ();
 
-		Q_FOREACH (Channel_ptr channel, AP_->GetAllChannels ())
+		enableUpdates (true);
+	}
+
+	AggregatorApp::~AggregatorApp ()
+	{
+		delete ChannelsFilter_;
+
+		ObjsThread_->quit ();
+		ObjsThread_->wait (1000);
+		if (!ObjsThread_->isFinished ())
 		{
-			const auto unreadCount = AP_->CountUnreadItems (channel->ChannelID_);
-
-			auto title = new Wt::WStandardItem (ToW (channel->Title_));
-			title->setIcon (Util::GetAsBase64Src (channel->Pixmap_).toStdString ());
-			title->setData (channel->ChannelID_, ChannelRole::CID);
-			title->setData (channel->FeedID_, ChannelRole::FID);
-			title->setData (unreadCount, ChannelRole::UnreadCount);
-
-			auto unread = new Wt::WStandardItem (ToW (QString::number (unreadCount)));
-			unread->setData (channel->ChannelID_, ChannelRole::CID);
-
-			ChannelsModel_->appendRow ({ title, unread });
+			qWarning () << Q_FUNC_INFO
+					<< "objects thread hasn't finished yet, terminating...";
+			ObjsThread_->terminate ();
 		}
+
+		delete ObjsThread_;
 	}
 
 	void AggregatorApp::HandleChannelClicked (const Wt::WModelIndex& idx)
 	{
-		ItemsModel_->clear ();
-		ItemView_->setText (Wt::WString ());
+		ItemView_->setText ({});
 
-		const IDType_t& cid = boost::any_cast<IDType_t> (idx.data (ChannelRole::CID));
-		Q_FOREACH (Item_ptr item, AP_->GetChannelItems (cid))
-		{
-			if (!item->Unread_)
-				continue;
+		const auto cid = boost::any_cast<IDType_t> (idx.data (ChannelRole::CID));
 
-			auto title = new Wt::WStandardItem (ToW (item->Title_));
-			title->setData (item->ItemID_, ItemRole::IID);
-			title->setData (item->ChannelID_, ItemRole::ParentCh);
-			title->setData (item->Unread_, ItemRole::IsUnread);
-			title->setData (ToW (item->Link_), ItemRole::Link);
-			title->setData (ToW (item->Description_), ItemRole::Text);
-
-			auto date = new Wt::WStandardItem (ToW (item->PubDate_.toString ()));
-
-			ItemsModel_->insertRow (0, { title, date });
-		}
-
-		ItemsTable_->setColumnWidth (0, Wt::WLength (500, Wt::WLength::Pixel));
-		ItemsTable_->setColumnWidth (1, Wt::WLength (180, Wt::WLength::Pixel));
+		ItemsModelDecorator { SourceItemModel_ }.Reset (cid);
 	}
 
-	void AggregatorApp::HandleItemClicked (const Wt::WModelIndex& idx)
+	void AggregatorApp::HandleItemClicked (const Wt::WModelIndex& idx,
+			const Wt::WMouseEvent& event)
 	{
-		auto titleIdx = idx.model ()->index (idx.row (), 0);
-		auto pubDate = idx.model ()->index (idx.row (), 1);
+		if (!idx.isValid ())
+			return;
+
+		const auto& src = ItemsModel_->MapToSource (idx);
+		const auto itemId = boost::any_cast<IDType_t> (idx.data (ItemRole::IID));
+		const auto& item = AP_->GetItem (itemId);
+		if (!item)
+			return;
+
+		switch (event.button ())
+		{
+		case Wt::WMouseEvent::LeftButton:
+			ShowItem (src, item);
+			break;
+		case Wt::WMouseEvent::RightButton:
+			ShowItemMenu (src, item, event);
+			break;
+		default:
+			break;
+		}
+	}
+
+	namespace
+	{
+		template<size_t...>
+		struct Seq {};
+
+		template<size_t N, size_t... S>
+		struct Gen : Gen<N - 1, N - 1, S...> {};
+
+		template<size_t... S>
+		struct Gen<0, S...>
+		{
+			typedef Seq<S...> type;
+		};
+
+		template<typename F, typename Tuple, size_t... S>
+		constexpr bool AppliableHelper (int, Seq<S...>, decltype ((*static_cast<F*> (nullptr)) (std::get<S> (Tuple {})...)) * = nullptr)
+		{
+			return true;
+		}
+
+		template<typename F, typename Tuple, size_t... S>
+		constexpr bool AppliableHelper (char, Seq<S...>)
+		{
+			return false;
+		}
+
+		template<typename F, typename Tuple>
+		struct Appliable
+		{
+			constexpr static bool value = AppliableHelper<F, Tuple> (1, typename Gen<std::tuple_size<Tuple>::value>::type {});
+		};
+
+		template<typename... Args>
+		struct CutoffOne;
+
+		template<typename Arg, typename Arg2, typename... Rest>
+		struct CutoffOne<Arg, Arg2, Rest...>
+		{
+			typedef decltype (std::tuple_cat (std::tuple<typename std::decay<Arg>::type> { Arg {} }, typename CutoffOne<Arg2, Rest...>::type {})) type;
+		};
+
+		template<typename Last>
+		struct CutoffOne<Last>
+		{
+			typedef std::tuple<> type;
+		};
+
+		template<>
+		struct CutoffOne<>
+		{
+			typedef std::tuple<> type;
+		};
+
+		template<template<typename... Args> class MetaF, typename Tuple, size_t... S>
+		MetaF<decltype (std::get<S> (Tuple {}))...> PerformWithTupleTypesImpl (Seq<S...>)
+		{
+			return {};
+		}
+
+		template<template<typename... Args> class MetaF, typename Tuple>
+		struct PerformWithTupleTypes
+		{
+			typedef typename decltype (PerformWithTupleTypesImpl<MetaF, Tuple> (typename Gen<std::tuple_size<Tuple>::value>::type {}))::type type;
+		};
+
+		template<typename F, typename ArgsTuple>
+		struct FArgCount
+		{
+			constexpr static size_t value ()
+			{
+				return Appliable<F, ArgsTuple>::value ?
+						std::tuple_size<ArgsTuple>::value :
+							(std::tuple_size<ArgsTuple>::value ? FArgCount<F, typename PerformWithTupleTypes<CutoffOne, ArgsTuple>::type>::value () : 0);
+			}
+		};
+
+		template<typename F>
+		struct WFImpl
+		{
+			F F_;
+
+			template<typename Tuple, size_t... S>
+			void CallHelper (const Tuple& tuple, Seq<S...>)
+			{
+				F_ (std::get<S> (tuple)...);
+			}
+
+			template<typename... Args>
+			void operator() (Args... args)
+			{
+				constexpr auto argCount = FArgCount<F, std::tuple<Args...>>::value ();
+				CallHelper (std::make_tuple (args...), typename Gen<argCount>::type {});
+			}
+		};
+
+		template<typename F>
+		WFImpl<F> WF (const F& f)
+		{
+			return { f };
+		}
+	}
+
+	void AggregatorApp::ShowItem (const QModelIndex& src, const Item_ptr& item)
+	{
+		ItemsModelDecorator { SourceItemModel_ }.Selected (src);
+
 		auto text = Wt::WString ("<div><a href='{1}' target='_blank'>{2}</a><br />{3}<br /><hr/>{4}</div>")
-				.arg (boost::any_cast<Wt::WString> (titleIdx.data (ItemRole::Link)))
-				.arg (boost::any_cast<Wt::WString> (titleIdx.data ()))
-				.arg (boost::any_cast<Wt::WString> (pubDate.data ()))
-				.arg (boost::any_cast<Wt::WString> (titleIdx.data (ItemRole::Text)));
+				.arg (ToW (item->Link_))
+				.arg (ToW (item->Title_))
+				.arg (ToW (item->PubDate_.toString ()))
+				.arg (ToW (item->Description_));
 		ItemView_->setText (text);
+	}
+
+	void AggregatorApp::ShowItemMenu (const QModelIndex&,
+			const Item_ptr& item, const Wt::WMouseEvent& event)
+	{
+		Wt::WPopupMenu menu;
+		if (item->Unread_)
+			menu.addItem (ToW (tr ("Mark as read")))->
+					triggered ().connect (WF ([this, &item] { AP_->SetItemRead (item->ItemID_, true); }));
+		else
+			menu.addItem (ToW (tr ("Mark as unread")))->
+					triggered ().connect (WF ([this, &item] { AP_->SetItemRead (item->ItemID_, false); }));
+		menu.exec (event);
 	}
 
 	void AggregatorApp::SetupUI ()
 	{
+		setTheme (new Wt::WCssTheme ("polished"));
+		setLocale ({ QLocale {}.name ().toUtf8 ().constData () });
+
+		styleSheet ().addRule (".unreadItem", "font-weight: bold;");
+
 		auto rootLay = new Wt::WBoxLayout (Wt::WBoxLayout::LeftToRight);
 		root ()->setLayout (rootLay);
 
@@ -141,12 +326,13 @@ namespace WebAccess
 		auto showReadChannels = new Wt::WCheckBox (ToW (QObject::tr ("Include read channels")));
 		showReadChannels->setToolTip (ToW (QObject::tr ("Also display channels that have no unread items.")));
 		showReadChannels->setChecked (false);
-		showReadChannels->checked ().connect ([ChannelsFilter_] (Wt::NoClass) { ChannelsFilter_->SetHideRead (false); });
-		showReadChannels->unChecked ().connect ([ChannelsFilter_] (Wt::NoClass) { ChannelsFilter_->SetHideRead (true); });
+		showReadChannels->checked ().connect (WF ([this] { ChannelsFilter_->SetHideRead (false); }));
+		showReadChannels->unChecked ().connect (WF ([this] { ChannelsFilter_->SetHideRead (true); }));
 		leftPaneLay->addWidget (showReadChannels);
 
 		auto channelsTree = new Wt::WTreeView ();
 		channelsTree->setModel (ChannelsFilter_);
+		channelsTree->setSelectionMode (Wt::SingleSelection);
 		channelsTree->clicked ().connect (this, &AggregatorApp::HandleChannelClicked);
 		channelsTree->setAlternatingRowColors (true);
 		leftPaneLay->addWidget (channelsTree, 1, Wt::AlignTop);
@@ -156,13 +342,21 @@ namespace WebAccess
 
 		ItemsTable_ = new Wt::WTableView ();
 		ItemsTable_->setModel (ItemsModel_);
-		ItemsTable_->clicked ().connect (this, &AggregatorApp::HandleItemClicked);
+		ItemsTable_->mouseWentUp ().connect (this, &AggregatorApp::HandleItemClicked);
 		ItemsTable_->setAlternatingRowColors (true);
-		ItemsTable_->setWidth (Wt::WLength (100, Wt::WLength::Percentage));
+		ItemsTable_->setColumnWidth (0, { 550, Wt::WLength::Pixel });
+		ItemsTable_->setSelectionMode (Wt::SingleSelection);
+		ItemsTable_->setAttributeValue ("oncontextmenu",
+				"event.cancelBubble = true; event.returnValue = false; return false;");
 		rightPaneLay->addWidget (ItemsTable_, 2, Wt::AlignJustify);
 
 		ItemView_ = new Wt::WText ();
-		rightPaneLay->addWidget (ItemView_, 5);
+		ItemView_->setTextFormat (Wt::XHTMLUnsafeText);
+
+		auto itemPanel = new Wt::WPanel ();
+		itemPanel->setCentralWidget (ItemView_);
+
+		rightPaneLay->addWidget (itemPanel, 5);
 	}
 }
 }

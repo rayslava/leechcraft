@@ -35,13 +35,24 @@ namespace LeechCraft
 {
 namespace LMP
 {
+	struct RGData
+	{
+		double TrackGain_;
+		double TrackPeak_;
+		double AlbumGain_;
+		double AlbumPeak_;
+	};
+
 	class RGFilter : public FilterElement
 	{
 		GstElement * const Elem_;
+		GstElement * const TagInject_;
 		GstElement * const RGVol_;
 		GstElement * const RGLimiter_;
 	public:
 		RGFilter ();
+
+		void SetRG (const RGData&);
 
 		void SetAlbumMode (bool);
 		void SetLimiterEnabled (bool);

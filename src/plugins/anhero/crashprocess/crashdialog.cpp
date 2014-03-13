@@ -98,7 +98,6 @@ namespace CrashProcess
 
 	void CrashDialog::SetInteractionAllowed (bool allowed)
 	{
-		Ui_.TraceDisplay_->setEnabled (allowed);
 		Ui_.Reload_->setEnabled (allowed);
 		Ui_.Copy_->setEnabled (allowed);
 		Ui_.Save_->setEnabled (allowed);
@@ -125,9 +124,12 @@ namespace CrashProcess
 
 	void CrashDialog::done (int res)
 	{
+		auto cmdlist = CmdLine_.split (' ', QString::SkipEmptyParts);
+		cmdlist << "--restart";
+
 		if (!CmdLine_.isEmpty () &&
 				Ui_.RestartBox_->checkState () == Qt::Checked)
-			QProcess::startDetached ("/bin/sh", { "-c", "sleep 2; " + CmdLine_ });
+			QProcess::startDetached (Info_.Path_, cmdlist);
 
 		QDialog::done (res);
 	}

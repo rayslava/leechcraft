@@ -66,7 +66,8 @@ namespace SvcAuth
 	, Queue_ (queueMgr)
 	, ValidFor_ (0)
 	, IsRequesting_ (false)
-	, URL_ (URLFromClientID (id, scope))
+	, ID_ (id)
+	, URL_ (URLFromClientID (ID_, scope))
 	, IsRequestScheduled_ (false)
 	, ScheduleTimer_ (new QTimer (this))
 	{
@@ -80,6 +81,29 @@ namespace SvcAuth
 				SLOT (execScheduledRequest ()));
 	}
 
+	bool VkAuthManager::IsAuthenticated () const
+	{
+		return !Token_.isEmpty () &&
+			(!ValidFor_ || ReceivedAt_.secsTo (QDateTime::currentDateTime ()) < ValidFor_);
+	}
+
+	bool VkAuthManager::HadAuthentication () const
+	{
+		return !Token_.isEmpty () || !Cookies_->allCookies ().isEmpty ();
+	}
+
+	void VkAuthManager::UpdateScope (const QStringList& scope)
+	{
+		const auto& newUrl = URLFromClientID (ID_, scope);
+		if (URL_ == newUrl)
+			return;
+
+		URL_ = newUrl;
+		Token_.clear ();
+		ReceivedAt_ = QDateTime ();
+		ValidFor_ = 0;
+	}
+
 	void VkAuthManager::GetAuthKey ()
 	{
 		if (SilentMode_)
@@ -89,8 +113,7 @@ namespace SvcAuth
 			return;
 		}
 
-		if (Token_.isEmpty () ||
-				ReceivedAt_.secsTo (QDateTime::currentDateTime ()) > ValidFor_)
+		if (!IsAuthenticated ())
 		{
 			RequestAuthKey ();
 			return;
@@ -198,6 +221,7 @@ namespace SvcAuth
 
 		InvokeQueues (Token_);
 		emit gotAuthKey (Token_);
+		emit justAuthenticated ();
 
 		return true;
 	}

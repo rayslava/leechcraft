@@ -37,7 +37,7 @@ namespace LeechCraft
 namespace LMP
 {
 	class Path;
-	class RGFilter;
+	class RGFilterController;
 
 	class EffectsManager : public QObject
 	{
@@ -45,7 +45,7 @@ namespace LMP
 
 		Path * const Path_;
 
-		std::shared_ptr<RGFilter> RGFilter_;
+		std::shared_ptr<RGFilterController> RGFilter_;
 	public:
 		EffectsManager (Path*, QObject* = 0);
 	private slots:

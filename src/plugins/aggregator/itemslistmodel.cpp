@@ -59,6 +59,11 @@ namespace Aggregator
 				SIGNAL (itemsRemoved (QSet<IDType_t>)),
 				this,
 				SLOT (handleItemsRemoved (QSet<IDType_t>)));
+
+		connect (Core::Instance ().GetStorageBackend (),
+				SIGNAL (itemDataUpdated (Item_ptr, Channel_ptr)),
+				this,
+				SLOT (handleItemDataUpdated (Item_ptr, Channel_ptr)));
 	}
 
 	int ItemsListModel::GetSelectedRow () const
@@ -73,8 +78,9 @@ namespace Aggregator
 
 	void ItemsListModel::SetCurrentChannel (const IDType_t& channel)
 	{
+		beginResetModel ();
 		CurrentChannel_ = channel;
-		reset ();
+		endResetModel ();
 	}
 
 	void ItemsListModel::Selected (const QModelIndex& index)
@@ -117,16 +123,21 @@ namespace Aggregator
 
 	void ItemsListModel::Reset (const IDType_t& channel)
 	{
+		beginResetModel ();
+
 		CurrentChannel_ = channel;
 		CurrentRow_ = -1;
 		CurrentItems_.clear ();
 		if (channel != static_cast<IDType_t> (-1))
 			Core::Instance ().GetStorageBackend ()->GetItems (CurrentItems_, channel);
-		reset ();
+
+		endResetModel ();
 	}
 
 	void ItemsListModel::Reset (const QList<IDType_t>& items)
 	{
+		beginResetModel ();
+
 		CurrentChannel_ = -1;
 		CurrentRow_ = -1;
 		CurrentItems_.clear ();
@@ -135,7 +146,7 @@ namespace Aggregator
 		for (const IDType_t& itemId : items)
 			CurrentItems_.push_back (sb->GetItem (itemId)->ToShort ());
 
-		reset ();
+		endResetModel ();
 	}
 
 	void ItemsListModel::RemoveItems (QSet<IDType_t> ids)
@@ -144,6 +155,9 @@ namespace Aggregator
 			return;
 
 		const bool shouldReset = ids.size () > 10;
+
+		if (shouldReset)
+			beginResetModel ();
 
 		for (auto i = CurrentItems_.begin ();
 				i != CurrentItems_.end () && !ids.isEmpty (); )
@@ -169,7 +183,7 @@ namespace Aggregator
 		}
 
 		if (shouldReset)
-			reset ();
+			endResetModel ();
 	}
 
 	void ItemsListModel::ItemDataUpdated (Item_ptr item)
@@ -373,6 +387,8 @@ namespace Aggregator
 		}
 		else if (role == ItemRole::IsRead)
 			return !CurrentItems_ [index.row ()].Unread_;
+		else if (role == ItemRole::ItemId)
+			return CurrentItems_ [index.row ()].ItemID_;
 		else
 			return QVariant ();
 	}
@@ -408,6 +424,16 @@ namespace Aggregator
 		return parent.isValid () ? 0 : CurrentItems_.size ();
 	}
 
+	void ItemsListModel::reset (const IDType_t& type)
+	{
+		Reset (type);
+	}
+
+	void ItemsListModel::selected (const QModelIndex& index)
+	{
+		Selected (index);
+	}
+
 	void ItemsListModel::handleChannelRemoved (IDType_t id)
 	{
 		if (id != CurrentChannel_)
@@ -418,6 +444,29 @@ namespace Aggregator
 	void ItemsListModel::handleItemsRemoved (const QSet<IDType_t>& items)
 	{
 		RemoveItems (items);
+	}
+
+	void ItemsListModel::handleItemDataUpdated (const Item_ptr& item, const Channel_ptr& channel)
+	{
+		if (channel->ChannelID_ != CurrentChannel_)
+			return;
+
+		const auto itemId = item->ItemID_;
+		const auto pos = std::find_if (CurrentItems_.begin (), CurrentItems_.end (),
+				[itemId] (const ItemShort& itemShort) { return itemShort.ItemID_ == itemId; });
+		if (pos == CurrentItems_.end ())
+		{
+			qWarning () << Q_FUNC_INFO
+					<< "unknown item updated for channel"
+					<< channel->ChannelID_
+					<< channel->Title_;
+			return;
+		}
+
+		*pos = item->ToShort ();
+
+		const auto row = std::distance (CurrentItems_.begin (), pos);
+		emit dataChanged (index (row, 0), index (row, columnCount () - 1));
 	}
 }
 }

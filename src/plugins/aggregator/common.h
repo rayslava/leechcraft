@@ -31,6 +31,7 @@
 #define PLUGINS_AGGREGATOR_COMMON_H
 #include <QList>
 #include <QMetaType>
+#include <interfaces/structures.h>
 
 namespace LeechCraft
 {
@@ -53,6 +54,12 @@ namespace Aggregator
 		PTMRSSPeerLink,
 		PTMRSSScene,
 		PTMAX
+	};
+
+	enum ChannelRoles
+	{
+		UnreadCount = LeechCraft::RoleMAX + 1,
+		ChannelID
 	};
 }
 }

@@ -67,7 +67,9 @@ namespace SvcAuth
 		qint32 ValidFor_;
 
 		bool IsRequesting_;
-		const QUrl URL_;
+
+		const QString ID_;
+		QUrl URL_;
 
 		bool IsRequestScheduled_;
 		QTimer *ScheduleTimer_;
@@ -86,6 +88,11 @@ namespace SvcAuth
 		VkAuthManager (const QString& accountName, const QString& clientId,
 				const QStringList& scope, const QByteArray& cookies,
 				ICoreProxy_ptr, QueueManager* = nullptr, QObject* = nullptr);
+
+		bool IsAuthenticated () const;
+		bool HadAuthentication () const;
+
+		void UpdateScope (const QStringList&);
 
 		void GetAuthKey ();
 
@@ -114,6 +121,7 @@ namespace SvcAuth
 		void gotAuthKey (const QString&);
 		void cookiesChanged (const QByteArray&);
 		void authCanceled ();
+		void justAuthenticated ();
 	};
 }
 }

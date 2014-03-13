@@ -49,11 +49,6 @@ namespace Monocle
 	, Scene_ (view->scene ())
 	, LayMode_ (LayoutMode::OnePage)
 	, ScaleMode_ (ScaleMode::FitWidth)
-	, FixedScale_ (1)
-	, RelayoutScheduled_ (false)
-	, HorMargin_ (0)
-	, VertMargin_ (0)
-	, Rotation_ (0)
 	{
 		connect (View_,
 				SIGNAL (sizeChanged ()),
@@ -275,9 +270,9 @@ namespace Monocle
 			item->SetScale (scale, scale);
 		}
 
-		double currentY = 0;
-		double lastWidth = 0;
-		double lastHeight = 0;
+		qreal currentY = 0;
+		qreal lastWidth = 0;
+		qreal lastHeight = 0;
 		for (int i = 0, pagesCount = Pages_.size (); i < pagesCount; ++i)
 		{
 			auto page = Pages_ [i];

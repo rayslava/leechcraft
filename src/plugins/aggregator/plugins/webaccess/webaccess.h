@@ -36,6 +36,7 @@
 #include <interfaces/iplugin2.h>
 #include <interfaces/aggregator/item.h>
 #include <interfaces/core/ihookproxy.h>
+#include <interfaces/ihavesettings.h>
 
 namespace LeechCraft
 {
@@ -48,12 +49,15 @@ namespace WebAccess
 	class Plugin : public QObject
 				 , public IInfo
 				 , public IPlugin2
+				 , public IHaveSettings
 	{
 		Q_OBJECT
-		Q_INTERFACES (IInfo IPlugin2)
+		Q_INTERFACES (IInfo IPlugin2 IHaveSettings)
 
 		ICoreProxy_ptr Proxy_;
 		std::shared_ptr<ServerManager> SM_;
+
+		Util::XmlSettingsDialog_ptr XSD_;
 	public:
 		void Init (ICoreProxy_ptr);
 		void SecondInit ();
@@ -64,6 +68,8 @@ namespace WebAccess
 		QIcon GetIcon () const;
 
 		QSet<QByteArray> GetPluginClasses () const;
+
+		Util::XmlSettingsDialog_ptr GetSettingsDialog () const;
 	public Q_SLOTS:
 		void initPlugin (QObject*);
 	Q_SIGNALS:

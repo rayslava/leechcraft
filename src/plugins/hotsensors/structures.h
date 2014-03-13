@@ -41,10 +41,12 @@ namespace HotSensors
 	{
 		QString Name_;
 		double Value_;
+		double Max_;
+		double Crit_;
 	};
 
 	typedef QList<Reading> Readings_t;
 
-	typedef QMap<QString, QList<double>> ReadingsHistory_t;
+	typedef QMap<QString, QList<Reading>> ReadingsHistory_t;
 }
 }

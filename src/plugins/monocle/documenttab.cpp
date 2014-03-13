@@ -78,7 +78,10 @@
 #include "thumbswidget.h"
 #include "textsearchhandler.h"
 #include "formmanager.h"
+#include "annmanager.h"
 #include "arbitraryrotationwidget.h"
+#include "linksmanager.h"
+#include "annwidget.h"
 #include "core.h"
 
 namespace LeechCraft
@@ -112,10 +115,13 @@ namespace Monocle
 	, LayoutManager_ (0)
 	, SearchHandler_ (0)
 	, FormManager_ (0)
+	, AnnManager_ (0)
+	, LinksManager_ (0)
 	, DockWidget_ (new QDockWidget (tr ("Monocle dock")))
 	, TOCWidget_ (new TOCWidget ())
 	, BMWidget_ (new BookmarksWidget (this))
 	, ThumbsWidget_ (new ThumbsWidget ())
+	, AnnWidget_ (nullptr)
 	, MouseMode_ (MouseMode::Move)
 	, SaveStateScheduled_ (false)
 	, Onload_ ({ -1, 0, 0 })
@@ -131,9 +137,14 @@ namespace Monocle
 				SIGNAL (navigateRequested (QString, int, double, double)),
 				this,
 				SLOT (handleNavigateRequested (QString, int, double, double)));
-		FormManager_ = new FormManager (Ui_.PagesView_, this);
 
-		FindDialog_ = new FindDialog (SearchHandler_, this);
+		FormManager_ = new FormManager (Ui_.PagesView_, this);
+		AnnManager_ = new AnnManager (Ui_.PagesView_, this);
+		LinksManager_ = new LinksManager (Ui_.PagesView_, this);
+
+		AnnWidget_ = new AnnWidget (AnnManager_);
+
+		FindDialog_ = new FindDialog (SearchHandler_, Ui_.PagesView_);
 		FindDialog_->hide ();
 
 		SetupToolbar ();
@@ -151,6 +162,8 @@ namespace Monocle
 				mgr->GetIcon ("favorites"), tr ("Bookmarks"));
 		dockTabWidget->addTab (ThumbsWidget_,
 				mgr->GetIcon ("view-preview"), tr ("Thumbnails"));
+		dockTabWidget->addTab (AnnWidget_,
+				mgr->GetIcon ("view-pim-notes"), tr ("Annotations"));
 
 		connect (ThumbsWidget_,
 				SIGNAL (pageClicked (int)),
@@ -406,6 +419,8 @@ namespace Monocle
 		LayoutManager_->HandleDoc (CurrentDoc_, Pages_);
 		SearchHandler_->HandleDoc (CurrentDoc_, Pages_);
 		FormManager_->HandleDoc (CurrentDoc_, Pages_);
+		AnnManager_->HandleDoc (CurrentDoc_, Pages_);
+		LinksManager_->HandleDoc (CurrentDoc_, Pages_);
 
 		recoverDocState (state);
 		Relayout ();

@@ -44,6 +44,10 @@ extern "C"
 #include <libotr/message.h>
 #include <libotr/proto.h>
 
+#ifndef OTRL_PRIVKEY_FPRINT_HUMAN_LEN
+#define OTRL_PRIVKEY_FPRINT_HUMAN_LEN 45
+#endif
+
 #if OTRL_VERSION_MAJOR >= 4
 #include <libotr/instag.h>
 #endif
@@ -110,7 +114,7 @@ namespace OTRoid
 
 #if OTRL_VERSION_MAJOR >= 4
 		void HandleMsgEvent (void *opData, OtrlMessageEvent event,
-				ConnContext *context, const char *message, gcry_error_t)
+				ConnContext *context, const char *message, gcry_error_t err)
 		{
 			qDebug () << Q_FUNC_INFO
 					<< event
@@ -146,10 +150,41 @@ namespace OTRoid
 			case OTRL_MSGEVENT_RCVDMSG_MALFORMED:
 				msg = Plugin::tr ("Received message contains malformed data.");
 				break;
+			case OTRL_MSGEVENT_ENCRYPTION_ERROR:
+				msg = Plugin::tr ("OTR encryption error, the message has not been sent.");
+				break;
+			case OTRL_MSGEVENT_ENCRYPTION_REQUIRED:
+				msg = Plugin::tr ("Trying to send unencrypted message while our policy requires OTR encryption.");
+				break;
+			case OTRL_MSGEVENT_SETUP_ERROR:
+				msg = Plugin::tr ("Private conversation could not be set up. Error %1, source %2.")
+						.arg (QString::fromUtf8 (gcry_strerror (err)))
+						.arg (QString::fromUtf8 (gcry_strsource (err)));
+				break;
+			case OTRL_MSGEVENT_MSG_REFLECTED:
+				msg = Plugin::tr ("Received our own OTR message.");
+				break;
+			case OTRL_MSGEVENT_MSG_RESENT:
+				msg = Plugin::tr ("The previous message has been resent.");
+				break;
+			case OTRL_MSGEVENT_RCVDMSG_FOR_OTHER_INSTANCE:
+				msg = Plugin::tr ("Received (and discarded) message for other client instance.");
+				break;
+			case OTRL_MSGEVENT_RCVDMSG_GENERAL_ERR:
+				msg = Plugin::tr ("Received general OTR error.");
+				break;
+			case OTRL_MSGEVENT_LOG_HEARTBEAT_RCVD:
+			case OTRL_MSGEVENT_LOG_HEARTBEAT_SENT:
+			case OTRL_MSGEVENT_NONE:
+				break;
 			}
 
 			if (!msg.isEmpty ())
 			{
+				if (message)
+					msg += " " + Plugin::tr ("Original OTR message: %1.")
+							.arg (QString::fromUtf8 (message));
+
 				plugin->InjectMsg (QString::fromUtf8 (context->accountname),
 						QString::fromUtf8 (context->username),
 						msg, false, IMessage::DIn,
@@ -167,7 +202,7 @@ namespace OTRoid
 				const char *accountname, const char*,
 				const char *username, unsigned char fingerprint [20])
 		{
-			char fpHash [45];
+			char fpHash [OTRL_PRIVKEY_FPRINT_HUMAN_LEN];
 			otrl_privkey_hash_to_human (fpHash, fingerprint);
 			QString hrHash (fpHash); // human readable fingerprint
 
@@ -219,11 +254,11 @@ namespace OTRoid
 
 		UserState_ = otrl_userstate_create ();
 
-		otrl_privkey_read (UserState_, GetOTRFilename ("privkey"));
+		otrl_privkey_read (UserState_, GetOTRFilename ("privkey").constData ());
 		otrl_privkey_read_fingerprints (UserState_,
-				GetOTRFilename ("fingerprints"), NULL, NULL);
+				GetOTRFilename ("fingerprints").constData (), NULL, NULL);
 #if OTRL_VERSION_MAJOR >= 4
-		otrl_instag_read (UserState_, GetOTRFilename ("instags"));
+		otrl_instag_read (UserState_, GetOTRFilename ("instags").constData ());
 #endif
 
 		memset (&OtrOps_, 0, sizeof (OtrOps_));
@@ -274,7 +309,8 @@ namespace OTRoid
 			{
 				static_cast<Plugin*> (opData)->InjectMsg (QString::fromUtf8 (accountname),
 						QString::fromUtf8 (username),
-						QString::fromUtf8 (msg), false, IMessage::DIn);
+						QString::fromUtf8 (msg), false, IMessage::DIn,
+						IMessage::MTServiceMessage);
 				return 0;
 			};
 #endif
@@ -387,7 +423,8 @@ namespace OTRoid
 
 	void Plugin::WriteFingerprints ()
 	{
-		otrl_privkey_write_fingerprints (UserState_, GetOTRFilename ("fingerprints"));
+		otrl_privkey_write_fingerprints (UserState_,
+				GetOTRFilename ("fingerprints").constData ());
 	}
 
 	QString Plugin::GetAccountName (const QString& accId)
@@ -453,6 +490,8 @@ namespace OTRoid
 
 		IsGenerating_ = true;
 
+		const auto keysFile = GetOTRFilename ("privkey");
+
 		QEventLoop loop;
 		QFutureWatcher<gcry_error_t> watcher;
 		connect (&watcher,
@@ -460,14 +499,14 @@ namespace OTRoid
 				&loop,
 				SLOT (quit ()));
 		auto future = QtConcurrent::run (otrl_privkey_generate,
-				UserState_, GetOTRFilename ("privkey"), accName, proto);
+				UserState_, keysFile.constData (), accName, proto);
 		watcher.setFuture (future);
 
 		loop.exec ();
 
 		IsGenerating_ = false;
 
-		char fingerprint [45];
+		char fingerprint [OTRL_PRIVKEY_FPRINT_HUMAN_LEN];
 		if (!otrl_privkey_fingerprint (UserState_, fingerprint, accName, proto))
 		{
 			qWarning () << Q_FUNC_INFO
@@ -483,7 +522,8 @@ namespace OTRoid
 #if OTRL_VERSION_MAJOR >= 4
 	void Plugin::CreateInstag (const char *accName, const char *proto)
 	{
-		otrl_instag_generate (UserState_, GetOTRFilename ("instags"), accName, proto);
+		otrl_instag_generate (UserState_,
+				GetOTRFilename ("instags").constData (), accName, proto);
 	}
 
 	void Plugin::SetPollTimerInterval (unsigned int seconds)
@@ -684,9 +724,9 @@ namespace OTRoid
 		otrl_message_free (newMsg);
 	}
 
-	const char* Plugin::GetOTRFilename (const QString& fname) const
+	QByteArray Plugin::GetOTRFilename (const QString& fname) const
 	{
-		return OtrDir_.absoluteFilePath (fname).toUtf8 ().constData ();
+		return OtrDir_.absoluteFilePath (fname).toUtf8 ();
 	}
 
 	void Plugin::CreateActions (QObject *entry)
@@ -737,7 +777,7 @@ namespace OTRoid
 					   message, false, IMessage::DIn, IMessage::MTServiceMessage);
 		}
 
-		char fingerprint [45];
+		char fingerprint [OTRL_PRIVKEY_FPRINT_HUMAN_LEN];
 		if (!otrl_privkey_fingerprint (UserState_, fingerprint,
 				accId.constData (), protoId.constData ()))
 			CreatePrivkey (accId.constData (), protoId.constData());

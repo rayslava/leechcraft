@@ -36,6 +36,8 @@
 #include <util/util.h>
 #include <util/dblock.h>
 #include "util.h"
+#include "engine/rgfilter.h"
+#include "xmlsettingsmanager.h"
 
 namespace LeechCraft
 {
@@ -331,10 +333,17 @@ namespace LMP
 
 	void LocalCollectionStorage::RecordTrackPlayed (int trackId)
 	{
+		const auto& date = QDateTime::currentDateTime ();
+
+		AppendToPlayHistory_.bindValue (":track_id", trackId);
+		AppendToPlayHistory_.bindValue (":date", date);
+
+		if (!AppendToPlayHistory_.exec ())
+			Util::DBLock::DumpError (AppendToPlayHistory_);
+
 		UpdateTrackStats_.bindValue (":track_id", trackId);
 		UpdateTrackStats_.bindValue (":track_id_pc", trackId);
 		UpdateTrackStats_.bindValue (":track_id_add", trackId);
-		const auto& date = QDateTime::currentDateTime ();
 		UpdateTrackStats_.bindValue (":add_date", date);
 		UpdateTrackStats_.bindValue (":play_date", date);
 
@@ -419,9 +428,7 @@ namespace LMP
 		return result;
 	}
 
-	void LocalCollectionStorage::SetRgTrackInfo (int trackId,
-			double trackPeak, double trackGain,
-			double albumPeak, double albumGain)
+	void LocalCollectionStorage::SetRgTrackInfo (int trackId, const RGData& data)
 	{
 		GetFileIdMTime_.bindValue (":track_id", trackId);
 		if (!GetFileIdMTime_.exec ())
@@ -437,16 +444,42 @@ namespace LMP
 
 		SetTrackRgData_.bindValue (":track_id", trackId);
 		SetTrackRgData_.bindValue (":mtime", mtime);
-		SetTrackRgData_.bindValue (":track_gain", trackGain);
-		SetTrackRgData_.bindValue (":track_peak", trackPeak);
-		SetTrackRgData_.bindValue (":album_gain", albumGain);
-		SetTrackRgData_.bindValue (":album_peak", albumPeak);
+		SetTrackRgData_.bindValue (":track_gain", data.TrackGain_);
+		SetTrackRgData_.bindValue (":track_peak", data.TrackPeak_);
+		SetTrackRgData_.bindValue (":album_gain", data.AlbumGain_);
+		SetTrackRgData_.bindValue (":album_peak", data.AlbumPeak_);
 
 		if (!SetTrackRgData_.exec ())
 		{
 			Util::DBLock::DumpError (SetTrackRgData_);
 			throw std::runtime_error ("cannot set track RG data");
 		}
+	}
+
+	RGData LocalCollectionStorage::GetRgTrackInfo (const QString& filepath)
+	{
+		GetTrackRgData_.bindValue (":filepath", filepath);
+
+		if (!GetTrackRgData_.exec ())
+		{
+			Util::DBLock::DumpError (GetTrackRgData_);
+			throw std::runtime_error ("cannot get track RG data");
+		}
+
+		if (!GetTrackRgData_.next ())
+			return {};
+
+		const RGData data
+		{
+			GetTrackRgData_.value (0).toDouble (),
+			GetTrackRgData_.value (1).toDouble (),
+			GetTrackRgData_.value (2).toDouble (),
+			GetTrackRgData_.value (3).toDouble ()
+		};
+
+		GetTrackRgData_.finish ();
+
+		return data;
 	}
 
 	void LocalCollectionStorage::MarkLovedBanned (int trackId, int state)
@@ -735,11 +768,20 @@ namespace LMP
 		GetOutdatedRgData_ = QSqlQuery (DB_);
 		GetOutdatedRgData_.prepare ("SELECT fileTimes.TrackID FROM fileTimes LEFT OUTER JOIN rgdata ON fileTimes.TrackId = rgdata.TrackId WHERE fileTimes.MTime != rgdata.LastMTime OR rgdata.LastMTime IS NULL;");
 
+		GetTrackRgData_ = QSqlQuery (DB_);
+		GetTrackRgData_.prepare ("SELECT TrackGain, TrackPeak, AlbumGain, AlbumPeak "
+				"FROM rgdata, tracks "
+				"WHERE tracks.Path = :filepath AND tracks.Id = rgdata.TrackId;");
+
 		SetTrackRgData_ = QSqlQuery (DB_);
 		SetTrackRgData_.prepare ("INSERT OR REPLACE INTO rgdata "
 				"(TrackId, LastMTime, TrackGain, TrackPeak, AlbumGain, AlbumPeak)"
 				" VALUES "
 				"(:track_id, :mtime, :track_gain, :track_peak, :album_gain, :album_peak);");
+
+		AppendToPlayHistory_ = QSqlQuery (DB_);
+		AppendToPlayHistory_.prepare ("INSERT INTO playhistory "
+				"(TrackId, Date) VALUES (:track_id, :date);");
 	}
 
 	void LocalCollectionStorage::CreateTables ()
@@ -812,6 +854,15 @@ namespace LMP
 				"AlbumGain DOUBLE NOT NULL, "
 				"AlbumPeak DOUBLE NOT NULL "
 				");");
+		table2query << QueryPair_t ("playhistory",
+				"CREATE TABLE playhistory ("
+				"Id INTEGER PRIMARY KEY AUTOINCREMENT, "
+				"TrackId INTEGER NOT NULL REFERENCES tracks (Id) ON DELETE CASCADE, "
+				"Date TIMESTAMP"
+				");");
+
+		QSqlQuery { DB_ }.exec ("PRAGMA defer_foreign_keys = ON;");
+		QSqlQuery { DB_ }.exec ("PRAGMA foreign_keys = OFF;");
 
 		Util::DBLock lock (DB_);
 
@@ -829,9 +880,40 @@ namespace LMP
 				}
 			}
 
+		if (XmlSettingsManager::Instance ().Property ("TracksTableVersion", 1).toInt () < 2)
+		{
+			const QString query = "CREATE TABLE tracks2 ("
+				"Id INTEGER PRIMARY KEY AUTOINCREMENT, "
+				"ArtistID INTEGER NOT NULL REFERENCES artists (Id) ON DELETE CASCADE, "
+				"AlbumId NOT NULL REFERENCES albums (Id) ON DELETE CASCADE, "
+				"Path TEXT NOT NULL UNIQUE, "
+				"Name TEXT NOT NULL, "
+				"TrackNumber INTEGER, "
+				"Length INTEGER "
+				");";
+
+			QSqlQuery q { DB_ };
+			if (!q.exec (query))
+			{
+				Util::DBLock::DumpError (q);
+				throw std::runtime_error ("cannot create tracks2");
+			}
+
+			if (!q.exec ("INSERT OR IGNORE INTO tracks2 SELECT * FROM tracks;") ||
+				!q.exec ("DROP TABLE tracks;") ||
+				!q.exec ("ALTER TABLE tracks2 RENAME TO tracks;"))
+			{
+				Util::DBLock::DumpError (q);
+				throw std::runtime_error ("cannot copy data from tracks2");
+			}
+			XmlSettingsManager::Instance ().setProperty ("TracksTableVersion", 2);
+		}
+
 		QSqlQuery (DB_).exec ("CREATE UNIQUE INDEX IF NOT EXISTS index_tracksPaths ON tracks (Path);");
 
 		lock.Good ();
+
+		QSqlQuery { DB_ }.exec ("PRAGMA foreign_keys = ON;");
 	}
 }
 }

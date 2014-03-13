@@ -1,7 +1,7 @@
 set (CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 find_package (Wt REQUIRED)
-add_definitions (-DQT_NO_KEYWORDS)
+add_definitions (-DQT_NO_KEYWORDS -DWT_NO_SLOT_MACROS)
 
 include_directories (${AGGREGATOR_INCLUDE_DIR}
 	${CMAKE_CURRENT_BINARY_DIR}
@@ -12,16 +12,11 @@ set (WEBACCESS_SRCS
 	servermanager.cpp
 	aggregatorapp.cpp
 	readchannelsfilter.cpp
+	q2wproxymodel.cpp
+	util.cpp
+	serverupdater.cpp
+	xmlsettingsmanager.cpp
 	)
-set (WEBACCESS_HEADERS
-	webaccess.h
-	servermanager.h
-	aggregatorapp.h
-	readchannelsfilter.h
-	)
-if (NOT LC_NO_MOC)
-	QT4_WRAP_CPP (WEBACCESS_MOC_SRCS ${WEBACCESS_HEADERS})
-endif ()
 
 add_library (leechcraft_aggregator_webaccess SHARED
 	${WEBACCESS_COMPILED_TRANSLATIONS}
@@ -31,6 +26,10 @@ add_library (leechcraft_aggregator_webaccess SHARED
 target_link_libraries (leechcraft_aggregator_webaccess
 	${QT_LIBRARIES}
 	${LEECHCRAFT_LIBRARIES}
-	${Wt_LIBRARIES}
+	${Wt_LIBRARY}
+	${Wt_EXT_LIBRARY}
+	${Wt_HTTP_LIBRARY}
+	leechcraft_aggregator_util
 	)
 install (TARGETS leechcraft_aggregator_webaccess DESTINATION ${LC_PLUGINS_DEST})
+install (FILES aggregatorwebaccesssettings.xml DESTINATION ${LC_SETTINGS_DEST})

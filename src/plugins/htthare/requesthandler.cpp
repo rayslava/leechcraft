@@ -36,7 +36,6 @@
 #include <QFileInfo>
 #include <QDir>
 #include <QDateTime>
-#include <boost/concept_check.hpp>
 #include <util/util.h>
 #include <util/sys/mimedetector.h>
 #include "connection.h"
@@ -240,7 +239,7 @@ namespace HttHare
 				if (startStr.isEmpty ())
 				{
 					bool ok = false;
-					const auto last = endStr.toULongLong (&ok);
+					const auto last = endStr.toLongLong (&ok);
 					if (!ok)
 						continue;
 
@@ -252,12 +251,12 @@ namespace HttHare
 					bool ok = false;
 					const auto last = endStr.isEmpty () ?
 							(ok = true, fullSize - 1) :
-							endStr.toULongLong (&ok);
+							endStr.toLongLong (&ok);
 					if (!ok)
 						continue;
 
 					ok = false;
-					const auto first = startStr.toULongLong (&ok);
+					const auto first = startStr.toLongLong (&ok);
 					if (!ok)
 						continue;
 

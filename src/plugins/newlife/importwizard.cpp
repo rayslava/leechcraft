@@ -36,6 +36,7 @@
 #include "importers/liferea/lifereaimporter.h"
 #include "importers/psiplus/psiplusimporter.h"
 #include "importers/vacuum/vacuumimporter.h"
+#include "importers/opera/operaimporter.h"
 
 namespace LeechCraft
 {
@@ -49,9 +50,10 @@ namespace NewLife
 
 		Importers_ << new Importers::AkregatorImporter (this);
 		Importers_ << new Importers::FirefoxImporter (this);
-		Importers_ << new Importers::KopeteImporter (this);
+		Importers_ << new Importers::OperaImporter (this);
 		Importers_ << new Importers::KTorrentImporter (this);
 		Importers_ << new Importers::LifereaImporter (this);
+		Importers_ << new Importers::KopeteImporter (this);
 		Importers_ << new Importers::PsiPlusImporter (this);
 		Importers_ << new Importers::VacuumImporter (this);
 
