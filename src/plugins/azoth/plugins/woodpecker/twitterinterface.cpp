@@ -262,8 +262,8 @@ namespace Woodpecker
 			params.insert ("count", "50");
 			break;
 
-		case TwitterRequest::Followers:
-			reqUrl = "https://api.twitter.com/1.1/followers/ids.json";
+		case TwitterRequest::Friends:
+			reqUrl = "https://api.twitter.com/1.1/friends/ids.json";
 			params.insert ("include_entities", "true");
 			params.insert ("count", "5000");
 			break;
@@ -433,6 +433,11 @@ namespace Woodpecker
 		case FeedMode::Favorites:
 			SetLastRequestMode (FeedMode::Favorites);
 			SignedRequest (TwitterRequest::ListFavorites, KQOAuthRequest::GET, param);
+			break;
+
+		case FeedMode::Users:
+			SetLastRequestMode (FeedMode::Users);
+			SignedRequest (TwitterRequest::Friends, KQOAuthRequest::GET, param);
 			break;
 
 		default:

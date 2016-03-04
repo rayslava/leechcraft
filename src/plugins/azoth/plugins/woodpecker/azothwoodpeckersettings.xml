@@ -29,6 +29,10 @@
 			<item type="checkbox" property="notify" default="true">
 				<label value="Show notifications" />
 			</item>
+			<item type="lineedit" property="EntryNameFormat" default="$surname $nick $name">
+				<label value="Entry name format:"/>
+				<tooltip>The following variables are allowed: $name, $nick, $surname.</tooltip>
+			</item>
 		</groupbox>
 	</page>
 </settings>

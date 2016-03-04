@@ -63,6 +63,7 @@ namespace Woodpecker
 		ListFavorites,
 		Followers,
 		Following,
+		Friends,
 	};
 
 	enum class FeedMode
@@ -73,6 +74,7 @@ namespace Woodpecker
 		SearchResult,
 		Direct,
 		Favorites,
+		Users,
 	};
 
 	class TwitterInterface : public QObject

@@ -37,6 +37,8 @@
 #include <interfaces/ihavesettings.h>
 #include <interfaces/structures.h>
 #include <interfaces/ihaverecoverabletabs.h>
+#include <interfaces/azoth/iprotocolplugin.h>
+#include "xmlsettingsmanager.h"
 #include "twitterinterface.h"
 #include "tweet.h"
 #include "xmlsettingsmanager.h"
@@ -53,22 +55,25 @@ namespace Woodpecker
 	class UserManager;
 
 	class Plugin	: public QObject
-			, public IInfo
-			, public IHaveTabs
-			, public IHaveSettings
-			, public IHaveRecoverableTabs
-			, public IPlugin2
+					, public IInfo
+					, public IHaveTabs
+					, public IHaveSettings
+					, public IHaveRecoverableTabs
+					, public IPlugin2
+					, public IProtocolPlugin
 	{
 		Q_OBJECT
-		Q_INTERFACES (IInfo IHaveTabs IHaveSettings IHaveRecoverableTabs IPlugin2)
+		Q_INTERFACES (IInfo IHaveTabs IHaveSettings IHaveRecoverableTabs IPlugin2 LeechCraft::Azoth::IProtocolPlugin)
 
 		LC_PLUGIN_METADATA ("org.LeechCraft.Azoth.WoodPecker")
 
 		QList<QPair<TabClassInfo, std::function<void (TabClassInfo)>>> TabClasses_;
-		Util::XmlSettingsDialog_ptr XmlSettingsDialog_;
-		UserManager * UserManager_;
+		LeechCraft::Util::XmlSettingsDialog_ptr XmlSettingsDialog_;
+		UserManager *UserManager_;
 
 		void MakeTab (QWidget*, const TabClassInfo&);
+
+		QObject* Proto_;
 
 	public:
 		TabClassInfo HomeTC_;
@@ -108,6 +113,8 @@ namespace Woodpecker
 		void AddTab (const TabClassInfo& tc, const QString& name = QString (),
 					 const FeedMode mode = FeedMode::HomeTimeline,
 					 const KQOAuthParameters& params = KQOAuthParameters ());
+		QObject* GetQObject ();
+		QList<QObject*> GetProtocols () const;
 	signals:
 		void addNewTab (const QString&, QWidget*);
 		void removeTab (QWidget*);
@@ -116,6 +123,7 @@ namespace Woodpecker
 		void changeTooltip (QWidget*, QWidget*);
 		void statusBarChanged (QWidget*, const QString&);
 		void raiseTab (QWidget*);
+		void gotNewProtocols (const QList<QObject*>&);
 	};
 };
 };

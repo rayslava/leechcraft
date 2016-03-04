@@ -1,6 +1,6 @@
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2013  Slava Barinov <rayslava@gmail.com>
+ * Copyright (C) 2006-2013  Slava Barinov
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -29,7 +29,12 @@
 
 #pragma once
 
-#include <xmlsettingsdialog/basesettingsmanager.h>
+#include <QString>
+#include <QList>
+#include <QUrl>
+#include <QDateTime>
+#include <QVariantMap>
+#include <QSize>
 
 namespace LeechCraft
 {
@@ -37,19 +42,72 @@ namespace Azoth
 {
 namespace Woodpecker
 {
-	class XmlSettingsManager : public Util::BaseSettingsManager
+	struct ListInfo
 	{
-		Q_OBJECT
-
-		XmlSettingsManager ();
-
-	public:
-		static XmlSettingsManager* Instance ();
-
-	protected:
-		virtual QSettings* BeginSettings () const;
-		virtual void EndSettings (QSettings*) const;
+		qulonglong ID_;
+		QString Name_;
 	};
-};
-};
-};
+
+	struct UserInfo
+	{
+		qulonglong ID_;
+
+		QString FirstName_;
+		QString LastName_;
+		QString Nick_;
+
+		QUrl Photo_;
+		QUrl BigPhoto_;
+
+		int Gender_;
+
+		QDate Birthday_;
+
+		QString HomePhone_;
+		QString MobilePhone_;
+
+		int Timezone_;
+
+		int Country_;
+		int City_;
+
+		bool IsOnline_;
+
+		QList<qulonglong> Lists_;
+	};
+
+	enum MessageFlag
+	{
+		None =			0,
+		Unread =		1 << 0,
+		Outbox = 		1 << 1,
+		Replied = 		1 << 2,
+		Important = 	1 << 3,
+		Chat = 			1 << 4,
+		Friends = 		1 << 5,
+		Spam = 			1 << 6,
+		Deleted = 		1 << 7,
+		Fixed = 		1 << 8,
+		Media = 		1 << 9
+	};
+
+	Q_DECLARE_FLAGS (MessageFlags, MessageFlag)
+
+	struct MessageInfo
+	{
+		qulonglong ID_;
+		qulonglong From_;
+
+		QString Text_;
+
+		MessageFlags Flags_;
+
+		QDateTime TS_;
+
+		QVariantMap Params_;
+	};
+}
+}
+}
+
+Q_DECLARE_OPERATORS_FOR_FLAGS (LeechCraft::Azoth::Woodpecker::MessageFlags)

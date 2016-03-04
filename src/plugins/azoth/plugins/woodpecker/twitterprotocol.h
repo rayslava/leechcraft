@@ -29,7 +29,11 @@
 
 #pragma once
 
-#include <xmlsettingsdialog/basesettingsmanager.h>
+#include <QObject>
+#include <interfaces/azoth/iprotocol.h>
+#include <interfaces/core/icoreproxy.h>
+#include "twitteraccount.h"
+#include "woodpecker.h"
 
 namespace LeechCraft
 {
@@ -37,19 +41,42 @@ namespace Azoth
 {
 namespace Woodpecker
 {
-	class XmlSettingsManager : public Util::BaseSettingsManager
+	class TwitterAccount;
+	
+	class TwitterProtocol	: public QObject
+				, public IProtocol
 	{
 		Q_OBJECT
-
-		XmlSettingsManager ();
-
+		Q_INTERFACES (LeechCraft::Azoth::IProtocol)
+		
+		const ICoreProxy_ptr Proxy_;
+		Plugin *const Plugin_;
+		
+		QList<TwitterAccount*> Accounts_;
 	public:
-		static XmlSettingsManager* Instance ();
-
-	protected:
-		virtual QSettings* BeginSettings () const;
-		virtual void EndSettings (QSettings*) const;
+		TwitterProtocol (ICoreProxy_ptr, Plugin*);
+		
+		QObject* GetQObject ();
+		ProtocolFeatures GetFeatures () const;
+		QList<QObject*> GetRegisteredAccounts ();
+		Plugin* GetParentProtocolPlugin () const;
+		
+		QString GetProtocolName () const;
+		QIcon GetProtocolIcon () const;
+		QByteArray GetProtocolID () const;
+		
+		QList<QWidget*> GetAccountRegistrationWidgets (AccountAddOptions options);
+		void RegisterAccount (const QString& name, const QList<QWidget*>& widgets);
+		QWidget* GetMUCJoinWidget ();
+		void RemoveAccount (QObject* account);
+	private:
+		void AddAccount (TwitterAccount*);
+	private slots:
+		void saveAccount (TwitterAccount*);
+	signals:
+		void accountAdded (QObject*);
+		void accountRemoved (QObject*);
 	};
-};
-};
-};
+}
+}
+}

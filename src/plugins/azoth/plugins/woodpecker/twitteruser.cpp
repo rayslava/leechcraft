@@ -97,6 +97,7 @@ namespace Woodpecker
 
 	void TwitterUser::DownloadAvatar (const QString& path)
 	{
+		AvatarUrl_ = path;
 		auto reply = Http_->get (QNetworkRequest (QUrl (path)));
 		connect (reply,
 				SIGNAL (finished ()),
@@ -112,6 +113,11 @@ namespace Woodpecker
 	QPixmap TwitterUser::GetAvatar () const
 	{
 		return Avatar_;
+	}
+
+	QString TwitterUser::GetAvatarUrl() const
+	{
+		return AvatarUrl_;
 	}
 
 	qulonglong TwitterUser::GetID() const

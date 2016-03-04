@@ -36,6 +36,7 @@
 #include "core.h"
 #include "twitterpage.h"
 #include "xmlsettingsmanager.h"
+#include "twitterprotocol.h"
 
 namespace LeechCraft
 {
@@ -45,7 +46,7 @@ namespace Woodpecker
 {
 	void Plugin::Init (ICoreProxy_ptr proxy)
 	{
-		UserManager_ = new UserManager(this);
+		UserManager_ = new UserManager(this, this);
 		Util::InstallTranslator ("azoth_woodpecker");
 
 		XmlSettingsDialog_.reset (new Util::XmlSettingsDialog ());
@@ -100,6 +101,8 @@ namespace Woodpecker
 		TabClasses_.append ({ UserTC_, nullptr });
 		TabClasses_.append ({ SearchTC_, nullptr });
 		TabClasses_.append ({ FavoriteTC_, nullptr });
+
+		Proto_ = new TwitterProtocol(proxy, this);
 	}
 
 	void Plugin::AddTab (const TabClassInfo& tc, const QString& name,
@@ -274,6 +277,17 @@ namespace Woodpecker
 		Q_UNUSED (data)
 		Q_UNUSED (existing)
 		return false;
+	}
+
+
+	QObject* Plugin::GetQObject ()
+	{
+		return this;
+	}
+
+	QList<QObject*> Plugin::GetProtocols () const
+	{
+		return { Proto_ };
 	}
 }
 }

@@ -49,6 +49,7 @@ namespace Woodpecker
 		QString Username_;
 		QNetworkAccessManager * const Http_;
 		QPixmap Avatar_;
+		QString AvatarUrl_;
 
 	public:
 		explicit TwitterUser (QObject *parent = nullptr);
@@ -64,6 +65,7 @@ namespace Woodpecker
 		void DownloadAvatar (const QString& path);
 
 		QPixmap GetAvatar () const;
+		QString GetAvatarUrl () const;
 		qulonglong GetID() const;
 
 	signals:

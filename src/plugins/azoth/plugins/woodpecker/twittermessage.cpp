@@ -1,6 +1,7 @@
+
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2013  Slava Barinov <rayslava@gmail.com>
+ * Copyright (C) 2006-2013  Slava Barinov
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -27,9 +28,8 @@
  * DEALINGS IN THE SOFTWARE.
  **********************************************************************/
 
-#pragma once
-
-#include <xmlsettingsdialog/basesettingsmanager.h>
+#include "twittermessage.h"
+#include "twitterentry.h"
 
 namespace LeechCraft
 {
@@ -37,19 +37,110 @@ namespace Azoth
 {
 namespace Woodpecker
 {
-	class XmlSettingsManager : public Util::BaseSettingsManager
+	TwitterMessage::TwitterMessage (Direction dir, MessageType type, TwitterEntry *entry)
+	: QObject (entry)
+	, Entry_ (entry)
+	, Type_ (type)
+	, Dir_ (dir)
 	{
-		Q_OBJECT
+	}
 
-		XmlSettingsManager ();
+	QObject* TwitterMessage::GetQObject ()
+	{
+		return this;
+	}
 
-	public:
-		static XmlSettingsManager* Instance ();
+	void TwitterMessage::Send ()
+	{
+		Entry_->Send (this);
+		Store ();
+	}
 
-	protected:
-		virtual QSettings* BeginSettings () const;
-		virtual void EndSettings (QSettings*) const;
-	};
-};
-};
-};
+	void TwitterMessage::Store ()
+	{
+		Entry_->Store (this);
+	}
+
+	qulonglong TwitterMessage::GetID () const
+	{
+		return ID_;
+	}
+
+	void TwitterMessage::SetID (qulonglong id)
+	{
+		ID_ = id;
+		emit messageDelivered ();
+	}
+
+	bool TwitterMessage::IsRead () const
+	{
+		return IsRead_;
+	}
+
+	void TwitterMessage::SetRead ()
+	{
+		IsRead_ = true;
+	}
+
+	IMessage::Direction TwitterMessage::GetDirection () const
+	{
+		return Dir_;
+	}
+
+	IMessage::MessageType TwitterMessage::GetMessageType () const
+	{
+		return Type_;
+	}
+
+	IMessage::MessageSubType TwitterMessage::GetMessageSubType () const
+	{
+		return MSTOther;
+	}
+
+	QObject* TwitterMessage::OtherPart () const
+	{
+		return Entry_;
+	}
+
+	QString TwitterMessage::GetOtherVariant () const
+	{
+		return "";
+	}
+
+	QString TwitterMessage::GetBody () const
+	{
+		return Body_;
+	}
+
+	void TwitterMessage::SetBody (const QString& body)
+	{
+		Body_ = body;
+	}
+
+	QDateTime TwitterMessage::GetDateTime () const
+	{
+		return TS_;
+	}
+
+	void TwitterMessage::SetDateTime (const QDateTime& timestamp)
+	{
+		TS_ = timestamp;
+	}
+
+	bool TwitterMessage::IsDelivered () const
+	{
+		return ID_ != static_cast<qulonglong> (-1);
+	}
+
+	QString TwitterMessage::GetRichBody () const
+	{
+		return RichBody_;
+	}
+
+	void TwitterMessage::SetRichBody (const QString& body)
+	{
+		RichBody_ = body;
+	}
+}
+}
+}
