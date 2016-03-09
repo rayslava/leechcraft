@@ -37,6 +37,10 @@ set (WOODPECKER_SRCS
 	woodpecker.cpp
 	xmlsettingsmanager.cpp
 	usermanager.cpp
+	twitterprotocol.cpp
+	twitteraccount.cpp
+	twitterentry.cpp
+	twittermessage.cpp
 	)
 set (WOODPECKER_RESOURCES
 	woodpeckerresources.qrc

@@ -36,6 +36,7 @@
 #include "core.h"
 #include "twitterpage.h"
 #include "xmlsettingsmanager.h"
+#include "twitterprotocol.h"
 
 namespace LeechCraft
 {
@@ -45,7 +46,7 @@ namespace Woodpecker
 {
 	void Plugin::Init (ICoreProxy_ptr proxy)
 	{
-		UserManager_ = new UserManager(this);
+		UserManager_ = new UserManager(this, this);
 		Util::InstallTranslator ("azoth_woodpecker");
 
 		XmlSettingsDialog_.reset (new Util::XmlSettingsDialog ());
@@ -100,6 +101,9 @@ namespace Woodpecker
 		TabClasses_.append ({ UserTC_, nullptr });
 		TabClasses_.append ({ SearchTC_, nullptr });
 		TabClasses_.append ({ FavoriteTC_, nullptr });
+
+		Proxy_ = proxy;
+		Proto_ = nullptr;
 	}
 
 	void Plugin::AddTab (const TabClassInfo& tc, const QString& name,
@@ -154,6 +158,7 @@ namespace Woodpecker
 	{
 		QSet<QByteArray> classes;
 		classes << "org.LeechCraft.Plugins.Azoth.Plugins.IGeneralPlugin";
+		classes << "org.LeechCraft.Plugins.Azoth.Plugins.IProtocolPlugin";
 		return classes;
 	}
 
@@ -274,6 +279,22 @@ namespace Woodpecker
 		Q_UNUSED (data)
 		Q_UNUSED (existing)
 		return false;
+	}
+
+
+	QObject* Plugin::GetQObject ()
+	{
+		return this;
+	}
+
+	QList<QObject*> Plugin::GetProtocols () const
+	{
+		return { Proto_ };
+	}
+
+	void Plugin::initPlugin (QObject *azothProxy)
+	{
+		Proto_ = new TwitterProtocol(Proxy_, qobject_cast<IProxyObject*> (azothProxy), this);
 	}
 }
 }

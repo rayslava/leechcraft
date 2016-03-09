@@ -49,12 +49,14 @@ TwitterUser* UserManager::GetUser (const qulonglong id)
 {
 	auto user = Container_.find (id);
 	if (user == Container_.end ())
-		return 0;
+		return nullptr;
+	qDebug() << "Requested user " << user->GetUsername();
 	return &*user;
 }
 
 TwitterUser* UserManager::AddUser (const TwitterUser& user)
 {
+  qDebug() << "Added user " << user.GetUsername ();
 	return &*Container_.insert(user.GetID (), user);
 }
 }

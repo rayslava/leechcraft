@@ -33,6 +33,7 @@
 #include <QNetworkAccessManager>
 #include <QObject>
 #include <QPixmap>
+#include <QUrl>
 #include <QDebug>
 
 namespace LeechCraft
@@ -49,6 +50,7 @@ namespace Woodpecker
 		QString Username_;
 		QNetworkAccessManager * const Http_;
 		QPixmap Avatar_;
+		QUrl AvatarUrl_;
 
 	public:
 		explicit TwitterUser (QObject *parent = nullptr);
@@ -64,6 +66,7 @@ namespace Woodpecker
 		void DownloadAvatar (const QString& path);
 
 		QPixmap GetAvatar () const;
+		QUrl GetAvatarUrl () const;
 		qulonglong GetID() const;
 
 	signals:

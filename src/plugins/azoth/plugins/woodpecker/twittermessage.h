@@ -1,6 +1,7 @@
+
 /**********************************************************************
  * LeechCraft - modular cross-platform feature rich internet client.
- * Copyright (C) 2013  Slava Barinov <rayslava@gmail.com>
+ * Copyright (C) 2006-2013  Slava Barinov
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -29,7 +30,10 @@
 
 #pragma once
 
-#include <xmlsettingsdialog/basesettingsmanager.h>
+#include <QObject>
+#include <interfaces/azoth/imessage.h>
+#include <interfaces/azoth/iadvancedmessage.h>
+#include <interfaces/azoth/irichtextmessage.h>
 
 namespace LeechCraft
 {
@@ -37,19 +41,60 @@ namespace Azoth
 {
 namespace Woodpecker
 {
-	class XmlSettingsManager : public Util::BaseSettingsManager
+	class TwitterEntry;
+
+	class TwitterMessage : public QObject
+					, public IMessage
+					, public IAdvancedMessage
+					, public IRichTextMessage
 	{
 		Q_OBJECT
+		Q_INTERFACES (LeechCraft::Azoth::IMessage
+				LeechCraft::Azoth::IAdvancedMessage
+				LeechCraft::Azoth::IRichTextMessage)
 
-		XmlSettingsManager ();
+		TwitterEntry * const Entry_;
+		const IMessage::Type Type_;
+		const IMessage::Direction Dir_;
 
+		QString Body_;
+		QString RichBody_;
+		QDateTime TS_ = QDateTime::currentDateTime ();
+
+		qulonglong ID_ = -1;
+
+		bool IsRead_ = Dir_ == IMessage::Direction::Out;
 	public:
-		static XmlSettingsManager* Instance ();
+		TwitterMessage (IMessage::Direction, IMessage::Type, TwitterEntry*);
 
-	protected:
-		virtual QSettings* BeginSettings () const;
-		virtual void EndSettings (QSettings*) const;
+		QObject* GetQObject ();
+		void Send ();
+		void Store ();
+
+		qulonglong GetID () const;
+		void SetID (qulonglong);
+
+		bool IsRead () const;
+		void SetRead ();
+
+		Direction GetDirection () const override;
+		IMessage::Type GetMessageType () const override;
+		IMessage::SubType GetMessageSubType () const override;
+
+		QObject* OtherPart () const;
+		QString GetOtherVariant () const;
+		QString GetBody () const;
+		void SetBody (const QString& body);
+		QDateTime GetDateTime () const;
+		void SetDateTime (const QDateTime& timestamp);
+
+		bool IsDelivered () const;
+
+		QString GetRichBody() const;
+		void SetRichBody (const QString&);
+	signals:
+		void messageDelivered ();
 	};
-};
-};
-};
+}
+}
+}
